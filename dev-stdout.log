@@ -1,0 +1,11 @@
+
+> domera@0.1.0 dev
+> next dev
+
+▲ Next.js 16.1.6 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://172.20.10.2:3000
+- Environments: .env.local
+
+✓ Starting...
+✓ Ready in 1712ms

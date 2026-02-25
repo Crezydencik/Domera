@@ -1,0 +1,64 @@
+// Firestore Security Rules for Domera Platform
+// ⚠️ DEVELOPMENT MODE - Permissive rules for rapid development
+// TODO: Replace with strict rules before production deployment
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // DEVELOPMENT: Allow authenticated users to read and write most collections
+    // This will be replaced with strict role-based rules before production
+    
+    // Companies Collection
+    match /companies/{companyId} {
+      allow read, write: if isAuthenticated();
+    }
+    
+    // Users Collection - Allow creation by authenticated users
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create, write: if isAuthenticated();
+    }
+    
+    // Buildings Collection
+    match /buildings/{buildingId} {
+      allow read, write: if isAuthenticated();
+    }
+    
+    // Apartments Collection
+    match /apartments/{apartmentId} {
+      allow read, write: if isAuthenticated();
+    }
+    
+    // Meters Collection
+    match /meters/{meterId} {
+      allow read, write: if isAuthenticated();
+    }
+    
+    // Meter Readings Collection
+    match /meter_readings/{readingId} {
+      allow read, write: if isAuthenticated();
+    }
+    
+    // Invoices Collection
+    match /invoices/{invoiceId} {
+      allow read, write: if isAuthenticated();
+    }
+    
+    // Invitations Collection
+    match /invitations/{invitationId} {
+      allow read, write: if isAuthenticated();
+    }
+    
+    // Default deny all other collections
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

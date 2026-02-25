@@ -1,0 +1,77 @@
+// Firebase Storage Rules for Domera Platform
+// Copy this content to Firebase Console > Storage > Rules
+
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isManagementCompany() {
+      return request.auth.token.role == 'ManagementCompany';
+    }
+    
+    function isResident() {
+      return request.auth.token.role == 'Resident';
+    }
+    
+    function hasCompanyAccess(companyId) {
+      return request.auth.token.companyId == companyId;
+    }
+    
+    function hasApartmentAccess(apartmentId) {
+      return request.auth.token.apartmentId == apartmentId;
+    }
+    
+    // Invoice PDFs: invoices/{companyId}/{apartmentId}/{year}/{month}.pdf
+    match /invoices/{companyId}/{apartmentId}/{year}/{month}.pdf {
+      // Management company can read invoices of their company
+      allow read: if isAuthenticated() && isManagementCompany() 
+                   && hasCompanyAccess(companyId);
+      // Resident can read invoices of their apartment
+      allow read: if isResident() && hasApartmentAccess(apartmentId);
+      
+      // Only management company can upload
+      allow write: if isAuthenticated() && isManagementCompany() 
+                   && hasCompanyAccess(companyId)
+                   && request.resource.contentType == 'application/pdf';
+    }
+    
+    // Document uploads: documents/{companyId}/{userId}/{documentName}
+    match /documents/{companyId}/{userId}/{document=**} {
+      // User can read their own documents
+      allow read: if request.auth.uid == userId;
+      // Management company can read documents of their company users
+      allow read: if isManagementCompany() && hasCompanyAccess(companyId);
+      
+      // User can upload their own documents
+      allow write: if request.auth.uid == userId 
+                   && hasCompanyAccess(companyId);
+      // Management company can upload documents for their users
+      allow write: if isManagementCompany() && hasCompanyAccess(companyId);
+    }
+    
+    // User avatars: avatars/{userId}/avatar.jpg
+    match /avatars/{userId}/avatar.jpg {
+      allow read: if isAuthenticated();
+      allow write: if request.auth.uid == userId 
+                   && request.resource.contentType.matches('image/.*');
+    }
+    
+    // Company documents: company-docs/{companyId}/{documentName}
+    match /company-docs/{companyId}/{document=**} {
+      // Management company can read their company documents
+      allow read: if isManagementCompany() && hasCompanyAccess(companyId);
+      
+      // Only management company can write
+      allow write: if isManagementCompany() && hasCompanyAccess(companyId);
+    }
+    
+    // Deny everything else
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
