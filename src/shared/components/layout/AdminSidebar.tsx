@@ -6,24 +6,8 @@ import { useState } from 'react';
 import { ROUTES } from '@/shared/constants';
 import { logout } from '@/modules/auth/services/authService';
 import type { User } from '@/shared/types';
+import { useTranslations } from 'next-intl';
 
-const MANAGEMENT_NAV_ITEMS = [
-  { href: ROUTES.DASHBOARD, label: 'Главная', icon: '🏠' },
-  { href: ROUTES.BUILDINGS, label: 'Здания', icon: '🏢' },
-  { href: ROUTES.APARTMENTS, label: 'Квартиры', icon: '🏠' },
-  { href: ROUTES.METER_READINGS, label: 'Показания', icon: '📊' },
-  // ...удалено: ссылка на настройки...
-  { href: ROUTES.INVOICES, label: 'Счета', icon: '📄' },
-  { href: ROUTES.PROFILE, label: 'Профиль', icon: '👤' },
-];
-
-const RESIDENT_NAV_ITEMS = [
-  { href: ROUTES.DASHBOARD, label: 'Главная', icon: '🏠' },
-  { href: ROUTES.APARTMENTS, label: 'Квартира', icon: '🏠' },
-  { href: ROUTES.METER_READINGS, label: 'Показания', icon: '📊' },
-  { href: ROUTES.INVOICES, label: 'Счета', icon: '📄' },
-  { href: ROUTES.PROFILE, label: 'Профиль', icon: '👤' },
-];
 
 interface AdminSidebarProps {
   user: User;
@@ -35,7 +19,24 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [search, setSearch] = useState('');
-
+  const t = useTranslations('dashboard');
+  const MANAGEMENT_NAV_ITEMS = [
+    { href: ROUTES.DASHBOARD, label: t('sidebar.home'), icon: '🏠' },
+    { href: ROUTES.BUILDINGS, label: t('sidebar.buildings'), icon: '🏢' },
+    { href: ROUTES.APARTMENTS, label: t('sidebar.apartments'), icon: '🏠' },
+    { href: ROUTES.METER_READINGS, label: t('sidebar.readings'), icon: '📊' },
+    // ...удалено: ссылка на настройки...
+    // { href: ROUTES.INVOICES, label: t('sidebar.invoices'), icon: '📄' },
+    { href: ROUTES.PROFILE, label: t('sidebar.profile'), icon: '👤' },
+  ];
+  
+  const RESIDENT_NAV_ITEMS = [
+    { href: ROUTES.DASHBOARD, label: t('sidebar.home'), icon: '🏠' },
+    { href: ROUTES.APARTMENTS, label: t('sidebar.apartment'), icon: '🏠' },
+    { href: ROUTES.METER_READINGS, label: t('sidebar.readings'), icon: '📊' },
+    // { href: ROUTES.INVOICES, label: t('sidebar.invoices'), icon: '📄' },
+    { href: ROUTES.PROFILE, label: t('sidebar.profile'), icon: '👤' },
+  ];
   const roleItems = user.role === 'Resident' ? RESIDENT_NAV_ITEMS : MANAGEMENT_NAV_ITEMS;
 
   const filteredItems = roleItems.filter((item) =>
@@ -68,7 +69,7 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
         type="button"
         onClick={() => setIsMenuOpen((prev) => !prev)}
         className="md:hidden fixed top-4 left-4 z-50 px-3 py-2 bg-slate-800 text-white rounded-lg border border-slate-700"
-        aria-label="Открыть навигацию"
+        aria-label={isMenuOpen ? t('sidebar.closeMenu') : t('sidebar.openMenu')}
       >
         {isMenuOpen ? '✕' : '☰'}
       </button>
@@ -76,7 +77,7 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
       {isMenuOpen && (
         <button
           type="button"
-          aria-label="Закрыть меню"
+          aria-label={t('sidebar.closeMenu')}
           onClick={() => setIsMenuOpen(false)}
           className="md:hidden fixed inset-0 bg-black/50 z-30"
         />
@@ -93,16 +94,16 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
             <div className="overflow-hidden">
               <h1 className="text-2xl font-bold text-white whitespace-nowrap">🏢 Domera</h1>
               <p className="text-sm text-gray-400 mt-1">
-                {user.role === 'Resident' ? 'Резидент' : 'Управляющий'}
+                {user.role === 'Resident' ? t('sidebar.resident') : t('sidebar.manager')}
               </p>
             </div>
-            <input
+            {/* <input
               type="text"
-              placeholder="Поиск"
+              placeholder={t('sidebar.search')} 
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="mt-3 w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white placeholder:text-slate-500"
-            />
+            /> */}
           </div>
 
           <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
@@ -127,27 +128,27 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
               );
             })}
             {!filteredItems.length && (
-              <p className="px-3 pt-3 text-sm text-slate-400">Ничего не найдено</p>
+              <p className="px-3 pt-3 text-sm text-slate-400">{t('sidebar.noResults')}</p>
             )}
           </nav>
 
           <div className="px-4 py-4 border-t border-slate-700 bg-slate-900">
-            <button
+            {/* <button
               type="button"
               onClick={toggleTheme}
               className="w-full mb-3 px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-gray-200 hover:bg-slate-700 transition"
             >
-              Сменить тему
-            </button>
-            <p className="text-xs text-gray-400 mb-1">Пользователь</p>
+              {t('sidebar.changeTheme')}
+            </button> */}
+            <p className="text-xs text-gray-400 mb-1">{t('sidebar.user')}</p>
             <p className="text-sm text-white truncate mb-3">{user.email}</p>
             <button
               type="button"
               onClick={handleLogout}
               disabled={isLoggingOut}
-              className="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white hover:bg-slate-700 transition disabled:opacity-60"
+              className="w-full px-3 py-2 rounded-lg bg-red-600 hover:bg-red-900 border border-slate-700 text-white hover:bg-slate-700 transition disabled:opacity-60"
             >
-              {isLoggingOut ? 'Выход...' : 'Выйти'}
+              {isLoggingOut ? t('sidebar.loggingOut') : t('sidebar.logout')}
             </button>
           </div>
         </div>

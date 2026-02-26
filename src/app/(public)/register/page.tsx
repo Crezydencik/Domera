@@ -4,19 +4,18 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { registerUser } from '@/modules/auth/services/authService';
-import { createCompany } from '@/modules/company/services/companyService';
 import { useTranslations } from 'use-intl';
-
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     confirmPassword: '',
-    companyName: '',
   });
   const [loading, setLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState('');
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const router = useRouter();
   const t = useTranslations('auth');
 
@@ -31,11 +30,6 @@ export default function RegisterPage() {
     setLoadingStep('');
 
     // Validation
-    if (!formData.companyName.trim()) {
-      setError(t('enterCompanyName'));
-      return;
-    }
-
     if (!formData.email.trim()) {
       setError(t('enterEmail'));
       return;
@@ -54,12 +48,7 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      // Create company first
-      setLoadingStep(t('creatingCompany'));
-      console.log('Creating company:', formData.companyName);
-      const company = await createCompany(formData.companyName);
-
-      // Then register user as ManagementCompany
+      // 1. Зарегистрировать пользователя
       setLoadingStep(t('creatingAccount'));
       const user = await registerUser(
         {
@@ -67,18 +56,21 @@ export default function RegisterPage() {
           password: formData.password,
           token: '', // No invitation token for direct registration
         },
-        'ManagementCompany',
-        company.id
+        'Resident', // Обычный пользователь
+        '' // companyId временно пустой
       );
 
-      if (user) {
-        setLoadingStep(t('registrationComplete'));
-        setTimeout(() => {
-          router.push('/dashboard');
-        }, 500);
-      } else {
+      if (!user || !user.uid) {
         setError(t('registrationError'));
+        setLoading(false);
+        setLoadingStep('');
+        return;
       }
+
+      setLoadingStep(t('registrationComplete'));
+      setTimeout(() => {
+        router.push('/choose-company');
+      }, 500);
     } catch (err: any) {
       console.error('Registration error:', err);
       console.error('Error details:', {
@@ -122,21 +114,6 @@ export default function RegisterPage() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Company Name */}
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                {t('companyNameLabel')} 
-              </label>
-              <input
-                type="text"
-                name="companyName"
-                value={formData.companyName}
-                onChange={handleChange}
-                placeholder={t('companyNamePlaceholder')}
-                className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition"
-                required
-              />
-            </div>
 
             {/* Email */}
             <div>
@@ -159,15 +136,26 @@ export default function RegisterPage() {
               <label className="block text-sm font-medium text-gray-300 mb-2">
                 {t('passwordLabel')}
               </label>
-              <input
-                type="password"
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                placeholder={t('passwordPlaceholder')}
-                className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition"
-                required
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  placeholder={t('passwordPlaceholder')}
+                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition pr-10"
+                  required
+                />
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200 focus:outline-none"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? t('hidePassword') : t('showPassword')}
+                >
+            
+                </button>
+              </div>
               <p className="text-xs text-gray-500 mt-1">{t('minPasswordLength')}</p>
             </div>
 
@@ -176,15 +164,30 @@ export default function RegisterPage() {
               <label className="block text-sm font-medium text-gray-300 mb-2">
                 {t('confirmPasswordLabel')}
               </label>
-              <input
-                type="password"
-                name="confirmPassword"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                placeholder={t('confirmPasswordPlaceholder')}
-                className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition"
-                required
-              />
+              <div className="relative">
+                <input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  placeholder={t('confirmPasswordPlaceholder')}
+                  className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition pr-10"
+                  required
+                />
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200 focus:outline-none"
+                  onClick={() => setShowConfirmPassword((v) => !v)}
+                  aria-label={showConfirmPassword ? t('hidePassword') : t('showPassword')}
+                >
+                  {showConfirmPassword ? (
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-5.523 0-10-4.477-10-10 0-1.657.402-3.22 1.125-4.575m2.122-2.122A9.956 9.956 0 0112 3c5.523 0 10 4.477 10 10 0 1.657-.402 3.22-1.125 4.575m-2.122 2.122A9.956 9.956 0 0112 21c-5.523 0-10-4.477-10-10 0-1.657.402-3.22 1.125-4.575" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                  ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-5.523 0-10-4.477-10-10 0-1.657.402-3.22 1.125-4.575m2.122-2.122A9.956 9.956 0 0112 3c5.523 0 10 4.477 10 10 0 1.657-.402 3.22-1.125 4.575m-2.122 2.122A9.956 9.956 0 0112 21c-5.523 0-10-4.477-10-10 0-1.657.402-3.22 1.125-4.575" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                  )}
+                </button>
+              </div>
             </div>
 
             {/* Terms */}
@@ -221,7 +224,7 @@ export default function RegisterPage() {
           <p className="text-center text-gray-400 mt-6">
             {t('alreadyHaveAccount')}{' '}
             <Link href="/login" className="text-blue-400 hover:text-blue-300 transition">
-              {t('signIn')}
+              {t('login')}
             </Link>
           </p>
         </div>
@@ -229,7 +232,7 @@ export default function RegisterPage() {
         {/* Back to Home */}
         <div className="text-center mt-6">
           <Link href="/" className="text-gray-400 hover:text-gray-300 transition">
-            ← {t('backToHome')}
+            {t('backHomeLink')}
           </Link>
         </div>
       </div>

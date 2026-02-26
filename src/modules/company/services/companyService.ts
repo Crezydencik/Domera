@@ -21,12 +21,24 @@ import { Company } from '@/shared/types';
 /**
  * Create new company
  */
-export const createCompany = async (name: string): Promise<Company> => {
+// Now accepts userId and optional buildings array
+export const createCompany = async (
+  name: string,
+  userId: string,
+  extra?: { address?: string; phone?: string; email?: string }
+): Promise<Company> => {
   try {
-    const companyData = {
+    const companyData: any = {
       name,
+      userId,
+      buildings: [], // [{ id, name }]
       createdAt: new Date(),
     };
+    if (extra) {
+      if (extra.address) companyData.address = extra.address;
+      if (extra.phone) companyData.phone = extra.phone;
+      if (extra.email) companyData.email = extra.email;
+    }
 
     const id = await createDocument(FIRESTORE_COLLECTIONS.COMPANIES, companyData);
 
@@ -56,6 +68,7 @@ export const getCompany = async (companyId: string): Promise<Company | null> => 
 /**
  * Update company
  */
+// Accepts updates for userId and buildings
 export const updateCompany = async (
   companyId: string,
   data: Partial<Omit<Company, 'id'>>

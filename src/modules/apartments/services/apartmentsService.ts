@@ -126,15 +126,44 @@ export const createApartment = async (
       waterReadings: Array.isArray(data.waterReadings) ? data.waterReadings : [],
     });
 
+    // Update building doc: push apartment id and number
+    const apartmentsArr = Array.isArray((buildingDoc as any).apartments) ? (buildingDoc as any).apartments : [];
+    apartmentsArr.push({ id, number: normalizedNumber });
     const nextApartmentIds = Array.from(
       new Set([...(Array.isArray((buildingDoc as { apartmentIds?: string[] }).apartmentIds)
         ? (buildingDoc as { apartmentIds?: string[] }).apartmentIds!
         : []), id])
     );
 
+    console.log('[createApartment] nextApartmentIds:', nextApartmentIds);
+    console.log('[createApartment] apartmentsArr:', apartmentsArr);
+
+
     await updateDocument(FIRESTORE_COLLECTIONS.BUILDINGS, data.buildingId, {
-      apartmentIds: nextApartmentIds,
+      apartmentIds: nextApartmentIds
     });
+    console.log('[createApartment] apartmentIds после update:', nextApartmentIds);
+
+    // Fallback: если после обновления apartmentIds не появился, пробуем восстановить вручную
+    setTimeout(async () => {
+      try {
+        const buildingDocCheck = await getDocument(FIRESTORE_COLLECTIONS.BUILDINGS, data.buildingId);
+        if (!Array.isArray((buildingDocCheck as any)?.apartmentIds) || !(buildingDocCheck as any).apartmentIds.includes(id)) {
+          // Собираем все квартиры этого дома
+          const apartmentsCollection = collection(db, FIRESTORE_COLLECTIONS.APARTMENTS);
+          const aQuery = query(apartmentsCollection, where('buildingId', '==', data.buildingId));
+          const aSnap = await getDocs(aQuery);
+          const ids = aSnap.docs.map((d) => d.id);
+          await updateDocument(FIRESTORE_COLLECTIONS.BUILDINGS, data.buildingId, { apartmentIds: ids });
+          console.log('[createApartment fallback] apartmentIds восстановлен:', ids);
+        }
+        // Проверяем, что id действительно есть в apartmentIds
+        const checkDoc = await getDocument(FIRESTORE_COLLECTIONS.BUILDINGS, data.buildingId);
+        console.log('[createApartment fallback] apartmentIds после восстановления:', (checkDoc as any)?.apartmentIds);
+      } catch (e) {
+        console.error('[createApartment fallback] Ошибка восстановления apartmentIds:', e);
+      }
+    }, 1000);
 
     return {
       id,

@@ -35,12 +35,12 @@ const getResendConfig = () => {
   const allowedDomain = process.env.RESEND_ALLOWED_DOMAIN ?? 'lumtach.com';
 
   if (!apiKey || !from) {
-    throw new Error('Resend не настроен. Укажите RESEND_API_KEY и RESEND_FROM');
+    throw new Error('Resend nav konfigurēts. Norādiet RESEND_API_KEY un RESEND_FROM');
   }
 
   if (!isAllowedSenderDomain(from, allowedDomain)) {
     throw new Error(
-      `Некорректный RESEND_FROM: адрес отправителя должен быть из домена ${allowedDomain}`
+      `Nederīgs RESEND_FROM: sūtītāja adresei jābūt no domēna ${allowedDomain}`
     );
   }
 
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
 
     if (!payload.apartmentId || !payload.email) {
       return NextResponse.json(
-        { error: 'apartmentId и email обязательны' },
+        { error: 'Nepieciešams apartmentId un email' },
         { status: 400 }
       );
     }
@@ -64,11 +64,11 @@ export async function POST(request: NextRequest) {
     const { getApartment } = await import('@/modules/apartments/services/apartmentsService');
     const apartment = await getApartment(payload.apartmentId);
     if (!apartment) {
-      return NextResponse.json({ error: 'Квартира не найдена' }, { status: 404 });
+      return NextResponse.json({ error: 'Dzīvoklis nav atrasts' }, { status: 404 });
     }
     const companyId = Array.isArray(apartment.companyIds) && apartment.companyIds.length > 0 ? apartment.companyIds[0] : undefined;
     if (!companyId) {
-      return NextResponse.json({ error: 'У квартиры не найден companyId' }, { status: 400 });
+      return NextResponse.json({ error: 'Dzīvoklim nav companyId' }, { status: 400 });
     }
 
     const origin = request.nextUrl.origin;
@@ -102,39 +102,39 @@ export async function POST(request: NextRequest) {
     const resend = new Resend(resendConfig.apiKey);
 
     const subject = existingAccountDetected
-      ? 'Domera: вам открыт доступ к квартире'
-      : 'Приглашение в Domera';
+      ? 'Domera: jums ir piešķirta piekļuve dzīvoklim'
+      : 'Ielūgums uz Domera';
 
     const text = existingAccountDetected
       ? [
-          'Domera — доступ к квартире',
+          'Domera — piekļuve dzīvoklim',
           '',
-          'Здравствуйте!',
+          'Sveicināti!',
           '',
-          'Для вашего существующего аккаунта открыт доступ к квартире в Domera.',
-          '1) Войдите в аккаунт:',
+          'Jūsu esošajam kontam ir piešķirta piekļuve dzīvoklim Domera.',
+          '1) Ieiet kontā:',
           loginLink,
-          '2) После входа подтвердите доступ по ссылке приглашения:',
+          '2) Pēc ieiešanas apstipriniet piekļuvi, izmantojot ielūguma saiti:',
           invitationResult.invitationLink,
           '',
-          'Если вы не ожидали это письмо, просто проигнорируйте его.',
+          'Ja negaidījāt šo vēstuli, vienkārši ignorējiet to.',
           '',
-          'С уважением,',
-          'Команда Domera',
+          'Ar cieņu,',
+          'Domera komanda',
         ].join('\n')
       : [
-          'Domera — приглашение',
+          'Domera — ielūgums',
           '',
-          'Здравствуйте!',
+          'Sveicināti!',
           '',
-          'Вас пригласили в сервис Domera как жильца.',
-          'Чтобы завершить регистрацию и создать доступ, перейдите по ссылке:',
+          'Jūs esat uzaicināts uz Domera kā dzīvokļa iedzīvotājs.',
+          'Lai pabeigtu reģistrāciju un iegūtu piekļuvi, dodieties uz saiti:',
           invitationResult.invitationLink,
           '',
-          'Если вы не ожидали это письмо, просто проигнорируйте его.',
+          'Ja negaidījāt šo vēstuli, vienkārši ignorējiet to.',
           '',
-          'С уважением,',
-          'Команда Domera',
+          'Ar cieņu,',
+          'Domera komanda',
         ].join('\n');
 
     const html = existingAccountDetected
@@ -147,36 +147,36 @@ export async function POST(request: NextRequest) {
                 <tr>
                   <td style="padding:20px 24px;border-bottom:1px solid #1f2937;">
                     <p style="margin:0;color:#93c5fd;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;">Domera</p>
-                    <h1 style="margin:8px 0 0;color:#f8fafc;font-size:22px;line-height:1.3;">Доступ к квартире открыт</h1>
+                    <h1 style="margin:8px 0 0;color:#f8fafc;font-size:22px;line-height:1.3;">Piekļuve dzīvoklim piešķirta</h1>
                   </td>
                 </tr>
 
                 <tr>
                   <td style="padding:24px;">
                     <p style="margin:0 0 14px;color:#e5e7eb;font-size:15px;line-height:1.6;">
-                      Для вашего существующего аккаунта открыт доступ в Domera.
+                      Jūsu esošajam kontam ir piešķirta piekļuve Domera.
                     </p>
-                    <p style="margin:0 0 8px;color:#cbd5e1;font-size:14px;line-height:1.6;">Шаг 1: войдите в аккаунт</p>
+                    <p style="margin:0 0 8px;color:#cbd5e1;font-size:14px;line-height:1.6;">1. solis: ieiet kontā</p>
                     <p style="margin:0 0 18px;">
                       <a href="${loginLink}" style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;padding:11px 18px;border-radius:10px;">
-                        Войти в Domera
+                        Ieiet Domera
                       </a>
                     </p>
 
-                    <p style="margin:0 0 8px;color:#cbd5e1;font-size:14px;line-height:1.6;">Шаг 2: подтвердите доступ к квартире</p>
+                    <p style="margin:0 0 8px;color:#cbd5e1;font-size:14px;line-height:1.6;">2. solis: apstipriniet piekļuvi dzīvoklim</p>
                     <p style="margin:0 0 22px;">
                       <a href="${invitationResult.invitationLink}" style="display:inline-block;background:#4f46e5;color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;padding:11px 18px;border-radius:10px;">
-                        Принять доступ
+                        Apstiprināt piekļuvi
                       </a>
                     </p>
 
-                    <p style="margin:0 0 8px;color:#94a3b8;font-size:12px;">Если кнопки не работают, откройте ссылки вручную:</p>
+                    <p style="margin:0 0 8px;color:#94a3b8;font-size:12px;">Ja pogas nedarbojas, atveriet saites manuāli:</p>
                     <p style="margin:0 0 8px;word-break:break-all;"><a href="${loginLink}" style="color:#60a5fa;font-size:12px;line-height:1.5;text-decoration:underline;">${loginLink}</a></p>
                     <p style="margin:0 0 20px;word-break:break-all;"><a href="${invitationResult.invitationLink}" style="color:#60a5fa;font-size:12px;line-height:1.5;text-decoration:underline;">${invitationResult.invitationLink}</a></p>
 
                     <div style="margin:0 0 6px;padding:12px 14px;border-radius:10px;background:#0b1220;border:1px solid #1e293b;">
                       <p style="margin:0;color:#cbd5e1;font-size:12px;line-height:1.5;">
-                        Если вы не ожидали это письмо, просто проигнорируйте его.
+                        Ja negaidījāt šo vēstuli, vienkārši ignorējiet to.
                       </p>
                     </div>
                   </td>
@@ -185,7 +185,7 @@ export async function POST(request: NextRequest) {
                 <tr>
                   <td style="padding:14px 24px;border-top:1px solid #1f2937;">
                     <p style="margin:0;color:#64748b;font-size:11px;line-height:1.5;">
-                      Это автоматическое письмо от сайта Domera. Пожалуйста, не отвечайте на него.
+                      Šī ir automātiska vēstule no Domera. Lūdzu, neatbildiet uz to.
                     </p>
                   </td>
                 </tr>
@@ -204,17 +204,17 @@ export async function POST(request: NextRequest) {
                 <tr>
                   <td style="padding:20px 24px;border-bottom:1px solid #1f2937;">
                     <p style="margin:0;color:#93c5fd;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;">Domera</p>
-                    <h1 style="margin:8px 0 0;color:#f8fafc;font-size:22px;line-height:1.3;">Приглашение в сервис</h1>
+                    <h1 style="margin:8px 0 0;color:#f8fafc;font-size:22px;line-height:1.3;">Ielūgums uz Domera</h1>
                   </td>
                 </tr>
 
                 <tr>
                   <td style="padding:24px;">
                     <p style="margin:0 0 14px;color:#e5e7eb;font-size:15px;line-height:1.6;">
-                      Здравствуйте! Вас пригласили в Domera как жильца.
+                      Sveicināti! Jūs esat uzaicināts uz Domera kā dzīvokļa iedzīvotājs.
                     </p>
                     <p style="margin:0 0 20px;color:#cbd5e1;font-size:14px;line-height:1.6;">
-                      Нажмите кнопку ниже, чтобы принять приглашение и завершить регистрацию.
+                      Nospiediet pogu zemāk, lai pieņemtu ielūgumu un pabeigtu reģistrāciju.
                     </p>
 
                     <p style="margin:0 0 22px;">
@@ -222,18 +222,18 @@ export async function POST(request: NextRequest) {
                         href="${invitationResult.invitationLink}"
                         style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;padding:11px 18px;border-radius:10px;"
                       >
-                        Принять приглашение
+                        Pieņemt ielūgumu
                       </a>
                     </p>
 
-                    <p style="margin:0 0 8px;color:#94a3b8;font-size:12px;">Если кнопка не работает, откройте ссылку вручную:</p>
+                    <p style="margin:0 0 8px;color:#94a3b8;font-size:12px;">Ja poga nedarbojas, atveriet saiti manuāli:</p>
                     <p style="margin:0 0 20px;word-break:break-all;">
                       <a href="${invitationResult.invitationLink}" style="color:#60a5fa;font-size:12px;line-height:1.5;text-decoration:underline;">${invitationResult.invitationLink}</a>
                     </p>
 
                     <div style="margin:0 0 6px;padding:12px 14px;border-radius:10px;background:#0b1220;border:1px solid #1e293b;">
                       <p style="margin:0;color:#cbd5e1;font-size:12px;line-height:1.5;">
-                        Если вы не ожидали это письмо, просто проигнорируйте его.
+                        Ja negaidījāt šo vēstuli, vienkārši ignorējiet to.
                       </p>
                     </div>
                   </td>
@@ -242,7 +242,7 @@ export async function POST(request: NextRequest) {
                 <tr>
                   <td style="padding:14px 24px;border-top:1px solid #1f2937;">
                     <p style="margin:0;color:#64748b;font-size:11px;line-height:1.5;">
-                      Это автоматическое письмо от сайта Domera. Пожалуйста, не отвечайте на него.
+                      Šī ir automātiska vēstule no Domera. Lūdzu, neatbildiet uz to.
                     </p>
                   </td>
                 </tr>
@@ -267,14 +267,14 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Приглашение отправлено на email',
+      message: 'Ielūgums nosūtīts uz e-pastu',
       invitationId: invitationResult.invitation.id,
       token: invitationResult.invitation.token,
       invitationLink: invitationResult.invitationLink,
       existingAccountDetected,
     });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Ошибка отправки приглашения';
+    const message = error instanceof Error ? error.message : 'Kļūda, nosūtot ielūgumu';
     console.error('SEND_INVITATION API error:', message);
 
     return NextResponse.json({ error: message }, { status: 500 });

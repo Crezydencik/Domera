@@ -24,8 +24,9 @@ import {
 } from 'firebase/firestore';
 import { db } from '../config';
 import { FIRESTORE_COLLECTIONS } from '../../shared/constants';
+import type { Building } from '@/shared/types';
 
-export const getBuildingsFromDatabase = async (): Promise<{ id: string; name: string; managedBy?: { companyName?: string } }[]> => {
+export const getBuildingsFromDatabase = async (): Promise<Building[]> => {
   try {
     const buildingsCollection = collection(db, FIRESTORE_COLLECTIONS.BUILDINGS);
     const snapshot = await getDocs(buildingsCollection);
@@ -34,7 +35,8 @@ export const getBuildingsFromDatabase = async (): Promise<{ id: string; name: st
       return {
         id: doc.id,
         name: data.name || 'Unnamed Building',
-        managedBy: data.managedBy || {}, // Добавлено свойство managedBy
+        managedBy: data.managedBy || {},
+        companyId: data.companyId || "",
       };
     });
   } catch (error) {

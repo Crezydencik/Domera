@@ -31,12 +31,12 @@ const getResendConfig = () => {
   const allowedDomain = process.env.RESEND_ALLOWED_DOMAIN ?? 'lumtach.com';
 
   if (!apiKey || !from) {
-    throw new Error('Resend не настроен. Укажите RESEND_API_KEY и RESEND_FROM');
+    throw new Error('Resend nav konfigurēts. Norādiet RESEND_API_KEY un RESEND_FROM');
   }
 
   if (!isAllowedSenderDomain(from, allowedDomain)) {
     throw new Error(
-      `Некорректный RESEND_FROM: адрес отправителя должен быть из домена ${allowedDomain}`
+      `Nederīgs RESEND_FROM: sūtītāja adresei jābūt no domēna ${allowedDomain}`
     );
   }
 
@@ -50,7 +50,7 @@ const buildCustomResetLink = (origin: string, firebaseResetLink: string): string
   const oobCode = parsed.searchParams.get('oobCode');
 
   if (!oobCode) {
-    throw new Error('Не удалось сформировать ссылку сброса пароля');
+    throw new Error('Neizdevās izveidot paroles atiestatīšanas saiti');
   }
 
   const customUrl = new URL('/reset-password/confirm', origin);
@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
     const email = payload?.email?.trim().toLowerCase();
 
     if (!email || !isValidEmail(email)) {
-      return NextResponse.json({ error: 'Введите корректный email' }, { status: 400 });
+      return NextResponse.json({ error: 'Ievadiet korektu e-pastu' }, { status: 400 });
     }
 
     const origin = request.nextUrl.origin;
@@ -80,20 +80,20 @@ export async function POST(request: NextRequest) {
     const resendConfig = getResendConfig();
     const resend = new Resend(resendConfig.apiKey);
 
-    const subject = 'Сброс пароля в Domera';
+    const subject = 'Paroles atiestatīšana Domera';
     const text = [
-      'Domera — сброс пароля',
+      'Domera — paroles atiestatīšana',
       '',
-      'Здравствуйте!',
+      'Sveicināti!',
       '',
-      'Мы получили запрос на смену пароля для вашего аккаунта.',
-      'Перейдите по ссылке, чтобы задать новый пароль:',
+      'Mēs saņēmām pieprasījumu mainīt jūsu konta paroli.',
+      'Lai uzstādītu jaunu paroli, dodieties uz saiti:',
       resetLink,
       '',
-      'Если вы не отправляли этот запрос, проигнорируйте письмо — пароль не изменится.',
+      'Ja neesat sūtījis šo pieprasījumu, ignorējiet vēstuli — parole netiks mainīta.',
       '',
-      'С уважением,',
-      'Команда Domera',
+      'Ar cieņu,',
+      'Domera komanda',
     ].join('\n');
 
     const html = `
@@ -105,17 +105,17 @@ export async function POST(request: NextRequest) {
                 <tr>
                   <td style="padding:20px 24px;border-bottom:1px solid #1f2937;">
                     <p style="margin:0;color:#93c5fd;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;">Domera</p>
-                    <h1 style="margin:8px 0 0;color:#f8fafc;font-size:22px;line-height:1.3;">Сброс пароля</h1>
+                    <h1 style="margin:8px 0 0;color:#f8fafc;font-size:22px;line-height:1.3;">Paroles atiestatīšana</h1>
                   </td>
                 </tr>
 
                 <tr>
                   <td style="padding:24px;">
                     <p style="margin:0 0 14px;color:#e5e7eb;font-size:15px;line-height:1.6;">
-                      Здравствуйте! Мы получили запрос на смену пароля для вашего аккаунта.
+                      Sveicināti! Mēs saņēmām pieprasījumu mainīt jūsu konta paroli.
                     </p>
                     <p style="margin:0 0 20px;color:#cbd5e1;font-size:14px;line-height:1.6;">
-                      Нажмите кнопку ниже, чтобы задать новый пароль.
+                      Nospiediet pogu zemāk, lai uzstādītu jaunu paroli.
                     </p>
 
                     <p style="margin:0 0 22px;">
@@ -123,18 +123,18 @@ export async function POST(request: NextRequest) {
                         href="${resetLink}"
                         style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;padding:11px 18px;border-radius:10px;"
                       >
-                        Сбросить пароль
+                        Atiestatīt paroli
                       </a>
                     </p>
 
-                    <p style="margin:0 0 8px;color:#94a3b8;font-size:12px;">Если кнопка не работает, откройте ссылку вручную:</p>
+                    <p style="margin:0 0 8px;color:#94a3b8;font-size:12px;">Ja poga nedarbojas, atveriet saiti manuāli:</p>
                     <p style="margin:0 0 20px;word-break:break-all;">
                       <a href="${resetLink}" style="color:#60a5fa;font-size:12px;line-height:1.5;text-decoration:underline;">${resetLink}</a>
                     </p>
 
                     <div style="margin:0 0 6px;padding:12px 14px;border-radius:10px;background:#0b1220;border:1px solid #1e293b;">
                       <p style="margin:0;color:#cbd5e1;font-size:12px;line-height:1.5;">
-                        Если это были не вы — просто проигнорируйте письмо. Ваш пароль останется прежним.
+                        Ja tas nebijāt jūs — vienkārši ignorējiet vēstuli. Jūsu parole paliks nemainīga.
                       </p>
                     </div>
                   </td>
@@ -143,7 +143,7 @@ export async function POST(request: NextRequest) {
                 <tr>
                   <td style="padding:14px 24px;border-top:1px solid #1f2937;">
                     <p style="margin:0;color:#64748b;font-size:11px;line-height:1.5;">
-                      Это автоматическое письмо от сайта Domera. Пожалуйста, не отвечайте на него.
+                      Šī ir automātiska vēstule no Domera. Lūdzu, neatbildiet uz to.
                     </p>
                   </td>
                 </tr>
@@ -166,9 +166,9 @@ export async function POST(request: NextRequest) {
       throw new Error(`Resend error: ${resendError.message}`);
     }
 
-    return NextResponse.json({ success: true, message: 'Письмо отправлено' });
+    return NextResponse.json({ success: true, message: 'Vēstule nosūtīta' });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Ошибка отправки письма для сброса пароля';
+    const message = error instanceof Error ? error.message : 'Kļūda, nosūtot paroles atiestatīšanas vēstuli';
     console.error('SEND_PASSWORD_RESET API error:', message);
 
     return NextResponse.json({ error: message }, { status: 500 });

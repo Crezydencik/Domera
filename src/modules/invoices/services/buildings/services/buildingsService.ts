@@ -26,7 +26,8 @@ import { Building } from '@/shared/types';
  * Create new building
  */
 export const createBuilding = async (
-  data: Omit<Building, 'id'>
+  data: Omit<Building, 'id'>,
+  companyId: string
 ): Promise<Building> => {
   try {
     const existingBuildings = await getBuildingsByCompany(data.companyId);
@@ -44,7 +45,7 @@ export const createBuilding = async (
         managerEmail: data.managedBy?.managerEmail,
       },
       apartmentIds: Array.isArray(data.apartmentIds) ? data.apartmentIds : [],
-      // ...удалено: settings и вложенные water настройки...
+      apartments: [], // [{ id, number }]
       waterMeterTemplates:
         Array.isArray(data.waterMeterTemplates) && data.waterMeterTemplates.length > 0
           ? data.waterMeterTemplates
@@ -59,6 +60,14 @@ export const createBuilding = async (
     };
 
     const id = await createDocument(FIRESTORE_COLLECTIONS.BUILDINGS, buildingData);
+
+    // Update company doc: push building id and name
+    const companyDoc = await getDocument(FIRESTORE_COLLECTIONS.COMPANIES, companyId);
+    if (companyDoc) {
+      const buildings = Array.isArray(companyDoc.buildings) ? companyDoc.buildings : [];
+      buildings.push({ id, name: buildingData.name });
+      await updateDocument(FIRESTORE_COLLECTIONS.COMPANIES, companyId, { buildings });
+    }
 
     return {
       id,

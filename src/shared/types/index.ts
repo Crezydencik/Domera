@@ -33,20 +33,16 @@ export interface User {
   privacyConsent?: boolean;
 }
 
-export interface Company {
-  id: string;
-  name: string;
-  createdAt: Date;
-}
-
 export interface Building {
   id: string;
   name: string;
   address?: string;
+  companyId: string; // добавлено для корректной типизации
   managedBy?: {
     companyName?: string;
     managerUid?: string;
     managerEmail?: string;
+    companyId?: string;
   };
   apartmentIds?: string[];
   // Optional nested settings for building (kept for compatibility)
@@ -60,7 +56,7 @@ export interface Building {
   waterMeterTemplates?: string[];
   waterSubmissionOpenDay?: number;
 }
-
+      
 export interface TenantAccess {
   userId: string;
   email: string;

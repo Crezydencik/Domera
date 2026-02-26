@@ -5,7 +5,7 @@ import { getApartmentsFromDatabase, deleteApartment, unassignResidentFromApartme
 // meters helper removed from this page
 import {  } from '@/modules/auth/services/authService';
 import { getBuildingsFromDatabase } from '@/firebase/services/firestoreService';
-import { doc, addDoc, collection, onSnapshot, query, where } from 'firebase/firestore';
+import { doc, addDoc, collection, onSnapshot, query, where, updateDoc, getDoc } from 'firebase/firestore';
 import { db } from '@/firebase/config';
 import type { Apartment, Building, Invitation, InvitationGdprMeta } from '@/shared/types';
 type SelectedInvitation = Invitation & { sentAt?: Date };
@@ -31,37 +31,38 @@ export default function ApartmentsManagementPage() {
   // metersByApartmentId removed — not used in current list layout
   // kept import/getMetersByApartment for potential future use
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [apartmentData, buildingData] = await Promise.all([
-          getApartmentsFromDatabase(),
-          getBuildingsFromDatabase(),
-        ]);
-        console.log('Fetched apartments:', apartmentData); // Лог для проверки данных квартир
-        console.log('Fetched buildings:', buildingData); // Лог для проверки данных зданий
-        setApartments(
-          apartmentData.map(ap => ({
-            ...ap,
-            companyIds: Array.isArray(ap.companyIds) ? ap.companyIds : [],
-          })) 
-        );
-        // (meters loading removed — not needed in this view)
-       setBuildings(
-          buildingData.map((building) => ({
-            ...building,
-            id: building.id,
-            name: building.name || 'Unnamed Building', 
-            managedBy: building.managedBy || {},
-          }))
-        );
-      } catch (error) {
-        console.error('Error fetching data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+  // Вынес fetchData наружу, чтобы можно было вызывать после добавления квартиры
+  const fetchData = async () => {
+    try {
+      const [apartmentData, buildingData] = await Promise.all([
+        getApartmentsFromDatabase(),
+        getBuildingsFromDatabase(),
+      ]);
+      console.log('Fetched apartments:', apartmentData); // Лог для проверки данных квартир
+      console.log('Fetched buildings:', buildingData); // Лог для проверки данных зданий
+      setApartments(
+        apartmentData.map(ap => ({
+          ...ap,
+          companyIds: Array.isArray(ap.companyIds) ? ap.companyIds : [],
+        })) 
+      );
+      // (meters loading removed — not needed in this view)
+      console.log('buildingData:', buildingData);
+      setBuildings(
+        buildingData.map((building) => ({
+          ...building,
+          name: building.name || "Unnamed Building",
+          apartmentIds: building.apartmentIds || [],
+        }))
+      );
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchData();
   }, []);
 
@@ -88,8 +89,16 @@ export default function ApartmentsManagementPage() {
     try {
       // companyId УК только из выбранного дома
       const selectedBuilding = buildings.find(b => b.id === newApartment.buildingId);
-      // companyId УК только из выбранного дома (ищем в managedBy.managerUid)
-      const companyId = selectedBuilding?.managedBy?.managerUid;
+      // Проверка: нельзя добавить квартиру с уже существующим номером в этом доме
+      const duplicate = apartments.some(
+        (ap) => ap.buildingId === newApartment.buildingId && ap.number === newApartment.number
+      );
+      if (duplicate) {
+        toast.error('Квартира с таким номером уже существует в этом доме!');
+        return;
+      }
+      // companyId УК только из выбранного дома (берём из самого объекта дома)
+      const companyId = selectedBuilding?.companyId;
       if (!companyId) {
         toast.error('У выбранного дома не найден идентификатор управляющей компании!');
         return;
@@ -101,14 +110,38 @@ export default function ApartmentsManagementPage() {
       };
       const apartmentsCollection = collection(db, 'apartments');
       const docRef = await addDoc(apartmentsCollection, newApartmentData);
-      setApartments((prev) => [
-        ...prev,
-        { id: docRef.id, ...newApartmentData },
-      ]);
+
+      // --- Гарантируем добавление id квартиры в apartmentIds дома ---
+      try {
+        const buildingDocRef = doc(db, 'buildings', newApartment.buildingId);
+        // Получаем актуальные данные здания
+        const buildingSnap = await getDoc(buildingDocRef);
+        const buildingData = buildingSnap.exists() ? buildingSnap.data() : {};
+        console.log('[handleAddApartment] buildingData:', buildingData);
+        // apartmentIds всегда массив строк
+        let currentApartmentIds = [];
+        if (Array.isArray(buildingData.apartmentIds)) {
+          currentApartmentIds = buildingData.apartmentIds;
+        } else if (typeof buildingData.apartmentIds === 'object' && buildingData.apartmentIds !== null) {
+          // Firestore может хранить объект вместо массива, если был ошибочный апдейт
+          console.warn('[handleAddApartment] apartmentIds был объектом, а не массивом! Удалите поле вручную в консоли Firestore и повторите добавление.');
+        }
+        const updatedApartmentIds = [...new Set([...currentApartmentIds, docRef.id])];
+        console.log('Обновляем apartmentIds:', updatedApartmentIds, Array.isArray(updatedApartmentIds));
+        await updateDoc(buildingDocRef, {
+          apartmentIds: updatedApartmentIds,
+        });
+        console.log('[handleAddApartment] Квартира добавлена в apartmentIds:', docRef.id);
+      } catch (e) {
+        console.error('[handleAddApartment] Ошибка при обновлении apartmentIds в доме:', e);
+      }
+
       setNewApartment({ number: '', buildingId: '' });
       setIsAddingApartment(false);
       toast.success('Квартира успешно добавлена!');
       // meters loading skipped here
+      // Обновляем данные после добавления квартиры
+      await fetchData();
     } catch (error) {
       console.error('Error adding apartment:', error);
       toast.error('Ошибка при добавлении квартиры.');

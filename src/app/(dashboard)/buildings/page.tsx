@@ -30,59 +30,57 @@ export default function BuildingsPage() {
   const [submitting, setSubmitting] = useState(false);
   const canCreateBuilding = buildings.length === 0;
 
+
+  // Вынесенная функция загрузки домов
+  const loadBuildings = async () => {
+    if (!user?.companyId) return;
+    try {
+      const [data, company] = await Promise.all([
+        getBuildingsByCompany(user.companyId),
+        getCompany(user.companyId),
+      ]);
+      const nextCompanyName = company?.name ?? '';
+      setCompanyName(nextCompanyName);
+      await Promise.all(
+        data
+          .filter((building) => !building.managedBy)
+          .map((building) =>
+            updateBuilding(building.id, {
+              managedBy: {
+                companyId: user.companyId,
+                companyName: nextCompanyName || undefined,
+                managerUid: user.uid,
+                managerEmail: user.email,
+              },
+            })
+          )
+      );
+      const hydratedData = data.map((building) =>
+        building.managedBy
+          ? building
+          : {
+              ...building,
+              managedBy: {
+                companyId: user.companyId,
+                companyName: nextCompanyName || undefined,
+                managerUid: user.uid,
+                managerEmail: user.email,
+              },
+            }
+      );
+      setBuildings(hydratedData);
+    } catch (err) {
+      console.error('Error loading buildings:', err);
+    }
+  };
+
   useEffect(() => {
     if (!loading && user?.role !== 'ManagementCompany') {
       router.replace('/dashboard');
       return;
     }
-
-    const loadBuildings = async () => {
-      if (!user?.companyId) return;
-
-      try {
-        const [data, company] = await Promise.all([
-          getBuildingsByCompany(user.companyId),
-          getCompany(user.companyId),
-        ]);
-
-        const nextCompanyName = company?.name ?? '';
-        setCompanyName(nextCompanyName);
-
-        await Promise.all(
-          data
-            .filter((building) => !building.managedBy)
-            .map((building) =>
-              updateBuilding(building.id, {
-                managedBy: {
-                  companyId: user.companyId,
-                  companyName: nextCompanyName || undefined,
-                  managerUid: user.uid,
-                  managerEmail: user.email,
-                },
-              })
-            )
-        );
-
-        const hydratedData = data.map((building) =>
-          building.managedBy
-            ? building
-            : {
-                ...building,
-                managedBy: {
-                  companyId: user.companyId,
-                  companyName: nextCompanyName || undefined,
-                  managerUid: user.uid,
-                  managerEmail: user.email,
-                },
-              }
-        );
-        setBuildings(hydratedData);
-      } catch (err) {
-        console.error('Error loading buildings:', err);
-      }
-    };
-
     loadBuildings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, router, user?.companyId, user?.role]);
 
   const handleCreateBuilding = async (e: React.FormEvent) => {
@@ -101,7 +99,7 @@ export default function BuildingsPage() {
     setSubmitting(true);
 
     try {
-      const newBuilding = await createBuilding({
+      await createBuilding({
         companyId: user.companyId,
         name: buildingName.trim(),
         address: buildingAddress.trim(),
@@ -112,8 +110,7 @@ export default function BuildingsPage() {
           managerEmail: user.email,
         },
       });
-
-      setBuildings([newBuilding]);
+      await loadBuildings();
       setBuildingName('');
       setBuildingAddress('');
       setShowCreateForm(false);

@@ -10,6 +10,8 @@ import { useTranslations } from 'use-intl';
 
 
 
+import { useAuth } from '@/shared/hooks/useAuth';
+
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -20,6 +22,15 @@ export default function LoginPage() {
   const redirectTo = searchParams.get('redirect');
   // Локализация отключена, все надписи статичные на русском
   const t = useTranslations('auth');
+  const { isAuthenticated, loading: authLoading } = useAuth();
+
+  // Если пользователь уже залогинен, редиректим на dashboard
+  if (!authLoading && isAuthenticated) {
+    if (typeof window !== 'undefined') {
+      router.replace(redirectTo || '/dashboard');
+    }
+    return null;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -161,7 +172,7 @@ export default function LoginPage() {
         {/* Back to Home */}
         <div className="text-center mt-6">
           <Link href="/" className="text-gray-400 hover:text-gray-300 transition">
-            ← {t('backHome')}
+            {t('backHomeLink')}
           </Link>
         </div>
       </div>
