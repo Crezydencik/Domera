@@ -1,3 +1,5 @@
+
+// Позволяет использовать alias @ для импорта из src
 'use client';
 
 import { useEffect } from 'react';

@@ -5,8 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { confirmPasswordReset, verifyPasswordResetCode } from 'firebase/auth';
 import { auth } from '@/firebase/config';
-import { t } from '@/shared/i18n';
-import { useUiPreferences } from '@/shared/hooks/useUiPreferences';
+import { useTranslations } from 'use-intl';
 
 function EyeIcon({ crossed = false }: { crossed?: boolean }) {
   if (crossed) {
@@ -75,12 +74,13 @@ export default function ResetPasswordConfirmPage() {
 
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const { language, setLanguage } = useUiPreferences(null);
+  const t = useTranslations('auth');
 
   useEffect(() => {
     const verifyCode = async () => {
       if (!oobCode) {
-        setError('Ссылка сброса пароля недействительна или повреждена');
+        setError(t('resetPasswordInvalidLink'));
+
         setLoadingCode(false);
         return;
       }
@@ -89,7 +89,7 @@ export default function ResetPasswordConfirmPage() {
         const resolvedEmail = await verifyPasswordResetCode(auth, oobCode);
         setEmail(resolvedEmail);
       } catch {
-        setError('Ссылка сброса недействительна или уже истекла');
+        setError(t('resetPasswordInvalidLink')) ;
       } finally {
         setLoadingCode(false);
       }
@@ -110,12 +110,12 @@ export default function ResetPasswordConfirmPage() {
     }
 
     if (newPassword !== confirmNewPassword) {
-      setError('Пароли не совпадают');
+      setError(t('resetPasswordPasswordsDoNotMatch'));
       return;
     }
 
     if (!oobCode) {
-      setError('Ссылка сброса недействительна');
+      setError(t('resetPasswordInvalidLink'));
       return;
     }
 
@@ -123,10 +123,10 @@ export default function ResetPasswordConfirmPage() {
 
     try {
       await confirmPasswordReset(auth, oobCode, newPassword);
-      setSuccess('Пароль успешно изменён. Сейчас перенаправим на вход...');
+      setSuccess(t('resetPasswordSuccess'));
       setTimeout(() => router.push('/login'), 1400);
     } catch {
-      setError('Не удалось изменить пароль. Возможно, ссылка уже истекла.');
+      setError(t('resetPasswordError'));
     } finally {
       setSubmitting(false);
     }
@@ -136,40 +136,20 @@ export default function ResetPasswordConfirmPage() {
     <div className="min-h-screen bg-linear-to-br from-slate-900 to-slate-800 flex items-center justify-center px-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">🔐 {t(language, 'resetPasswordTitle')}</h1>
+          <h1 className="text-3xl font-bold text-white mb-2">🔐 {t('resetPasswordTitle')}</h1>
           <p className="text-gray-400">Domera</p>
         </div>
 
         <div className="bg-slate-800 rounded-lg p-8 border border-slate-700">
-          <div className="mb-4 grid grid-cols-3 gap-2" aria-label="Language">
-            {[
-              { code: 'lv', label: 'LV' },
-              { code: 'en', label: 'ENG' },
-              { code: 'ru', label: 'RU' },
-            ].map((item) => (
-              <button
-                key={item.code}
-                type="button"
-                onClick={() => setLanguage(item.code as 'lv' | 'en' | 'ru')}
-                className={[
-                  'rounded-lg px-3 py-2 text-sm font-semibold border transition',
-                  language === item.code
-                    ? 'bg-blue-600 text-white border-blue-500'
-                    : 'bg-slate-700 text-slate-300 border-slate-600 hover:bg-slate-600',
-                ].join(' ')}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
+         
 
           {loadingCode ? (
-            <p className="text-sm text-gray-300">{t(language, 'loading')}</p>
+            <p className="text-sm text-gray-300">{t('loading')}</p>
           ) : (
             <>
-              {email && (
-                <p className="mb-4 text-sm text-slate-300">
-                  Аккаунт: <span className="font-medium text-white">{email}</span>
+                {email && (
+                  <p className="mb-4 text-sm text-slate-300">
+                  {t('resetPasswordAccount')}: <span className="font-medium text-white">{email}</span>
                 </p>
               )}
 
@@ -188,7 +168,7 @@ export default function ResetPasswordConfirmPage() {
               {!success && !error.includes('недействительна') && !error.includes('истекла') && (
                 <form onSubmit={handleSubmit} className="space-y-5">
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">{t(language, 'newPasswordLabel')}</label>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">{t('newPasswordLabel')}</label>
                     <div className="relative">
                       <input
                         type={showNewPassword ? 'text' : 'password'}
@@ -202,8 +182,8 @@ export default function ResetPasswordConfirmPage() {
                         type="button"
                         onClick={() => setShowNewPassword((prev) => !prev)}
                         className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md border border-slate-500 p-1.5 text-slate-200 hover:bg-slate-600"
-                        aria-label={showNewPassword ? 'Скрыть пароль' : 'Показать пароль'}
-                        title={showNewPassword ? 'Скрыть пароль' : 'Показать пароль'}
+                        aria-label={showNewPassword ? t('resetPasswordHidePassword') : t('resetPasswordShowPassword')}
+                        title={showNewPassword ? t('resetPasswordHidePassword') : t('resetPasswordShowPassword')}
                       >
                         <EyeIcon crossed={showNewPassword} />
                       </button>
@@ -211,7 +191,7 @@ export default function ResetPasswordConfirmPage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">{t(language, 'repeatPasswordLabel')}</label>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">{t('repeatPasswordLabel')}</label>
                     <div className="relative">
                       <input
                         type={showConfirmPassword ? 'text' : 'password'}
@@ -225,8 +205,8 @@ export default function ResetPasswordConfirmPage() {
                         type="button"
                         onClick={() => setShowConfirmPassword((prev) => !prev)}
                         className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md border border-slate-500 p-1.5 text-slate-200 hover:bg-slate-600"
-                        aria-label={showConfirmPassword ? 'Скрыть пароль' : 'Показать пароль'}
-                        title={showConfirmPassword ? 'Скрыть пароль' : 'Показать пароль'}
+                        aria-label={showConfirmPassword ? t('resetPasswordHidePassword') : t('resetPasswordShowPassword')}
+                        title={showConfirmPassword ? t('resetPasswordHidePassword') : t('resetPasswordShowPassword')}
                       >
                         <EyeIcon crossed={showConfirmPassword} />
                       </button>
@@ -238,14 +218,14 @@ export default function ResetPasswordConfirmPage() {
                     disabled={submitting}
                     className="w-full bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 disabled:bg-gray-600 transition"
                   >
-                    {submitting ? t(language, 'savingNewPassword') : t(language, 'saveNewPassword')}
+                    {submitting ? t('savingNewPassword') : t('saveNewPassword')}
                   </button>
                 </form>
               )}
 
               <p className="text-center text-gray-400 mt-6 text-sm">
                 <Link href="/login" className="text-blue-400 hover:text-blue-300 transition">
-                  {t(language, 'backToLogin')}
+                  {t('backToLogin')}
                 </Link>
               </p>
             </>

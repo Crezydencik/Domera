@@ -5,6 +5,7 @@ import { toast } from 'react-toastify';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { login } from '@/modules/auth/services/authService';
+import { useTranslations } from 'use-intl';
 // ...existing code...
 
 
@@ -18,6 +19,7 @@ export default function LoginPage() {
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get('redirect');
   // Локализация отключена, все надписи статичные на русском
+  const t = useTranslations('auth');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,18 +30,18 @@ export default function LoginPage() {
       // Validate inputs
 
       if (!email.trim()) {
-        toast.error('Введите email', { className: 'border border-red-500' });
+        toast.error(t('enterEmail'), { className: 'border border-red-500' });
         setLoading(false);
         return;
       }
       // Простая email-валидация
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim())) {
-        toast.error('Некорректный формат email', { className: 'border border-red-500' });
+        toast.error(t('invalidEmail'), { className: 'border border-red-500' });
         setLoading(false);
         return;
       }
       if (!password) {
-        toast.error('Введите пароль', { className: 'border border-red-500' });
+        toast.error(t('enterPassword'), { className: 'border border-red-500' });
         setLoading(false);
         return;
       }
@@ -53,7 +55,7 @@ export default function LoginPage() {
         console.log('Redirecting to dashboard');
         router.push(redirectTo || '/dashboard');
       } else {
-        toast.error('Неверный email или пароль', { className: 'border border-red-500' });
+        toast.error(t('invalidEmailOrPassword'), { className: 'border border-red-500' });
       }
     } catch (err: any) {
       console.error('Login error:', err);
@@ -62,18 +64,18 @@ export default function LoginPage() {
         code: err.code,
         fullError: err
       });
-      const errorMessage = err.message || 'Ошибка входа';
+      const errorMessage = err.message || t('loginError');
       // Handle Firebase auth errors
       if (err.code === 'auth/user-not-found') {
-        toast.error('Пользователь не найден', { className: 'border border-red-500' });
+        toast.error(t('userNotFound'), { className: 'border border-red-500' });
       } else if (err.code === 'auth/wrong-password') {
-        toast.error('Неверный пароль', { className: 'border border-red-500' });
+        toast.error(t('wrongPassword'), { className: 'border border-red-500' });
       } else if (err.code === 'auth/invalid-email') {
-        toast.error('Некорректный email', { className: 'border border-red-500' });
+        toast.error(t('invalidEmail') , { className: 'border border-red-500' });
       } else if (err.code === 'auth/user-disabled') {
-        toast.error('Пользователь заблокирован', { className: 'border border-red-500' });
+        toast.error(t('userDisabled'), { className: 'border border-red-500' });
       } else if (err.code === 'permission-denied') {
-        toast.error('Нет доступа', { className: 'border border-red-500' });
+        toast.error(t('noAccess'), { className: 'border border-red-500' });
       } else {
         toast.error(errorMessage, { className: 'border border-red-500' });
       }
@@ -91,7 +93,7 @@ export default function LoginPage() {
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-white mb-2">🏢 Domera</h1>
-          <p className="text-gray-400">Вход в аккаунт</p>
+          <p className="text-gray-400">{t('login')}</p>
         </div>
 
         {/* Form Card */}
@@ -104,7 +106,7 @@ export default function LoginPage() {
             {/* Email */}
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
-                Email
+                {t('emailLabel')}
               </label>
               <input
                 type="text"
@@ -118,7 +120,7 @@ export default function LoginPage() {
             {/* Password */}
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
-                Пароль
+                {t('passwordLabel')}  
               </label>
               <input
                 type="password"
@@ -133,7 +135,7 @@ export default function LoginPage() {
             {/* Forgot Password */}
             <div className="text-right">
               <Link href="/reset-password" className="text-sm text-blue-400 hover:text-blue-300 transition">
-                Забыли пароль?
+                {t('forgotPassword')}
               </Link>
             </div>
 
@@ -143,15 +145,15 @@ export default function LoginPage() {
               disabled={loading}
               className="w-full bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 disabled:bg-gray-600 transition"
             >
-              {loading ? 'Вход...' : 'Войти'}
+              {loading ? t('loginInProgress') : t('loginButton')}
             </button>
           </form>
 
           {/* Sign Up Link */}
           <p className="text-center text-gray-400 mt-6">
-            Нет аккаунта?{' '}
+            {t('noAccount')}{' '}
             <Link href="/register" className="text-blue-400 hover:text-blue-300 transition">
-              Зарегистрироваться
+              {t('register')}
             </Link>
           </p>
         </div>
@@ -159,7 +161,7 @@ export default function LoginPage() {
         {/* Back to Home */}
         <div className="text-center mt-6">
           <Link href="/" className="text-gray-400 hover:text-gray-300 transition">
-            ← На главную
+            ← {t('backHome')}
           </Link>
         </div>
       </div>

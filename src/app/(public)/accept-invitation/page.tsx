@@ -9,6 +9,7 @@ import {
   getInvitationByToken,
 } from '@/modules/invitations/services/invitationsService';
 import { useAuth } from '@/shared/hooks/useAuth';
+import { useTranslations } from 'use-intl';
 
 export default function AcceptInvitationPage() {
   const router = useRouter();
@@ -27,7 +28,7 @@ export default function AcceptInvitationPage() {
     gdprConsent: false,
   });
   const [submitting, setSubmitting] = useState(false);
-
+  const t = useTranslations('');
   useEffect(() => {
     // Если пользователь не авторизован — редиректим на логин
     if (!user?.uid && !authLoading) {
@@ -37,7 +38,7 @@ export default function AcceptInvitationPage() {
 
     const validateToken = async () => {
       if (!token) {
-        setError('Токен приглашения не найден');
+        setError(t('invalidToken'));
         setLoading(false);
         return;
       }
@@ -47,12 +48,12 @@ export default function AcceptInvitationPage() {
         console.log('[AcceptInvitationPage] invitation:', invitation);
 
         if (!invitation) {
-          setError('Приглашение недействительно или истекло (токен не найден или срок действия истёк)');
+          setError(t('invitation.invalidToken'));
           setLoading(false);
           return;
         }
         if (!invitation.email) {
-          setError('В приглашении отсутствует email. Проверьте корректность приглашения.');
+          setError(t('invitation.invalidToken'));
           setLoading(false);
           return;
         }
@@ -60,7 +61,7 @@ export default function AcceptInvitationPage() {
         setEmail(invitation.email);
         setExistingAccountDetected(Boolean(user?.email) && user.email.trim().toLowerCase() === invitation.email.trim().toLowerCase());
       } catch (err: any) {
-        setError('Ошибка проверки приглашения: ' + (err?.message || err));
+        setError(t('invitation.invitationError') + ': ' + (err?.message || err));
       } finally {
         setLoading(false);
       }
@@ -74,7 +75,7 @@ export default function AcceptInvitationPage() {
     setShouldLoginInstead(false);
 
     if (!formData.gdprConsent) {
-      setError('Необходимо согласие на обработку персональных данных');
+      setError(t('invitation.gdprConsentRequired'));
       return;
     }
 
@@ -89,7 +90,7 @@ export default function AcceptInvitationPage() {
       router.push('/dashboard');
       router.refresh();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Ошибка принятия приглашения');
+      setError(err instanceof Error ? err.message : t('invitation.invitationError'));
     } finally {
       setSubmitting(false);
     }
@@ -100,17 +101,17 @@ export default function AcceptInvitationPage() {
     setError('');
 
     if (formData.password.length < 6) {
-      setError('Пароль должен содержать минимум 6 символов');
+      setError(t('invitation.passwordTooShort'));
       return;
     }
 
     if (formData.password !== formData.confirmPassword) {
-      setError('Пароли не совпадают');
+      setError(t('invitation.passwordsDoNotMatch'));
       return;
     }
 
     if (!formData.gdprConsent) {
-      setError('Необходимо согласие на обработку персональных данных');
+      setError(t('invitation.gdprConsentRequired'));
       return;
     }
 
@@ -121,7 +122,7 @@ export default function AcceptInvitationPage() {
       router.push('/dashboard');
       router.refresh();
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Ошибка принятия приглашения';
+      const message = err instanceof Error ? err.message : t('invitation.invitationError');
       const normalized = message.toLowerCase();
 
       if (
@@ -130,7 +131,7 @@ export default function AcceptInvitationPage() {
         normalized.includes('уже используется')
       ) {
         setShouldLoginInstead(true);
-        setError('Для этого email уже есть аккаунт. Войдите и примите доступ без повторной регистрации.');
+        setError(t('invitation.emailInUse'));
       } else {
         setError(message);
       }
@@ -142,7 +143,7 @@ export default function AcceptInvitationPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-linear-to-br from-slate-900 to-slate-800 flex items-center justify-center text-white">
-        Проверка приглашения...
+        {t('invitation.validatingInvitation')}
       </div>
     );
   }
@@ -150,9 +151,9 @@ export default function AcceptInvitationPage() {
   return (
     <div className="min-h-screen bg-linear-to-br from-slate-900 to-slate-800 flex items-center justify-center px-4 py-8">
       <div className="w-full max-w-md bg-slate-800 border border-slate-700 rounded-lg p-6">
-        <h1 className="text-2xl font-bold text-white mb-2">Принять приглашение</h1>
+        <h1 className="text-2xl font-bold text-white mb-2">{t('invitation.acceptInvitation')}</h1>
         <p className="text-gray-400 text-sm mb-6">
-          Вы приглашены как жилец: <span className="text-white">{email || '—'}</span>
+          {t('invitation.invitedAsResident')}: <span className="text-white">{email || '—'}</span>
         </p>
 
         {error && (
@@ -164,7 +165,7 @@ export default function AcceptInvitationPage() {
         {existingAccountDetected ? (
           <div className="space-y-4">
             <div className="rounded-md border border-blue-700 bg-blue-900/25 px-3 py-2 text-sm text-blue-200">
-              Этот email уже зарегистрирован. Вход выполнен — подтвердите доступ к квартире.
+              {t('invitation.emailInUse')}
             </div>
 
             <label className="flex items-start gap-2 text-sm text-gray-300">
@@ -175,7 +176,7 @@ export default function AcceptInvitationPage() {
                 className="mt-1"
                 required
               />
-              Даю согласие на обработку моих персональных данных для регистрации и обслуживания в Domera.
+              {t('invitation.gdprConsent')}
             </label>
 
             <button
@@ -184,13 +185,13 @@ export default function AcceptInvitationPage() {
               disabled={submitting || authLoading}
               className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
             >
-              {submitting ? 'Подтверждение доступа...' : 'Принять доступ к квартире'}
+              {submitting ? t('invitation.acceptingInvitation') : t('invitation.acceptAccess')}
             </button>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm text-gray-300 mb-2">Пароль</label>
+              <label className="block text-sm text-gray-300 mb-2">{t('invitation.newPasswordLabel')}</label>
               <input
                 type="password"
                 value={formData.password}
@@ -201,7 +202,7 @@ export default function AcceptInvitationPage() {
             </div>
 
             <div>
-              <label className="block text-sm text-gray-300 mb-2">Повторите пароль</label>
+              <label className="block text-sm text-gray-300 mb-2">{t('auth.repeatPasswordLabel')}</label>
               <input
                 type="password"
                 value={formData.confirmPassword}
@@ -219,7 +220,7 @@ export default function AcceptInvitationPage() {
                 className="mt-1"
                 required
               />
-              Даю согласие на обработку моих персональных данных для регистрации и обслуживания в Domera.
+              {t('invitation.gdprConsent')}
             </label>
 
             <button
@@ -227,33 +228,33 @@ export default function AcceptInvitationPage() {
               disabled={submitting}
               className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
             >
-              {submitting ? 'Завершение регистрации...' : 'Принять приглашение'}
+              {submitting ? t('invitation.registrationInProgress') : t('invitation.acceptInvitation')}
             </button>
           </form>
         )}
 
         {!existingAccountDetected && (
           <div className="mt-4 rounded-md border border-slate-700 bg-slate-900/50 px-3 py-2 text-xs text-slate-300">
-            Уже есть аккаунт?{' '}
+            {t('auth.alreadyHaveAccount')}{' '}
             <Link href={`/login?redirect=${encodeURIComponent(`/accept-invitation?token=${token}`)}`} className="text-blue-300 underline">
-              Войдите
+              {t('auth.login')}
             </Link>{' '}
-            и примите доступ без создания нового пароля.
+            {t('invitation.andAcceptAccessWithoutCreatingNewPassword')}
           </div>
         )}
 
         {shouldLoginInstead && (
           <div className="mt-3 rounded-md border border-blue-700 bg-blue-900/25 px-3 py-2 text-xs text-blue-200">
-            Перейти ко входу:{' '}
+            {t('invitation.loginInstead')}{' '}
             <Link href={`/login?redirect=${encodeURIComponent(`/accept-invitation?token=${token}`)}`} className="underline text-blue-100">
-              войти и принять доступ
+              {t('invitation.loginAndAcceptAccess')}
             </Link>
           </div>
         )}
 
         <div className="mt-4 text-center">
           <Link href="/login" className="text-sm text-blue-300 hover:text-blue-200">
-            Вернуться ко входу
+            {t('auth.backToLogin')}
           </Link>
         </div>
       </div>

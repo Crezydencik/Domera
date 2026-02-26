@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { registerUser } from '@/modules/auth/services/authService';
 import { createCompany } from '@/modules/company/services/companyService';
+import { useTranslations } from 'use-intl';
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -17,6 +18,7 @@ export default function RegisterPage() {
   const [loadingStep, setLoadingStep] = useState('');
   const [error, setError] = useState('');
   const router = useRouter();
+  const t = useTranslations('auth');
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -30,22 +32,22 @@ export default function RegisterPage() {
 
     // Validation
     if (!formData.companyName.trim()) {
-      setError('Введите названиелось компании');
+      setError(t('enterCompanyName'));
       return;
     }
 
     if (!formData.email.trim()) {
-      setError('Введите email');
+      setError(t('enterEmail'));
       return;
     }
 
     if (formData.password !== formData.confirmPassword) {
-      setError('Пароли не совпадают');
+      setError(t('passwordsDoNotMatch'));
       return;
     }
 
     if (formData.password.length < 6) {
-      setError('Пароль должен содержать минимум 6 символов');
+      setError(t('passwordTooShort'));
       return;
     }
 
@@ -53,12 +55,12 @@ export default function RegisterPage() {
 
     try {
       // Create company first
-      setLoadingStep('Создание компании...');
+      setLoadingStep(t('creatingCompany'));
       console.log('Creating company:', formData.companyName);
       const company = await createCompany(formData.companyName);
 
       // Then register user as ManagementCompany
-      setLoadingStep('Создание аккаунта...');
+      setLoadingStep(t('creatingAccount'));
       const user = await registerUser(
         {
           email: formData.email,
@@ -70,12 +72,12 @@ export default function RegisterPage() {
       );
 
       if (user) {
-        setLoadingStep('✓ Регистрация завершена! Сейчас перенаправим...');
+        setLoadingStep(t('registrationComplete'));
         setTimeout(() => {
           router.push('/dashboard');
         }, 500);
       } else {
-        setError('Ошибка регистрации');
+        setError(t('registrationError'));
       }
     } catch (err: any) {
       console.error('Registration error:', err);
@@ -86,15 +88,15 @@ export default function RegisterPage() {
       });
       
       if (err.code === 'auth/email-already-in-use') {
-        setError('Email уже зарегистрирован');
+        setError(t('emailInUse'));
       } else if (err.code === 'auth/weak-password') {
-        setError('Пароль слишком простой');
+        setError(t('weakPassword'));
       } else if (err.code === 'auth/invalid-email') {
-        setError('Неверный формат email');
+        setError(t('invalidEmail'));
       } else if (err.code === 'permission-denied') {
-        setError('Нет доступа к базе данных. Проверьте правила безопасности Firebase.');
+        setError(t('permissionDenied'));
       } else {
-        setError(err.message || 'Ошибка при подключении к базе данных. Попробуйте еще раз.');
+        setError(err.message || t('dbError'));
       }
     } finally {
       setLoading(false);
@@ -108,7 +110,7 @@ export default function RegisterPage() {
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-white mb-2">🏢 Domera</h1>
-          <p className="text-gray-400">Создание аккаунта</p>
+          <p className="text-gray-400">{t('register')}</p>
         </div>
 
         {/* Form Card */}
@@ -123,14 +125,14 @@ export default function RegisterPage() {
             {/* Company Name */}
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
-                Название компании
+                {t('companyNameLabel')} 
               </label>
               <input
                 type="text"
                 name="companyName"
                 value={formData.companyName}
                 onChange={handleChange}
-                placeholder="ООО Управляющая компания"
+                placeholder={t('companyNamePlaceholder')}
                 className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition"
                 required
               />
@@ -139,14 +141,14 @@ export default function RegisterPage() {
             {/* Email */}
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
-                Email
+                {t('emailLabel')}
               </label>
               <input
                 type="email"
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
-                placeholder="example@mail.com"
+                placeholder={t('emailPlaceholder')}
                 className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition"
                 required
               />
@@ -155,31 +157,31 @@ export default function RegisterPage() {
             {/* Password */}
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
-                Пароль
+                {t('passwordLabel')}
               </label>
               <input
                 type="password"
                 name="password"
                 value={formData.password}
                 onChange={handleChange}
-                placeholder="••••••••"
+                placeholder={t('passwordPlaceholder')}
                 className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition"
                 required
               />
-              <p className="text-xs text-gray-500 mt-1">Минимум 6 символов</p>
+              <p className="text-xs text-gray-500 mt-1">{t('minPasswordLength')}</p>
             </div>
 
             {/* Confirm Password */}
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
-                Повторите пароль
+                {t('confirmPasswordLabel')}
               </label>
               <input
                 type="password"
                 name="confirmPassword"
                 value={formData.confirmPassword}
                 onChange={handleChange}
-                placeholder="••••••••"
+                placeholder={t('confirmPasswordPlaceholder')}
                 className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition"
                 required
               />
@@ -194,7 +196,7 @@ export default function RegisterPage() {
                 required
               />
               <label htmlFor="terms" className="text-sm text-gray-400 ml-2">
-                Я согласен с условиями использования
+                {t('termsLabel')}
               </label>
             </div>
 
@@ -207,19 +209,19 @@ export default function RegisterPage() {
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
                   <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                  {loadingStep || 'Обработка...'}
+                  {loadingStep || t('processing')}
                 </span>
               ) : (
-                'Регистрация'
+                t('register')
               )}
             </button>
           </form>
 
           {/* Sign In Link */}
           <p className="text-center text-gray-400 mt-6">
-            Уже есть аккаунт?{' '}
+            {t('alreadyHaveAccount')}{' '}
             <Link href="/login" className="text-blue-400 hover:text-blue-300 transition">
-              Войти
+              {t('signIn')}
             </Link>
           </p>
         </div>
@@ -227,7 +229,7 @@ export default function RegisterPage() {
         {/* Back to Home */}
         <div className="text-center mt-6">
           <Link href="/" className="text-gray-400 hover:text-gray-300 transition">
-            ← Вернуться на главную
+            ← {t('backToHome')}
           </Link>
         </div>
       </div>
