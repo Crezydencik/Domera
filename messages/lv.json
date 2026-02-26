@@ -83,6 +83,16 @@
       "waterReadings": "Ūdens rādījumi",
       "myInvoices": "Mani rēķini"
     },
+    "apartments": {
+      "loading": "Ielāde...",
+      "noApartments": "Nav piešķirtu dzīvokļu. Sazinieties ar pārvaldnieku.",
+      "apartmentNumber": "Dzīvokļa numurs",
+      "building": "Māja",
+      "company": "Pārvaldības uzņēmums",
+      "actions": "Darbības",
+      "viewReadings": "Skatīt rādījumus",
+      "viewInvoices": "Skatīt rēķinus"
+    },
     "meterReadings": {
       "loadingApartmentsAndReadings": "Ielāde...",
       "building": "Māja",
