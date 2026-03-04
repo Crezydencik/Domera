@@ -3,9 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/shared/providers/AuthProvider";
 import { ToastProvider } from "@/shared/providers/ToastProvider";
-import { getLocale, getMessages } from "next-intl/server";
-import { messagesWithDefault } from "../shared/lib/i18n";
-import { NextIntlClientProvider } from "next-intl";
+import { LanguageProvider } from "@/shared/providers/LanguageProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -22,9 +20,7 @@ export const metadata: Metadata = {
   description: "Облачная платформа для управления многоквартирными домами",
   keywords: "управление домом, жилищно-коммунальное хозяйство, квартиры, счетчики",
 };
-  const locale = await getLocale();      // ← из cookie
-  const messages = await getMessages();  // ← из getRequestConfig
-  const mergedMessages = await messagesWithDefault(messages, locale);
+
 
 
 export default function RootLayout({
@@ -33,15 +29,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang={locale}>
+    <html lang="ru">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <AuthProvider>
-          <NextIntlClientProvider locale={locale} messages={mergedMessages}>
-          {children}
-          <ToastProvider />
-          </NextIntlClientProvider>
+          <LanguageProvider>
+            {children}
+            <ToastProvider />
+          </LanguageProvider>
         </AuthProvider>
       </body>
     </html>

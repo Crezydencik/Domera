@@ -23,6 +23,10 @@ export interface User {
   createdAt: Date;
   displayName?: string; // Added displayName property
   // ...удалено: Notification settings...
+  /**
+   * Язык рассылки: 'lv' (латышский, по умолчанию) или 'ru' (русский)
+   */
+  preferredLang?: 'lv' | 'ru';
   notifications?: {
     email?: boolean;
     meterReminder?: boolean;

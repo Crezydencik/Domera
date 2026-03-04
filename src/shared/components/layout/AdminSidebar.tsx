@@ -7,6 +7,8 @@ import { ROUTES } from '@/shared/constants';
 import { logout } from '@/modules/auth/services/authService';
 import type { User } from '@/shared/types';
 import { useTranslations } from 'next-intl';
+import { LanguageSwitcher } from './LanguageSwitcher';
+import { useLanguage } from '@/shared/providers/LanguageProvider';
 
 
 interface AdminSidebarProps {
@@ -16,10 +18,13 @@ interface AdminSidebarProps {
 export function AdminSidebar({ user }: AdminSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false); 
   const [search, setSearch] = useState('');
   const t = useTranslations('dashboard');
+  const { locale, setLocale } = useLanguage();
+  const handleLanguageChange = (newLang: string) => {
+    setLocale(newLang);
+  };
   const MANAGEMENT_NAV_ITEMS = [
     { href: ROUTES.DASHBOARD, label: t('sidebar.home'), icon: '🏠' },
     { href: ROUTES.BUILDINGS, label: t('sidebar.buildings'), icon: '🏢' },
@@ -43,32 +48,32 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
     item.label.toLowerCase().includes(search.trim().toLowerCase())
   );
 
-  const handleLogout = async () => {
-    if (isLoggingOut) return;
+  // const handleLogout = async () => {
+  //   if (isLoggingOut) return;
 
-    setIsLoggingOut(true);
-    try {
-      await logout();
-      await fetch('/api/auth/clear-cookies', { method: 'POST' });
-      router.push('/login');
-      router.refresh();
-    } catch (error) {
-      console.error('Logout error:', error);
-    } finally {
-      setIsLoggingOut(false);
-    }
-  };
+  //   setIsLoggingOut(true);
+  //   try {
+  //     await logout();
+  //     await fetch('/api/auth/clear-cookies', { method: 'POST' });
+  //     router.push('/login');
+  //     router.refresh();
+  //   } catch (error) {
+  //     console.error('Logout error:', error);
+  //   } finally {
+  //     setIsLoggingOut(false);
+  //   }
+  // };
 
-  const toggleTheme = () => {
-    // Theme toggle logic can be implemented here if needed
-  };
+  // const toggleTheme = () => {
+  //   // Theme toggle logic can be implemented here if needed
+  // };
 
   return (
     <>
       <button
         type="button"
         onClick={() => setIsMenuOpen((prev) => !prev)}
-        className="md:hidden fixed top-4 left-4 z-50 px-3 py-2 bg-slate-800 text-white rounded-lg border border-slate-700"
+        className="md:hidden fixed top-4 left-4 z-50 px-3 py-2 bg-white text-blue-700 rounded-lg border border-blue-200 shadow"
         aria-label={isMenuOpen ? t('sidebar.closeMenu') : t('sidebar.openMenu')}
       >
         {isMenuOpen ? '✕' : '☰'}
@@ -84,19 +89,24 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
       )}
 
       <aside
-        className={[
-          'fixed top-0 left-0 z-40 h-screen w-72 bg-slate-900 border-r border-slate-700 transition-transform duration-300',
+        className={[ 
+          'fixed top-0 left-0 z-40 h-screen w-72 bg-white border-r border-gray-200 transition-transform duration-300 shadow-lg',
           isMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
         ].join(' ')}
       >
         <div className="h-full flex flex-col">
-          <div className="px-4 py-4 border-b border-slate-700">
-            <div className="overflow-hidden">
-              <h1 className="text-2xl font-bold text-white whitespace-nowrap">🏢 Domera</h1>
-              <p className="text-sm text-gray-400 mt-1">
-                {user.role === 'Resident' ? t('sidebar.resident') : t('sidebar.manager')}
-              </p>
+          {/* Language Switcher */}
+          <div className="px-4 py-2 border-b border-gray-100 bg-gradient-to-tr from-green-50 to-blue-50 flex justify-end">
+  
+          </div>
+          <div className="px-4 py-4 border-b border-gray-200 bg-gradient-to-tr from-green-50 to-blue-50">
+            <div className="overflow-hidden flex items-center gap-2">
+              <span className="inline-block w-8 h-8 rounded-full bg-gradient-to-tr from-green-300 to-blue-400 flex items-center justify-center text-white text-xl font-bold shadow mr-1">🏢</span>
+              <h1 className="text-2xl font-bold text-blue-700 whitespace-nowrap">Domera</h1>
             </div>
+            <p className="text-sm text-green-700 mt-1 font-semibold">
+              {user.role === 'Resident' ? t('sidebar.resident') : t('sidebar.manager')}
+            </p>
             {/* <input
               type="text"
               placeholder={t('sidebar.search')} 
@@ -109,30 +119,29 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
           <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
             {filteredItems.map((item) => {
               const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
-
               return (
                 <Link
                   key={item.href}
                   href={item.href}
                   onClick={() => setIsMenuOpen(false)}
-                  className={[
-                    'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition',
+                  className={[ 
+                    'flex items-center gap-3 rounded-lg px-3 py-2.5 text-base transition font-medium',
                     isActive
-                      ? 'bg-blue-600 text-white border border-blue-500'
-                      : 'text-gray-300 hover:bg-slate-800 hover:text-white border border-transparent',
+                      ? 'bg-gradient-to-tr from-green-400 to-blue-500 text-white border border-blue-400 shadow'
+                      : 'text-blue-700 hover:bg-green-50 hover:text-green-700 border border-transparent',
                   ].join(' ')}
                 >
-                  <span className="text-base shrink-0" aria-hidden="true">{item.icon}</span>
+                  <span className="text-lg shrink-0" aria-hidden="true">{item.icon}</span>
                   <span className="truncate">{item.label}</span>
                 </Link>
               );
             })}
             {!filteredItems.length && (
-              <p className="px-3 pt-3 text-sm text-slate-400">{t('sidebar.noResults')}</p>
+              <p className="px-3 pt-3 text-sm text-gray-400">{t('sidebar.noResults')}</p>
             )}
           </nav>
 
-          <div className="px-4 py-4 border-t border-slate-700 bg-slate-900">
+          <div className="px-4 py-4 border-t border-gray-200 bg-gradient-to-tr from-green-50 to-blue-50">
             {/* <button
               type="button"
               onClick={toggleTheme}
@@ -140,16 +149,16 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
             >
               {t('sidebar.changeTheme')}
             </button> */}
-            <p className="text-xs text-gray-400 mb-1">{t('sidebar.user')}</p>
-            <p className="text-sm text-white truncate mb-3">{user.email}</p>
+            {/* <p className="text-xs text-blue-700 mb-1 font-semibold">{t('sidebar.user')}</p>
+            <p className="text-sm text-gray-700 truncate mb-3">{user.email}</p>
             <button
               type="button"
               onClick={handleLogout}
               disabled={isLoggingOut}
-              className="w-full px-3 py-2 rounded-lg bg-red-600 hover:bg-red-900 border border-slate-700 text-white hover:bg-slate-700 transition disabled:opacity-60"
+              className="w-full px-3 py-2 rounded-lg bg-gradient-to-tr from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white font-semibold shadow transition disabled:opacity-60"
             >
               {isLoggingOut ? t('sidebar.loggingOut') : t('sidebar.logout')}
-            </button>
+            </button> */}
           </div>
         </div>
       </aside>

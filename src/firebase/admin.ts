@@ -9,7 +9,7 @@ const getServiceAccount = () => {
     return JSON.parse(rawJson);
   }
 
-  const serviceAccountPath = join(process.cwd(), 'firebase-service-account.json');
+  const serviceAccountPath = join(process.cwd(), 'src', 'firebase', 'firebase-service-account.json');
   if (existsSync(serviceAccountPath)) {
     const content = readFileSync(serviceAccountPath, 'utf-8');
     return JSON.parse(content);
