@@ -1,203 +1,36 @@
-'use client';
 
+  'use client';
   import { useAuth } from '@/shared/hooks/useAuth';
   import Link from 'next/link';
   import { useTranslations } from 'use-intl';
-  import { logout } from '@/modules/auth/services/authService';
-  import { useRouter } from 'next/navigation';
+  import dynamic from 'next/dynamic';
 
-  import Loading from '../../../shared/components/ui/loading';
-  import { useEffect, useState } from 'react';
-  import { countDocuments } from '@/firebase/services/firestoreService';
-import Header from '../../../shared/components/layout/heder';
+  const ResidentDashboard = dynamic(() => import('./ResidentDashboard'));
+  const ManagementDashboard = dynamic(() => import('./ManagementDashboard'));
+export default function DashboardPage() {
+  const { user, loading } = useAuth();
+  const t = useTranslations();
 
-
-
-  function ResidentDashboard() {
-    const t = useTranslations('dashboard.resident');
-    const { user } = useAuth();
-    const router = useRouter();
-    const name = user?.displayName || user?.email || 'Lietotājs';
-    const [stats, setStats] = useState<{ buildings: number; apartments: number } | null>(null);
-    const [loadingStats, setLoadingStats] = useState(true);
-
-    useEffect(() => {
-      async function fetchStats() {
-        if (!user?.companyId) return;
-        setLoadingStats(true);
-        try {
-          const [buildings, apartments] = await Promise.all([
-            countDocuments('buildings', [
-              // @ts-expect-error
-              window.firebaseWhere('companyId', '==', user.companyId)
-            ]),
-            countDocuments('apartments', [
-              // @ts-expect-error
-              window.firebaseWhere('companyIds', 'array-contains', user.companyId)
-            ]),
-          ]);
-          setStats({ buildings, apartments });
-        } catch {
-          setStats({ buildings: 0, apartments: 0 });
-        } finally {
-          setLoadingStats(false);
-        }
-      }
-      fetchStats();
-    }, [user?.companyId]);
-
-    const handleLogout = async () => {
-      await logout();
-      await fetch('/api/auth/clear-cookies', { method: 'POST' });
-      router.push('/login');
-      router.refresh();
-    };
-
+  if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-white via-green-50 to-blue-50">
-        <Header
-          userName={name}
-          userEmail={user?.email}
-          userAvatarUrl={user?.avatarUrl}
-          onLogout={handleLogout}
-          pageTitle={t('welcome', { name })}
-        />
-
-        <main className="mx-auto max-w-7xl px-4 py-8">
-          <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-            {loadingStats ? (
-              <div className="col-span-2 flex items-center justify-center h-32">
-                <Loading text={t('loadingStats', { ns: 'dashboard' })} />
-              </div>
-            ) : (
-              <>
-              
-                <div className="rounded-2xl border border-slate-700 bg-slate-800 p-5 shadow-sm">
-                  <div className="mb-4 flex items-center justify-between">
-                    <span className="text-xs font-medium text-gray-400">+0.0%</span>
-                    <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500 text-white">●</span>
-                  </div>
-                  <p className="text-2xl font-bold text-white">{stats?.apartments ?? 0}</p>
-                  <p className="mt-1 text-sm text-gray-400">{t('totalApartments')}</p>
-                </div>
-              </>
-            )}
-          </section>
-        </main>
+      <div className="min-h-screen flex items-center justify-center">
+        <span className="text-blue-400 text-lg font-semibold">{t('dashboard.loading')}</span>
       </div>
     );
   }
 
-
-  function ManagementDashboard() {
-    const t = useTranslations('dashboard.management');
-    const { user } = useAuth();
-    const router = useRouter();
-    const name = user?.displayName || user?.email || t('user');
-    const [stats, setStats] = useState<{ buildings: number; apartments: number } | null>(null);
-    const [loadingStats, setLoadingStats] = useState(true);
-
-    useEffect(() => {
-      async function fetchStats() {
-        if (!user?.companyId) {
-          console.log('Нет companyId у пользователя:', user);
-          setLoadingStats(false);
-          return;
-        }
-        setLoadingStats(true);
-        try {
-          const [buildings, apartments] = await Promise.all([
-            countDocuments('buildings', [
-              // @ts-expect-error
-              window.firebaseWhere('companyId', '==', user.companyId)
-            ]),
-            countDocuments('apartments', [
-              // @ts-expect-error
-              window.firebaseWhere('companyIds', 'array-contains', user.companyId)
-            ]),
-          ]);
-          setStats({ buildings, apartments });
-        } catch (err) {
-          console.error('Ошибка загрузки статистики:', err);
-          setStats({ buildings: 0, apartments: 0 });
-        } finally {
-          setLoadingStats(false);
-        }
-      }
-      fetchStats();
-    }, [user?.companyId]);
-
-    const handleLogout = async () => {
-      await logout();
-      await fetch('/api/auth/clear-cookies', { method: 'POST' });
-      router.push('/login');
-      router.refresh();
-    };
-
+  if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-white via-green-50 to-blue-50">
-        <Header
-          userName={name}
-          userEmail={user?.email}
-          userAvatarUrl={user?.avatarUrl}
-          onLogout={handleLogout}
-          pageTitle={t('welcome', { name })}
-        />
-
-        <main className="mx-auto max-w-7xl px-4 py-8">
-          <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-            {loadingStats ? (
-              <div className="col-span-2 flex items-center justify-center h-32">
-                <Loading text={t('loadingStats', { ns: 'dashboard' })} />
-              </div>
-            ) : (
-              <>
-                <div className="rounded-2xl border border-slate-700 bg-slate-800 p-5 shadow-sm">
-                  <div className="mb-4 flex items-center justify-between">
-                    <span className="text-xs font-medium text-gray-400">+0.0%</span>
-                    <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500 text-white">●</span>
-                  </div>
-                  <p className="text-2xl font-bold text-white">{stats?.buildings ?? 0}</p>
-                  <p className="mt-1 text-sm text-gray-400">{t('totalBuildings')}</p>
-                </div>
-                <div className="rounded-2xl border border-slate-700 bg-slate-800 p-5 shadow-sm">
-                  <div className="mb-4 flex items-center justify-between">
-                    <span className="text-xs font-medium text-gray-400">+0.0%</span>
-                    <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500 text-white">●</span>
-                  </div>
-                  <p className="text-2xl font-bold text-white">{stats?.apartments ?? 0}</p>
-                  <p className="mt-1 text-sm text-gray-400">{t('totalApartments')}</p>
-                </div>
-              </>
-            )}
-          </section>
-        </main>
-      </div>
-    );
-  }
-
-  export default function DashboardPage() {
-    const { user, loading } = useAuth();
-    const t = useTranslations();
-
-    if (loading) {
-      return (
-        <Loading text={t('loading')} />
-      );
-    }
-
-    if (!user) {
-      return (
-        <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-          <div className="text-center">
-            <h1 className="text-white text-2xl mb-4">Требуется вход</h1>
-            <Link href="/login" className="text-blue-600 hover:text-blue-500">
-              Перейти на страницу входа
-            </Link>
-          </div>
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-white text-2xl mb-4">Требуется вход</h1>
+          <Link href="/login" className="text-blue-600 hover:text-blue-500">
+            Перейти на страницу входа
+          </Link>
         </div>
-      );
-    }
-
-    return user.role === 'Resident' ? <ResidentDashboard /> : <ManagementDashboard />;
+      </div>
+    );
   }
+
+  return user.role === 'Resident' ? <ResidentDashboard /> : <ManagementDashboard />;
+}

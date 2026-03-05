@@ -11,6 +11,7 @@ import { User } from '../types';
 import { onAuthStateChanged } from '../../firebase/services/authService';
 import { getCurrentUser } from '../../modules/auth/services/authService';
 
+
 export interface UseAuthReturn {
   user: User | null;
   uid: string | null;
@@ -18,7 +19,9 @@ export interface UseAuthReturn {
   isAuthenticated: boolean;
   isManagementCompany: boolean;
   isResident: boolean;
+  refreshUser: () => Promise<void>;
 }
+
 
 /**
  * Hook to get current user and auth status
@@ -27,6 +30,19 @@ export const useAuth = (): UseAuthReturn => {
   const [uid, setUid] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Функция для ручного обновления пользователя
+  const refreshUser = async () => {
+    setLoading(true);
+    try {
+      const currentUser = await getCurrentUser();
+      setUser(currentUser);
+    } catch (error) {
+      setUser(null);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -72,6 +88,7 @@ export const useAuth = (): UseAuthReturn => {
     isAuthenticated: !!user && !!uid,
     isManagementCompany: user?.role === 'ManagementCompany',
     isResident: user?.role === 'Resident',
+    refreshUser,
   };
 };
 

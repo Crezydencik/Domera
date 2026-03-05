@@ -1,3 +1,13 @@
+
+export interface HeaderProps {
+  userName?: string;
+  userAvatarUrl?: string;
+  userEmail?: string;
+  pageTitle?: string;
+  pageSubtitle?: string;
+  onLogout?: () => void;
+}
+
 /**
  * Apartment Invitation Meta and Account Status types
  */
@@ -15,6 +25,7 @@ export type ApartmentAccountStatus = 'activated' | 'pending' | 'notAssigned';
 export type UserRole = 'ManagementCompany' | 'Resident' | 'Accountant';
 
 export interface User {
+  name: string;
   uid: string;
   email: string;
   role: UserRole;
@@ -22,6 +33,8 @@ export interface User {
   apartmentId?: string; // Only for Resident role
   createdAt: Date;
   displayName?: string; // Added displayName property
+  phone?: string;
+  address?: string;
   // ...удалено: Notification settings...
   /**
    * Язык рассылки: 'lv' (латышский, по умолчанию) или 'ru' (русский)

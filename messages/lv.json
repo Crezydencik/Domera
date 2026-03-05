@@ -141,11 +141,44 @@
         "notSpecified": "Nav norādīts",
         "invalidDate": "Nederīgs datums. Lūdzu, ievadiet korektu datumu.",
         "noReadingsForApartment": "Nav rādījumu šim dzīvoklim"
-        
-
-
-
-    }  },
+    },
+    "profile": {
+    "loading": "Ielāde...",
+    "tabs": {
+      "profile": "Profils",
+      "notifications": "Paziņojumi"
+    },
+    "userAvatar": "Lietotāja attēls",
+    "clientNumber": "Klienta numurs",
+    "personalData": "Personas dati",
+    "name": "Vārds un uzvārds",
+    "phone": "Tālrunis",
+    "save": "Saglabāt",
+    "cancel": "Atcelt",
+    "updated": "Profils atjaunināts",
+    "edit": "Rediģēt",
+    "email": "E-pasts",
+    "address": "Adrese",
+    "addressUpdated": "Adrese atjaunināta",
+    "password": "Parole",
+    "notificationSettings": "Paziņojumu iestatījumi",
+    "emailNotifications": "E-pasta paziņojumi",
+    "notification": {
+      "meterReminder": "Skaitītāju rādījumu atgādinājums",
+      "paymentReminder": "Maksājuma atgādinājums",
+      "general": "Vispārīgie paziņojumi",
+      "lang": "Paziņojumu valoda",
+      "lang_ru": "Krievu",
+      "lang_lv": "Latviešu",
+      "lang_en": "Angļu"
+    },
+    "notificationSettingsSaved": "Paziņojumu iestatījumi saglabāti",
+    "notificationsSaved": "Paziņojumi saglabāti",
+    "privacySaved": "Privātuma piekrišana saglabāta",
+    "deleteRequestSent": "Dzēšanas pieprasījums nosūtīts"
+}  
+  
+  },
   "auth": {
     "resetPasswordEmailLabel": "E-pasts",
     "resetPasswordEmailPlaceholder": "Ievadiet savu e-pastu",
@@ -263,5 +296,39 @@
     "dataTodo": "TODO: Ielādēt datus",
     "subscriptionActive": "Aktīvs",
     "loading": "Ielāde..."
+  },
+  "profile": {
+    "tabs": {
+      "profile": "Profils",
+      "notifications": "Paziņojumi"
+    },
+    "userAvatar": "Lietotāja attēls",
+    "clientNumber": "Klienta numurs",
+    "personalData": "Personas dati",
+    "name": "Vārds",
+    "phone": "Tālrunis",
+    "save": "Saglabāt",
+    "cancel": "Atcelt",
+    "updated": "Profils atjaunināts",
+    "edit": "Labot",
+    "email": "E-pasts",
+    "address": "Adrese",
+    "addressUpdated": "Adrese atjaunināta",
+    "password": "Parole",
+    "notificationSettings": "Paziņojumu iestatījumi",
+    "emailNotifications": "E-pasta paziņojumi",
+    "notification": {
+      "meterReminder": "Skaitītāja rādījumu atgādinājums",
+      "paymentReminder": "Maksājuma atgādinājums",
+      "general": "Vispārīgie paziņojumi",
+      "lang": "Paziņojumu valoda",
+      "lang_ru": "Krievu",
+      "lang_lv": "Latviešu",
+      "lang_en": "Angļu"
+    },
+    "notificationSettingsSaved": "Paziņojumu iestatījumi saglabāti",
+    "notificationsSaved": "Paziņojumi saglabāti",
+    "privacySaved": "Privātuma piekrišana saglabāta",
+    "deleteRequestSent": "Dzēšanas pieprasījums nosūtīts"
   }
 }

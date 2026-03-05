@@ -3,15 +3,8 @@ import { getInvitationByEmail } from '@/modules/invitations/services/invitations
 import Link from 'next/link';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { useLanguage } from '../../providers/LanguageProvider';
+import { HeaderProps } from '../../types';
 
-interface HeaderProps {
-  userName?: string;
-  userAvatarUrl?: string;
-  userEmail?: string;
-  pageTitle?: string;
-  pageSubtitle?: string;
-  onLogout?: () => void;
-}
 
 
 const Header: React.FC<HeaderProps> = ({ userName = '',  userAvatarUrl = '', userEmail = '', pageTitle = 'Dashboard', onLogout }) => {

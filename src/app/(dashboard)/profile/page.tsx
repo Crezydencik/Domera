@@ -2,23 +2,40 @@
 
 
 import { useAuth } from '@/shared/hooks/useAuth';
-import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { getApartment } from '@/modules/apartments/services/apartmentsService';
 import { getBuilding } from '@/modules/invoices/services/buildings/services/buildingsService';
 import { updateUserProfile } from '@/modules/auth/services/authService';
 import { showCustomToast } from '@/shared/components/ui/CustomToast';
 import { Switch } from '@/shared/components/ui/Switch';
-import { FiEdit2 } from 'react-icons/fi';
+import Header from '../../../shared/components/layout/heder';
+import { useTranslations } from 'next-intl';
+import { FiCheck, FiX } from 'react-icons/fi';
 
 
 export default function ProfilePage() {
-  const { user, loading } = useAuth();
+  const { user, refreshUser } = useAuth();
+  // --- Header helpers ---
+  const getUserName = (user: any) => user?.displayName || user?.email || '';
+  const getUserAvatar = (user: any) => user?.avatarUrl;
+  const handleLogout = () => { window.location.reload(); };
+  const t = useTranslations('dashboard.profile');
+  const th = useTranslations();
+  
+  
+  
+  // --- Tabs for navigation ---
+  const tabs = [
+    { label: t('tabs.profile'), key: 'profile' },
+    { label: t('tabs.notifications'), key: 'notifications' },
+  ];
+  const [activeTab, setActiveTab] = useState('profile');
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     email: user?.email || '',
     displayName: user?.displayName || '',
     phone: user?.phone || '',
+    address: user?.address || '',
   });
   const [editField, setEditField] = useState<null | 'displayName' | 'phone'>(null);
   const [profileSaving, setProfileSaving] = useState(false);
@@ -46,7 +63,7 @@ export default function ProfilePage() {
     try {
       await updateUserProfile(user.uid, { notifications: { ...notif, [key]: value } });
       setNotifSaved(true);
-      showCustomToast({ type: 'success', title: 'Настройки уведомлений сохранены' });
+      showCustomToast({ type: 'success', title: t('notificationsSaved') });
     } finally {
       setNotifSaving(false);
       setTimeout(() => setNotifSaved(false), 1200);
@@ -61,7 +78,7 @@ export default function ProfilePage() {
     try {
       await updateUserProfile(user.uid, { privacyConsent: value });
       setPrivacySaved(true);
-      showCustomToast({ type: 'success', title: 'Согласие сохранено' });
+      showCustomToast({ type: 'success', title: t('privacySaved') });
     } finally {
       setPrivacySaving(false);
       setTimeout(() => setPrivacySaved(false), 1200);
@@ -75,7 +92,7 @@ export default function ProfilePage() {
       // Здесь можно реализовать Firestore-запрос или email-уведомление УК
       // Например, создать документ в коллекции 'deleteRequests'
       // await createDocument('deleteRequests', { uid: user.uid, email: user.email, requestedAt: new Date() });
-      alert('Запрос на удаление аккаунта отправлен в УК.');
+      alert(t('deleteRequestSent')); // Временно показываем алерт
       setDeleteModal(false);
     } finally {
       setDeleteLoading(false);
@@ -116,220 +133,272 @@ export default function ProfilePage() {
     };
   }, [user]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleProfileSave = async () => {
-    setProfileSaving(true);
-    try {
-      await updateUserProfile(user.uid, {
-        displayName: formData.displayName,
-        phone: formData.phone,
-      });
-      showCustomToast({ type: 'success', title: 'Профиль обновлён' });
-      setEditField(null);
-    } finally {
-      setProfileSaving(false);
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    // TODO: Интеграция с updateProfile
-    console.log('Update profile:', formData);
-  };
-
-  if (loading) {
-    return <div className="text-white">Загрузка...</div>;
-  }
-
-  if (!user) {
-    return <div className="text-white">Требуется вход</div>;
-  }
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800">
-      <header className="bg-slate-800 border-b border-slate-700">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <Link href="/dashboard" className="text-gray-400 hover:text-white">
-            ← Вернуться
-          </Link>
-          <h1 className="text-2xl font-bold text-white">Профиль</h1>
+    <div className="min-h-screen bg-neutral-100 py-0">
+      <Header
+        userName={getUserName(user)}
+        userEmail={user?.email}
+        userAvatarUrl={getUserAvatar(user)}
+        onLogout={handleLogout}
+        pageTitle={th('dashboard.sidebar.profile')}
+      />
+      <main className="max-w-4xl mx-auto px-4 py-10">
+        {/* Tabs */}
+        <div className="bg-white rounded-t-xl px-6 pt-4 border border-b-0 border-neutral-200">
+          <nav className="flex gap-2 sm:gap-6 text-sm font-medium">
+            {tabs.map((tab, i) => (
+                 <button
+                   key={tab.key}
+                   className={`pt-2 pb-3 px-1 sm:px-2 border-b-2 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 ${activeTab === tab.key ? 'border-black text-black font-bold' : 'border-transparent text-neutral-500 hover:text-black hover:border-gray-400'}`}
+                   onClick={() => setActiveTab(tab.key)}
+                   type="button"
+                   tabIndex={0}
+                 >
+                   {tab.label}
+                 </button>
+            ))}
+          </nav>
         </div>
-      </header>
-
-      <main className="max-w-2xl mx-auto px-4 py-8">
-        <div className="bg-slate-800 border border-slate-700 rounded-lg p-8">
-          <div className="text-center mb-8">
-            <div className="text-5xl bg-blue-600 text-white rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
-              👤
-            </div>
-            <h2 className="text-xl font-bold text-white">{user.email}</h2>
-            <p className="text-gray-400 text-sm mt-2">
-              {user.role === 'Resident' ? 'Жилец' : user.role === 'ManagementCompany' ? 'Управляющая компания' : user.role}
-            </p>
-          </div>
-          <div className="grid md:grid-cols-2 gap-8">
-            <div className="space-y-4">
-              <div>
-                <p className="text-gray-400 text-sm">Email</p>
-                <p className="text-white">{user.email}</p>
+        {/* Card */}
+        <div className="bg-white rounded-b-xl border border-t-0 border-neutral-200 p-0">
+          {activeTab === 'profile' && (
+            <>
+              {/* User header */}
+              <div className="flex flex-col items-start sm:flex-row sm:items-center gap-4 px-6 pt-6 pb-2">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-full bg-neutral-200 flex items-center justify-center text-3xl text-neutral-500">
+                    <span className="sr-only">{t('userAvatar')}</span>
+                    <span role="img" aria-label="user">👤</span>
+                  </div>
+                  <div>
+                        <div className="text-lg font-semibold text-black leading-tight">{user ? (user.displayName || user.email) : ''}</div>
+                        <div className="text-neutral-500 text-sm">{t('profile.clientNumber')}: <span className="font-mono">{user ? (user.uid || '—') : '—'}</span></div>
+                  </div>
+                </div>
               </div>
-              {/* ID аккаунта убран по требованию */}
-              {/* Роль убрана по требованию */}
-              {user.role === 'Resident' && (
-                <>
-                  <div>
-                    <p className="text-gray-400 text-sm">Квартира</p>
-                    <p className="text-white">{apartmentInfo?.number || '—'}</p>
+              {/* Section: Person data */}
+              <div className="px-6 pt-4 pb-2">j
+                <div className="text-lg font-semibold text-black mb-4">{t('personalData')}</div>
+                <div className="divide-y divide-neutral-200">
+                  {/* Name */}
+                  <div className="flex items-center justify-between py-3">
+                    <span className="text-neutral-700">{t('name')}</span>
+                    <div className="flex items-center gap-4">
+                      {editField === 'displayName' ? (
+                        <>
+                          <input
+                            className="border rounded px-2 py-1 text-black font-mono"
+                            value={formData.displayName}
+                            onChange={e => setFormData(f => ({ ...f, displayName: e.target.value }))}
+                            autoFocus
+                          />
+                          <button
+                            className="text-blue-600 text-xl p-1 hover:bg-blue-50 rounded"
+                            title={t('profile.save')}
+                            onClick={async () => {
+                              setProfileSaving(true);
+                              await updateUserProfile(user.uid, { displayName: formData.displayName });
+                              await refreshUser();
+                              setEditField(null);
+                              setProfileSaving(false);
+                              showCustomToast({ type: 'success', title: t('updated') });
+                              setFormData(f => ({ ...f, displayName: formData.displayName }));
+                            }}
+                            disabled={profileSaving}
+                          >
+                            <FiCheck />
+                          </button>
+                          <button
+                            className="text-blue-600 text-xl p-1 hover:bg-blue-50 rounded"
+                            title={t('profile.cancel')}
+                            onClick={() => { setEditField(null); setFormData(f => ({ ...f, displayName: user.displayName || '' })); }}
+                            disabled={profileSaving}
+                          >
+                            <FiX />
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <span className="text-black font-mono">{user ? user.displayName || '' : ''}</span>
+                          <button className="text-black underline underline-offset-2 text-sm font-medium" onClick={() => setEditField('displayName')}>Labot</button>
+                        </>
+                      )}
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-gray-400 text-sm">Дом</p>
-                    <p className="text-white">{apartmentInfo?.buildingAddress || '—'}</p>
+                  {/* Phone */}
+                  <div className="flex items-center justify-between py-3">
+                    <span className="text-neutral-700">{t('phone')}</span>
+                    <div className="flex items-center gap-4">
+                      {editField === 'phone' ? (
+                        <>
+                          <input
+                            className="border rounded px-2 py-1 text-black font-mono"
+                            value={formData.phone}
+                            onChange={e => setFormData(f => ({ ...f, phone: e.target.value }))}
+                            autoFocus
+                          />
+                          <button
+                            className="text-blue-600 text-xl p-1 hover:bg-blue-50 rounded"
+                            title={t('save')}
+                            onClick={async () => {
+                              setProfileSaving(true);
+                              await updateUserProfile(user.uid, { phone: formData.phone });
+                              await refreshUser();
+                              setEditField(null);
+                              setProfileSaving(false);
+                              showCustomToast({ type: 'success', title: t('updated') });
+                              setFormData(f => ({ ...f, phone: formData.phone }));
+                            }}
+                            disabled={profileSaving}
+                          >
+                            <FiCheck />
+                          </button>
+                          <button
+                            className="text-blue-600 text-xl p-1 hover:bg-blue-50 rounded"
+                            title={t('cancel')}
+                            onClick={() => { setEditField(null); setFormData(f => ({ ...f, phone: user.phone || '' })); }}
+                            disabled={profileSaving}
+                          >
+                            <FiX />
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <span className="text-black font-mono">{user ? user.phone || '' : ''}</span>
+                          <button className="text-black underline underline-offset-2 text-sm font-medium" onClick={() => setEditField('phone')}>Labot</button>
+                        </>
+                      )}
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-gray-400 text-sm">Управляющая компания</p>
-                    <p className="text-white">{apartmentInfo?.companyName || '—'}</p>
+                  {/* Email */}
+                  <div className="flex items-center justify-between py-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-neutral-700">{t('email')}</span>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <span className="text-black font-mono">{user ? user.email : ''}</span>
+                      <button className="text-black underline underline-offset-2 text-sm font-medium">{t('edit')}</button>
+                    </div>
                   </div>
-                </>
-              )}
-              <div>
-                <p className="text-gray-400 text-sm mb-1 flex items-center gap-2">
-                  Имя
-                  {editField !== 'displayName' && (
-                    <button type="button" className="ml-1 text-blue-400 hover:text-blue-300" onClick={() => setEditField('displayName')} title="Редактировать">
-                      <FiEdit2 size={16} />
-                    </button>
-                  )}
-                </p>
-                {editField === 'displayName' ? (
-                  <div className="flex gap-2 items-center">
-                    <input
-                      type="text"
-                      name="displayName"
-                      value={formData.displayName}
-                      onChange={handleChange}
-                      className="px-3 py-1 rounded bg-slate-700 border border-slate-600 text-white"
-                      autoFocus
-                      disabled={profileSaving}
-                    />
-                    <button type="button" className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-60" onClick={handleProfileSave} disabled={profileSaving || !formData.displayName.trim()}>
-                      Сохранить
-                    </button>
-                    <button type="button" className="text-gray-400 hover:text-gray-200" onClick={() => setEditField(null)} disabled={profileSaving}>Отмена</button>
+                  {/* Address */}
+                  <div className="flex items-center justify-between py-3">
+                    <span className="text-neutral-700">{t('address')}</span>
+                    <div className="flex items-center gap-4">
+                      {editField === 'address' ? (
+                        <>
+                          <input
+                            className="border rounded px-2 py-1 text-black font-mono"
+                            value={formData.address || ''}
+                            onChange={e => setFormData(f => ({ ...f, address: e.target.value }))}
+                            autoFocus
+                          />
+                          <button
+                            className="text-blue-600 text-xl p-1 hover:bg-blue-50 rounded"
+                            title={t('save')}
+                            onClick={async () => {
+                              setProfileSaving(true);
+                              await updateUserProfile(user.uid, { address: formData.address });
+                              await refreshUser();
+                              setEditField(null);
+                              setProfileSaving(false);
+                              showCustomToast({ type: 'success', title: t('addressUpdated') });
+                              setFormData(f => ({ ...f, address: formData.address }));
+                            }}
+                            disabled={profileSaving}
+                          >
+                            <FiCheck />
+                          </button>
+                          <button
+                            className="text-blue-600 text-xl p-1 hover:bg-blue-50 rounded"
+                            title={t('cancel')}
+                            onClick={() => { setEditField(null); setFormData(f => ({ ...f, address: user.address || '' })); }}
+                            disabled={profileSaving}
+                          >
+                            <FiX />
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <span className="text-black font-mono">{user ? user.address || '' : ''}</span>
+                          <button className="text-black underline underline-offset-2 text-sm font-medium" onClick={() => setEditField('address')}>Labot</button>
+                        </>
+                      )}
+                    </div>
                   </div>
-                ) : (
-                  <p className="text-white text-lg">{formData.displayName || 'Не указано'}</p>
+                    {/* Password */}
+                    <div className="flex items-center justify-between py-3">
+                      <span className="text-neutral-700">{t('password')}</span>
+                      <div className="flex items-center gap-4">
+                        <span className="text-black font-mono">******</span>
+                        <button className="text-black underline underline-offset-2 text-sm font-medium">{t('edit')}</button>
+                      </div>
+                    </div>
+                  </div>
+                  </div>
+                </>)}
+         {activeTab === 'notifications' && (
+                  <div className="px-6 py-8">
+                    <div className="text-lg font-semibold text-black mb-4">{t('notificationSettings')}</div>
+                    <div className="space-y-4 mx-auto">
+                      <div className="flex items-center justify-between">
+                        <span className="text-neutral-700">{t('emailNotifications')}</span>
+                        <Switch
+                          checked={notif.email}
+                          onChange={val => handleNotifChange('email', val)}
+                          disabled={notifSaving}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-neutral-700">{t('notification.meterReminder')}</span>
+                        <Switch
+                          checked={notif.meterReminder}
+                          onChange={val => handleNotifChange('meterReminder', val)}
+                          disabled={notifSaving}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-neutral-700">{t('notification.paymentReminder')}</span>
+                        <Switch
+                          checked={notif.paymentReminder}
+                          onChange={val => handleNotifChange('paymentReminder', val)}
+                          disabled={notifSaving}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-neutral-700">{t('notification.general')}</span>
+                        <Switch
+                          checked={notif.general}
+                          onChange={val => handleNotifChange('general', val)}
+                          disabled={notifSaving}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-neutral-700">{t('notification.lang')}</span>
+                        <select
+                          className="border rounded px-2 py-1 text-black bg-white"
+                          value={user?.notifications?.lang || 'ru'}
+                          onChange={async (e) => {
+                            setNotifSaving(true);
+                            setNotifSaved(false);
+                            await updateUserProfile(user.uid, { notifications: { ...notif, lang: e.target.value } });
+                            setNotifSaved(true);
+                            setNotifSaving(false);
+                          }}
+                          disabled={notifSaving}
+                        >
+                          <option value="ru">{t('notification.lang_ru')}</option>
+                          <option value="lv">{t('notification.lang_lv')}</option>
+                          <option value="en">{t('notification.lang_en')}</option>
+                        </select>
+                      </div>
+                      {notifSaved && (
+                        <div className="text-green-600 text-sm mt-2">{t('notificationSettingsSaved')}</div>
+                      )}
+                    </div>
+                  </div>
                 )}
               </div>
-              <div>
-                <p className="text-gray-400 text-sm mb-1 flex items-center gap-2">
-                  Телефон
-                  {editField !== 'phone' && (
-                    <button type="button" className="ml-1 text-blue-400 hover:text-blue-300" onClick={() => setEditField('phone')} title="Редактировать">
-                      <FiEdit2 size={16} />
-                    </button>
-                  )}
-                </p>
-                {editField === 'phone' ? (
-                  <div className="flex gap-2 items-center">
-                    <input
-                      type="tel"
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleChange}
-                      className="px-3 py-1 rounded bg-slate-700 border border-slate-600 text-white"
-                      autoFocus
-                      disabled={profileSaving}
-                    />
-                    <button type="button" className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-60" onClick={handleProfileSave} disabled={profileSaving}>
-                      Сохранить
-                    </button>
-                    <button type="button" className="text-gray-400 hover:text-gray-200" onClick={() => setEditField(null)} disabled={profileSaving}>Отмена</button>
-                  </div>
-                ) : (
-                  <p className="text-white text-lg">{formData.phone || 'Не указано'}</p>
-                )}
-              </div>
-            </div>
-            <div className="space-y-8">
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-blue-400 text-lg">◆</span>
-                  <span className="text-lg font-semibold text-white">Настройки уведомлений</span>
-                </div>
-                <div className="flex flex-col divide-y divide-slate-700 bg-slate-800 rounded-lg overflow-hidden">
-                  <div className="flex items-center justify-between py-3 px-2">
-                    <div>
-                      <div className="text-base text-gray-200 font-medium">Email уведомления</div>
-                      <div className="text-xs text-gray-400">Получать все важные сообщения на почту</div>
-                    </div>
-                    <Switch checked={notif.email} onChange={v => handleNotifChange('email', v)} disabled={notifSaving} />
-                  </div>
-                  <div className="flex items-center justify-between py-3 px-2">
-                    <div>
-                      <div className="text-base text-gray-200 font-medium">Напоминание о сдаче показаний</div>
-                      <div className="text-xs text-gray-400">Напоминать о необходимости передать показания счетчиков</div>
-                    </div>
-                    <Switch checked={notif.meterReminder} onChange={v => handleNotifChange('meterReminder', v)} disabled={notifSaving} />
-                  </div>
-                  <div className="flex items-center justify-between py-3 px-2">
-                    <div>
-                      <div className="text-base text-gray-200 font-medium">Напоминание об оплате</div>
-                      <div className="text-xs text-gray-400">Напоминать о необходимости оплатить счета</div>
-                    </div>
-                    <Switch checked={notif.paymentReminder} onChange={v => handleNotifChange('paymentReminder', v)} disabled={notifSaving} />
-                  </div>
-                  <div className="flex items-center justify-between py-3 px-2">
-                    <div>
-                      <div className="text-base text-gray-200 font-medium">Общедомовые уведомления</div>
-                      <div className="text-xs text-gray-400">Важные объявления от управляющей компании</div>
-                    </div>
-                    <Switch checked={notif.general} onChange={v => handleNotifChange('general', v)} disabled={notifSaving} />
-                  </div>
-                </div>
-              </div>
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-blue-400 text-lg">◆</span>
-                  <span className="text-lg font-semibold text-white">Конфиденциальность</span>
-                </div>
-                <div className="space-y-4 ml-2">
-                  <label className="flex items-center gap-3 text-gray-200 text-base cursor-pointer">
-                    <input type="checkbox" checked={privacyConsent} disabled={privacySaving} onChange={e => handlePrivacyConsent(e.target.checked)} className="accent-blue-500 w-5 h-5" />
-                    <span>
-                      Согласие на обработку данных
-                      <span className="block text-xs text-gray-400">Вы соглашаетесь с условиями обработки персональных данных</span>
-                    </span>
-                  </label>
-                  <a href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="block text-blue-400 hover:underline text-base">Политика конфиденциальности</a>
-                  {user.role === 'ManagementCompany' ? (
-                    <div className="text-red-400 text-base font-semibold mt-2">Для удаления аккаунта обратитесь к администратору платформы</div>
-                  ) : (
-                    <button type="button" onClick={() => setDeleteModal(true)} className="block text-red-400 hover:underline text-base font-semibold mt-2 disabled:opacity-60" disabled={notifSaving || privacySaving}>Удалить аккаунт (запрос в УК)</button>
-                  )}
-                </div>
-              </div>
-            </div>
+            </main>
           </div>
-        </div>
-
-        {/* Модальное окно подтверждения удаления аккаунта */}
-        {deleteModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-            <div className="bg-slate-800 border border-slate-700 rounded-lg p-8 max-w-sm w-full text-center">
-              <h3 className="text-xl font-bold text-white mb-4">Удалить аккаунт?</h3>
-              <p className="text-gray-300 mb-6">Вы уверены, что хотите отправить запрос на удаление аккаунта в управляющую компанию?</p>
-              <div className="flex gap-4 justify-center">
-                <button onClick={() => setDeleteModal(false)} className="px-4 py-2 rounded bg-slate-700 text-gray-200">Отмена</button>
-                <button onClick={handleDeleteAccount} disabled={deleteLoading} className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700 disabled:opacity-60">{deleteLoading ? 'Отправка...' : 'Удалить'}</button>
-              </div>
-            </div>
-          </div>
-        )}
-      </main>
-    </div>
-  );
-}
+          );
+        }

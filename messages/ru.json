@@ -140,8 +140,44 @@
       "noApartmentsFound": "Показания не найдены.",
       "notSpecified": "Не указано",
       "invalidDate": "Неверная дата. Пожалуйста, введите корректную дату.",
-      "noReadingsForApartment": "Нет показаний для этой квартиры"
-    }
+      "noReadingsForApartment": "Нет показаний для этой квартиры",
+      "selectBuilding": "Выбрать дом"
+    },
+    "profile": {
+  "loading": "Загрузка...",
+  "tabs": {
+    "profile": "Профиль",
+    "notifications": "Уведомления"
+  },
+  "userAvatar": "Аватар пользователя",
+  "clientNumber": "Номер клиента",
+  "personalData": "Персональные данные",
+  "name": "Имя и фамилия",
+  "phone": "Телефон",
+  "save": "Сохранить",
+  "cancel": "Отмена",
+  "updated": "Профиль обновлен",
+  "edit": "Редактировать",
+  "email": "Эл. почта",
+  "address": "Адрес",
+  "addressUpdated": "Адрес обновлен",
+  "password": "Пароль",
+  "notificationSettings": "Настройки уведомлений",
+  "emailNotifications": "Уведомления по эл. почте",
+  "notification": {
+    "meterReminder": "Напоминание о показаниях счетчиков",
+    "paymentReminder": "Напоминание об оплате",
+    "general": "Общие уведомления",
+    "lang": "Язык уведомлений",
+    "lang_ru": "Русский",
+    "lang_lv": "Латышский",
+    "lang_en": "Английский"
+  },
+  "notificationSettingsSaved": "Настройки уведомлений сохранены",
+  "notificationsSaved": "Уведомления сохранены",
+  "privacySaved": "Согласие на обработку данных сохранено",
+  "deleteRequestSent": "Запрос на удаление отправлен"
+}
   },
   "auth": {
     "resetPasswordEmailLabel": "E-mail",
