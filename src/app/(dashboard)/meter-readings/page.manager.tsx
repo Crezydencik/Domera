@@ -6,6 +6,7 @@ import * as XLSX from "xlsx";
 import { getApartmentsByCompany } from "@/modules/apartments/services/apartmentsService";
 import { getBuildingsByCompany } from "@/modules/invoices/services/buildings/services/buildingsService";
 import { getMeterReadingsByCompany, getMetersByApartment, deleteMeterReading } from "@/modules/meters/services/metersService";
+import { updateMeter } from "@/modules/meters/services/metersService";
 import { ConfirmationDialog } from "@/shared/components/ui/ConfirmationDialog";
 import { toast } from "react-toastify";
 import type { Apartment, Building, Meter, MeterReading } from "@/shared/types";
@@ -42,9 +43,113 @@ const getMeterDisplayName = (meter?: Meter | null): string => {
   return name;
 };
 // ...existing code...
+// Тип для waterReadings внутри apartments
+type WaterReading = {
+  meterId: string;
+  serialNumber?: string;
+  checkDueDate?: string;
+  currentValue?: number;
+  previousValue?: number;
+  submittedAt?: string | Date;
+  // Добавьте другие поля по необходимости
+};
 
 
 export default function MeterReadingsManagerPage() {
+    // Состояния для модального окна редактирования счетчиков
+    const [editModalOpen, setEditModalOpen] = useState(false);
+    const [editApartmentId, setEditApartmentId] = useState<string|null>(null);
+    const [editMeters, setEditMeters] = useState<Meter[]>([]);
+    const [editSerials, setEditSerials] = useState<Record<string, string>>({});
+    const [editChecks, setEditChecks] = useState<Record<string, string>>({});
+      // Открыть модалку по id квартиры и подставить значения
+      const openApartmentById = (apartmentId: string) => {
+        const apartment = apartmentById[apartmentId];
+        if (!apartment) return;
+        setEditApartmentId(apartmentId);
+        const meters = metersByApartmentId[apartmentId] || [];
+        setEditMeters(meters);
+        setEditSerials(Object.fromEntries(meters.map(m => {
+          const wr = apartment?.waterReadings?.find(w => w.meterId === m.id);
+          return [m.id, wr?.serialNumber || ''];
+        })));
+        setEditChecks(Object.fromEntries(meters.map(m => {
+          const wr = apartment?.waterReadings?.find(w => w.meterId === m.id);
+          return [m.id, wr?.checkDueDate ? (typeof wr.checkDueDate === 'string' ? wr.checkDueDate : wr.checkDueDate?.toISOString().slice(0,10)) : ''];
+        })));
+        setEditModalOpen(true);
+      };
+    // Открыть модалку для квартиры
+    const openEditModal = (apartmentId: string) => {
+      setEditApartmentId(apartmentId);
+      const meters = metersByApartmentId[apartmentId] || [];
+      setEditMeters(meters);
+      const apartment = apartmentById[apartmentId];
+      setEditSerials(Object.fromEntries(meters.map(m => {
+        const wr = apartment?.waterReadings?.find(w => w.meterId === m.id);
+        return [m.id, wr?.serialNumber || ''];
+      })));
+      setEditChecks(Object.fromEntries(meters.map(m => {
+        const wr = apartment?.waterReadings?.find(w => w.meterId === m.id);
+        return [m.id, wr?.checkDueDate ? (typeof wr.checkDueDate === 'string' ? wr.checkDueDate : wr.checkDueDate?.toISOString().slice(0,10)) : ''];
+      })));
+      setEditModalOpen(true);
+    };
+    // Сохранить изменения
+    const handleSaveMeters = async () => {
+      try {
+        if (!editApartmentId) throw new Error('Нет выбранной квартиры');
+        // Получить текущий apartment
+        const apartment = apartmentById[editApartmentId];
+        if (!apartment) throw new Error('Квартира не найдена');
+        // Копия waterReadings
+        const waterReadings: WaterReading[] = Array.isArray(apartment.waterReadings) ? [...apartment.waterReadings] : [];
+        for (const meter of editMeters) {
+          const serial = editSerials[meter.id] || '';
+          const checkDate = editChecks[meter.id] || '';
+          let updated = false;
+          waterReadings.forEach((wr, idx) => {
+            if (wr.meterId === meter.id) {
+              waterReadings[idx] = {
+                ...wr,
+                serialNumber: serial,
+                checkDueDate: checkDate,
+              };
+              updated = true;
+            }
+          });
+          if (!updated) {
+            waterReadings.push({
+              meterId: meter.id,
+              serialNumber: serial,
+              checkDueDate: checkDate,
+            });
+          }
+        }
+        // Сохранить waterReadings в apartments
+        const mod = await import('@/modules/apartments/services/apartmentsService');
+        await mod.updateApartment(editApartmentId, { waterReadings });
+        toast.success('Сохранено!');
+        // Обновить данные квартиры после сохранения
+        const aData = await getApartmentsByCompany(user.companyId);
+        setApartments(aData);
+        // Найти обновлённую квартиру
+        const updatedApartment = aData.find(a => a.id === editApartmentId);
+        if (updatedApartment && Array.isArray(updatedApartment.waterReadings)) {
+          setEditSerials(Object.fromEntries(editMeters.map(m => {
+            const wr = updatedApartment.waterReadings.find(w => w.meterId === m.id);
+            return [m.id, wr?.serialNumber || ''];
+          })));
+          setEditChecks(Object.fromEntries(editMeters.map(m => {
+            const wr = updatedApartment.waterReadings.find(w => w.meterId === m.id);
+            return [m.id, wr?.checkDueDate ? (typeof wr.checkDueDate === 'string' ? wr.checkDueDate : wr.checkDueDate.toISOString().slice(0,10)) : ''];
+          })));
+        }
+        setEditModalOpen(false);
+      } catch (e: any) {
+        toast.error(e?.message || e?.toString() || 'Ошибка при сохранении!');
+      }
+    };
   const { user, loading } = useAuth();
   const t = useTranslations('dashboard.meterReadings');
   const [apartments, setApartments] = useState<Apartment[]>([]);
@@ -207,15 +312,15 @@ export default function MeterReadingsManagerPage() {
   const handleExportCsv = () => {
     if (exportRows.length === 0) return;
     const headers = [
-      'Квартира',
-      'Дом',
-      'Счетчик',
-      'Период',
-      'Дата отправки',
-      'Предыдущее',
-      'Текущее',
-      'Расход (м³)',
-      'Нет счетчика',
+      t('apartment'),
+      t('building'),
+      t('meter'),
+      t('period'),
+      t('submittedAt'),
+      t('previousValue'),
+      t('currentValue'),
+      t('consumption'),
+      t('isMissing'),
     ];
     const rows = exportRows.map((row) => [
       row.apartmentNumber,
@@ -226,7 +331,7 @@ export default function MeterReadingsManagerPage() {
       row.previousValue,
       row.currentValue,
       row.consumption,
-      row.isMissing ? 'Да' : 'Нет',
+      row.isMissing ? t('yes') : t('no'),
     ]);
     const csv = [headers, ...rows]
       .map((line) => line.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
@@ -258,7 +363,7 @@ export default function MeterReadingsManagerPage() {
     const workbook = XLSX.utils.book_new();
     // Имя листа: максимум 31 символ, без спецсимволов
     let sheetName = t('meterReadings');
-    if (typeof sheetName !== 'string' || !sheetName.trim()) sheetName = 'Readings';
+    if (typeof sheetName !== 'string' || !sheetName.trim()) sheetName = t('readings');
     sheetName = sheetName.replace(/[\/?*\[\]:]/g, '').replace(/&/g, 'and').slice(0, 31);
     XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
     XLSX.writeFile(workbook, `meter-readings-${new Date().toISOString().slice(0, 10)}.xlsx`);
@@ -432,14 +537,14 @@ export default function MeterReadingsManagerPage() {
                 <div className="flex-1 min-w-0">
                   <div className="text-base font-bold text-blue-900 flex items-center gap-2 mb-1">
                     <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="4" stroke="currentColor" strokeWidth="2" fill="none"/><path d="M16 2v4M8 2v4M3 10h18" stroke="currentColor" strokeWidth="2"/></svg>
-                    Период сдачи показаний по выбранному дому
+                    {t('submissionPeriodForBuilding')}
                   </div>
                   <div className="text-lg text-gray-800 font-medium mb-2">
-                    <span>c <span className="font-semibold text-blue-700">{editOpenDate ? new Date(editOpenDate).toLocaleDateString('ru-RU') : '—'}</span> по <span className="font-semibold text-blue-700">{editCloseDate ? new Date(editCloseDate).toLocaleDateString('ru-RU') : '—'}</span></span>
+                    <span>{t('from')} <span className="font-semibold text-blue-700">{editOpenDate ? new Date(editOpenDate).toLocaleDateString() : '—'}</span> {t('to')} <span className="font-semibold text-blue-700">{editCloseDate ? new Date(editCloseDate).toLocaleDateString() : '—'}</span></span>
                   </div>
                   <div className="flex flex-row flex-wrap items-center gap-4 mb-2">
                     <label className="text-sm text-gray-700 flex flex-col">
-                      <span className="mb-1">Дата открытия</span>
+                      <span className="mb-1">{t('openDate')}</span>
                       <input
                         type="date"
                         className="px-2 py-1 border border-gray-300 rounded"
@@ -448,7 +553,7 @@ export default function MeterReadingsManagerPage() {
                       />
                     </label>
                     <label className="text-sm text-gray-700 flex flex-col">
-                      <span className="mb-1">Дата закрытия</span>
+                      <span className="mb-1">{t('closeDate')}</span>
                       <input
                         type="date"
                         className="px-2 py-1 border border-gray-300 rounded"
@@ -462,10 +567,10 @@ export default function MeterReadingsManagerPage() {
                       type="button"
                       disabled={isSaving || !editOpenDate || !editCloseDate || !selectedBuildingId}
                     >
-                      {isSaving ? 'Сохраняю...' : 'Сохранить'}
+                      {isSaving ? t('saving') : t('save')}
                     </button>
                     {!selectedBuildingId && (
-                      <div className="text-xs text-red-500 mt-2">Выберите дом для сохранения периода!</div>
+                      <div className="text-xs text-red-500 mt-2">{t('selectBuildingToSave')}</div>
                     )}
                   </div>
                 </div>
@@ -499,14 +604,75 @@ export default function MeterReadingsManagerPage() {
                     return (
                       <div key={apartment.id} className="rounded-2xl border border-gray-100 bg-white p-6 shadow-lg transition-all duration-200 hover:shadow-2xl hover:bg-blue-50 group">
                         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                          <div>
+                          <div className="flex items-center gap-4">
                             <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                               <span className="inline-block w-2 h-2 rounded-full bg-blue-400 group-hover:bg-blue-600 transition"></span>
                               {t('apartment')} {apartment.number}
                             </h2>
+                          </div>
+                          <div className="flex items-center gap-2">
                             <p className="text-xs text-gray-400 mt-1">{t('building')}: <span className="font-medium text-gray-600">{buildingName}</span></p>
+                            <button className="ml-2 text-blue-600 hover:text-blue-800 bg-white rounded-full p-2 border border-blue-200 shadow" title="Редактировать счетчики" onClick={() => openEditModal(apartment.id)}>
+                              <svg width="22" height="22" fill="none" viewBox="0 0 24 24"><path d="M12 15.5c2.485 0 4.5-2.015 4.5-4.5s-2.015-4.5-4.5-4.5-4.5 2.015-4.5 4.5 2.015 4.5 4.5 4.5zm0 0v3m0-3v-3m0 3h3m-3 0H9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2"/></svg>
+                            </button>
                           </div>
                         </div>
+                                {/* Модальное окно редактирования счетчиков */}
+                                {editModalOpen && (
+                                  <div
+                                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/20"
+                                    onClick={e => {
+                                      // Закрыть при клике вне модалки
+                                      if (e.target === e.currentTarget) setEditModalOpen(false);
+                                    }}
+                                  >
+                                    <div className="relative bg-white rounded-xl shadow-lg p-6 min-w-[320px] max-w-[90vw]">
+                                      {/* Крестик */}
+                                      <button
+                                        className="absolute top-3 right-3 text-gray-400 hover:text-gray-700 text-2xl font-bold"
+                                        type="button"
+                                        onClick={() => setEditModalOpen(false)}
+                                        title="Закрыть"
+                                      >
+                                        ×
+                                      </button>
+                                      <h3 className="text-lg font-bold text-black mb-4">Редактировать данные счетчиков</h3>
+                                      {editMeters.length === 0 ? (
+                                        <div className="text-gray-500">Нет счетчиков</div>
+                                      ) : (
+                                        <form onSubmit={e => { e.preventDefault(); handleSaveMeters(); }}>
+                                          {editMeters.map(meter => (
+                                            <div key={meter.id} className="mb-4 flex flex-col gap-2">
+                                              <div className="text-sm font-bold text-gray-700 mb-1">
+                                                {meter.name && meter.name.toLowerCase() === 'hwm' ? 'Горячая вода' : 'Холодная вода'}
+                                              </div>
+                                              <label className="text-sm font-semibold text-gray-800">Номер счетчика:
+                                                <input
+                                                  type="text"
+                                                  className="mt-1 px-2 py-1 border border-gray-400 rounded w-full text-gray-900 bg-gray-100 font-semibold"
+                                                  value={editSerials[meter.id] || ''}
+                                                  onChange={e => setEditSerials(prev => ({ ...prev, [meter.id]: e.target.value }))}
+                                                />
+                                              </label>
+                                              <label className="text-sm font-semibold text-gray-800">Дата проверки:
+                                                <input
+                                                  type="date"
+                                                  className="mt-1 px-2 py-1 border border-gray-400 rounded w-full text-gray-900 bg-gray-100 font-semibold"
+                                                  value={editChecks[meter.id] || ''}
+                                                  onChange={e => setEditChecks(prev => ({ ...prev, [meter.id]: e.target.value }))}
+                                                />
+                                              </label>
+                                            </div>
+                                          ))}
+                                          <div className="flex justify-end gap-2 mt-4">
+                                            <button type="button" className="px-4 py-2 rounded bg-gray-200 text-gray-700 font-semibold" onClick={() => setEditModalOpen(false)}>Отмена</button>
+                                            <button type="submit" className="px-4 py-2 rounded bg-blue-600 text-white font-semibold">Сохранить</button>
+                                          </div>
+                                        </form>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
                         {/* Показания сгруппированы по месяцам (аккордеоны) */}
                         <div className="mt-4 space-y-4">
                           {(() => {

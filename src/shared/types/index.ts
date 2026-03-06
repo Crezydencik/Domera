@@ -131,6 +131,8 @@ export interface MeterReading {
   // optional helper fields stored with readings in apartment.waterReadings
   WMETNUM?: string;
   date?: string | Date;
+  serialNumber?: string;
+  checkDueDate?: string | Date;
 }
 
 export type InvoiceStatus = 'pending' | 'paid' | 'overdue';

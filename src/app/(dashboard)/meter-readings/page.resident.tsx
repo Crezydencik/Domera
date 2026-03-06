@@ -380,7 +380,12 @@ export default function MeterReadingsPage() {
                 </span>
               ) : (
                 <span className="text-xs text-slate-400 flex items-center gap-2">
-                  <span>Nr. {serial}</span>
+                  <span>Nr. {(() => {
+                    // Найти waterReading для текущей квартиры и meterId
+                    const apartment = apartments.find(a => a.id === reading.apartmentId);
+                    const wr = apartment?.waterReadings?.find(w => w.meterId === meter.id);
+                    return wr?.serialNumber || serial;
+                  })()}</span>
                   {canEditMeta ? (
                     <button
                       onClick={() => {
@@ -606,20 +611,24 @@ export default function MeterReadingsPage() {
     const meters = getWaterMetersByApartment(apartmentId);
     const aptReadings = readingsByApartmentId[apartmentId] ?? [];
 
-    const lastByMeter: Record<string, MeterReading> = {};
-    for (const r of aptReadings) {
-      const existing = lastByMeter[r.meterId];
-      if (!existing || toTimestampMs(r.submittedAt as ReadingTimestampLike) > toTimestampMs(existing.submittedAt as ReadingTimestampLike)) {
-        lastByMeter[r.meterId] = r;
-      }
-    }
-
-    // set inputs only when they are empty / not set by user
+    // Новый алгоритм: ищем последнее показание сначала по meterId, если не найдено — по serialNumber
     setWaterReadingIntegerByMeterId((prev) => {
       const next = { ...prev };
       let changed = false;
       for (const meter of meters) {
-        const last = lastByMeter[meter.id];
+        // Найти последнее показание по meterId
+        let last = aptReadings
+          .filter(r => r.meterId === meter.id)
+          .sort((a, b) => toTimestampMs(b.submittedAt) - toTimestampMs(a.submittedAt))[0];
+        // Если не найдено — ищем по serialNumber
+        if (!last && meter.serialNumber) {
+          last = aptReadings
+            .filter(r => {
+              const m = meters.find(mtr => mtr.id === r.meterId);
+              return m && m.serialNumber && m.serialNumber === meter.serialNumber;
+            })
+            .sort((a, b) => toTimestampMs(b.submittedAt) - toTimestampMs(a.submittedAt))[0];
+        }
         let intPart = '0';
         if (last) {
           const currentVal = last.currentValue ?? 0;
@@ -636,7 +645,19 @@ export default function MeterReadingsPage() {
       const next = { ...prev };
       let changed = false;
       for (const meter of meters) {
-        const last = lastByMeter[meter.id];
+        // Найти последнее показание по meterId
+        let last = aptReadings
+          .filter(r => r.meterId === meter.id)
+          .sort((a, b) => toTimestampMs(b.submittedAt) - toTimestampMs(a.submittedAt))[0];
+        // Если не найдено — ищем по serialNumber
+        if (!last && meter.serialNumber) {
+          last = aptReadings
+            .filter(r => {
+              const m = meters.find(mtr => mtr.id === r.meterId);
+              return m && m.serialNumber && m.serialNumber === meter.serialNumber;
+            })
+            .sort((a, b) => toTimestampMs(b.submittedAt) - toTimestampMs(a.submittedAt))[0];
+        }
         let fracPart = '000';
         if (last) {
           const currentVal = last.currentValue ?? 0;
@@ -930,12 +951,12 @@ export default function MeterReadingsPage() {
                           </svg>
                         </div>
                         <div className="flex-1">
-                          <div className="text-xs text-gray-500">{isHot ? 'Горячая вода' : 'Холодная вода'} Nr. <b>{meter?.serialNumber || '—'}</b></div>
+                          <div className="text-xs text-gray-500">{isHot ? t('hotWater') : t('coldWater')} Nr. <b>{meter?.serialNumber || '—'}</b></div>
                         </div>
                         <div className="text-right">
                           <div className="text-lg font-bold text-gray-900">{formatNumberDot(reading.currentValue ?? 0, 3)}</div>
-                          <div className="text-xs text-gray-500">Начало: {formatNumberDot(reading.previousValue ?? 0, 3)}</div>
-                          <div className="text-xs text-gray-500">Разница: <b>{formatNumberDot((reading.currentValue ?? 0) - (reading.previousValue ?? 0), 3)} м³</b></div>
+                          <div className="text-xs text-gray-500">{t('periodStart')}: {formatNumberDot(reading.previousValue ?? 0, 3)}</div>
+                          <div className="text-xs text-gray-500">{t('difference')}: <b>{formatNumberDot((reading.currentValue ?? 0) - (reading.previousValue ?? 0), 3)} m³</b></div>
                         </div>
                       </div>
                     );
@@ -988,7 +1009,7 @@ export default function MeterReadingsPage() {
                   <h3 className="text-sm font-medium text-blue-800 mb-2">{t('submitWaterReadings')}</h3>
                   {!canSubmit ? (
                     <div className="mt-3 rounded-md border border-yellow-200 bg-yellow-50 px-3 py-2 text-sm text-yellow-800">
-                      Сдача показаний сейчас недоступна.<br />
+                      {t('submissionUnavailable')}<br />
                       {(() => {
                         // Найти здание по id (строгое сравнение строк)
                         const buildingId = String(residentApartment?.buildingId || '');
@@ -1002,10 +1023,10 @@ export default function MeterReadingsPage() {
                           <>
                             {openDate && closeDate ? (
                               <>
-                                Приём показаний осуществляется с <b>{new Date(openDate).toLocaleDateString('ru-RU')}</b> по <b>{new Date(closeDate).toLocaleDateString('ru-RU')}</b>.
+                                {t('submissionPeriod', { open: new Date(openDate).toLocaleDateString(), close: new Date(closeDate).toLocaleDateString() })}
                               </>
                             ) : (
-                              'Период сдачи показаний не задан.'
+                              <span>{t('submissionPeriodNotSet')}</span>
                             )}
                           </>
                         );
@@ -1021,6 +1042,8 @@ export default function MeterReadingsPage() {
                           const meter = meters.find(m => (type === 'hot' ? isHotMeter(m) : !isHotMeter(m)));
                           if (!meter) return null;
                           const value = `${waterReadingIntegerByMeterId[meter.id] ?? ''}.${(waterReadingFractionByMeterId[meter.id] ?? '').padEnd(3, '0')}`;
+                          // Найти serialNumber из waterReadings для текущей квартиры и meterId
+                          const wr = residentApartment?.waterReadings?.find(w => w.meterId === meter.id);
                           return (
                             <div key={meter.id} className="flex-1 min-w-0 flex flex-col items-stretch">
                               <MeterInputBlock
@@ -1032,7 +1055,7 @@ export default function MeterReadingsPage() {
                                   setWaterReadingFractionByMeterId(prev => ({ ...prev, [meter.id]: frac.replace(/\D/g, '').slice(0, 3) }));
                                 }}
                                 loading={false}
-                                serial={meter.serialNumber || '—'}
+                                serial={wr?.serialNumber || meter.serialNumber || meter.id}
                                 label={getMeterDisplayName(meter)}
                                 validUntil={formatDateOnly(meter?.checkDueDate)}
                                 onSubmit={undefined}
@@ -1047,7 +1070,7 @@ export default function MeterReadingsPage() {
                           onClick={() => handleSubmitWaterReading(residentApartment)}
                           disabled={submittingReadingApartmentId === residentApartment.id}
                         >
-                          {submittingReadingApartmentId === residentApartment.id ? 'Сохраняем...' : 'Сдать показания'}
+                          {submittingReadingApartmentId === residentApartment.id ? t('saving') : t('submitWaterReadings')}
                         </button>
                       </div>
                     </>
