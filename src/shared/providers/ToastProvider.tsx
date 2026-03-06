@@ -13,8 +13,6 @@ export function ToastProvider() {
       pauseOnHover
       draggable
       theme="light"
-      toastClassName={() => 'shadow-none bg-transparent border-none p-0 m-0'}
-      bodyClassName={() => 'p-0 m-0'}
       style={{ zIndex: 9999 }}
     />
   );

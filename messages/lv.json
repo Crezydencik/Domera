@@ -1,4 +1,11 @@
 {
+    "system": {
+    "loading": "Apstrāde...",
+    "notifications": {
+      "noNewNotifications": "Nav jaunu paziņojumu",
+      "allEventsViewed": "Visi notikumi apskatīti"
+    }
+  },
   "home": {
     "subtitleManagement": "Pārvaldiet māju, dzīvokļus un maksājumus vienuviet",
     "subtitleResident": "Nododiet rādījumus, pārbaudiet rēķinus un pārvaldiet profilu",
@@ -140,9 +147,12 @@
         "noApartmentsFound": "Nav atrasts neviens radījums.",
         "notSpecified": "Nav norādīts",
         "invalidDate": "Nederīgs datums. Lūdzu, ievadiet korektu datumu.",
-        "noReadingsForApartment": "Nav rādījumu šim dzīvoklim"
+        "noReadingsForApartment": "Nav rādījumu šim dzīvoklim",
+        "meterConsumptionError": "Kļūda, aprēķinot patēriņu. Lūdzu, pārbaudiet rādījumu vērtības."
     },
     "profile": {
+      "profileIncompleteTitle": "Profils nav aizpildīts",
+      "profileIncompleteDesc": "Lūdzu, aizpildiet vārdu un tālruņa numuru profilā.",
     "loading": "Ielāde...",
     "tabs": {
       "profile": "Profils",

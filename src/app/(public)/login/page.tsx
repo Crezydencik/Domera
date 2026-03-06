@@ -64,9 +64,6 @@ export default function LoginPage() {
         // Wait for auth persistence to save cookies
         await new Promise(resolve => setTimeout(resolve, 500));
         console.log('Redirecting to dashboard');
-        router.push(redirectTo || '/dashboard');
-      } else {
-        toast.error(t('invalidEmailOrPassword'), { className: 'border border-red-500' });
       }
     } catch (err: any) {
       console.error('Login error:', err);

@@ -53,9 +53,25 @@ export const getCurrentMonthYear = (): { month: number; year: number } => {
  * Check if meter submission is allowed based on current date
  * ВНИМАНИЕ: Используйте только внутри useEffect/useState!
  */
-export const isMeterSubmissionAllowed = (submissionOpenDay: number = 25): boolean => {
+// Новая версия: если переданы даты, проверяет диапазон дат, иначе старая логика по дню месяца
+export const isMeterSubmissionAllowed = (
+  openDate?: string,
+  closeDate?: string,
+  fallbackOpenDay?: number
+): boolean => {
   if (typeof window === 'undefined') return false;
   const now = new Date();
+  if (openDate && closeDate) {
+    // Обнуляем время у дат для сравнения только по дате
+    const open = new Date(openDate);
+    open.setHours(0, 0, 0, 0);
+    const close = new Date(closeDate);
+    close.setHours(0, 0, 0, 0);
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    return today >= open && today <= close;
+  }
+  // fallback: старая логика
+  const submissionOpenDay = fallbackOpenDay ?? 25;
   return now.getDate() >= submissionOpenDay;
 };
 

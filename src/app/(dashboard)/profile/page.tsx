@@ -11,6 +11,7 @@ import { Switch } from '@/shared/components/ui/Switch';
 import Header from '../../../shared/components/layout/heder';
 import { useTranslations } from 'next-intl';
 import { FiCheck, FiX } from 'react-icons/fi';
+import { NotificationItem } from '../../../shared/components/ui/NotificationsDropdown';
 
 
 export default function ProfilePage() {
@@ -22,6 +23,7 @@ export default function ProfilePage() {
   const t = useTranslations('dashboard.profile');
   const th = useTranslations();
   
+  // (Переехало в выпадающее меню уведомлений)
   
   
   // --- Tabs for navigation ---
@@ -69,6 +71,20 @@ export default function ProfilePage() {
       setTimeout(() => setNotifSaved(false), 1200);
     }
   };
+  const [profileNotifications, setProfileNotifications] = useState<NotificationItem[]>([]);
+    
+  useEffect(() => {
+    const notifs: NotificationItem[] = [];
+    if (user && (!user.phone || !user.displayName)) {
+      notifs.push({
+        id: 'profile-incomplete',
+        type: 'warning',
+        title: t('profileIncompleteTitle'),
+        message: t('profileIncompleteMessage')
+      });
+    }
+    setProfileNotifications(notifs);
+  }, [user]);
 
   // Сохранять согласие на обработку данных
   const handlePrivacyConsent = async (value: boolean) => {
@@ -122,6 +138,12 @@ export default function ProfilePage() {
           }
         } else if (!ignore) {
           setApartmentInfo(null);
+               {/* Уведомления профиля */}
+               {profileNotifications.length > 0 && (
+                 <div className="mb-6">
+                   <NotificationsDropdown notifications={profileNotifications} open={true} onClose={() => {}} />
+                 </div>
+               )}
         }
       } else if (!ignore) {
         setApartmentInfo(null);
@@ -172,8 +194,7 @@ export default function ProfilePage() {
                   </div>
                   <div>
                         <div className="text-lg font-semibold text-black leading-tight">{user ? (user.displayName || user.email) : ''}</div>
-                        <div className="text-neutral-500 text-sm">{t('profile.clientNumber')}: <span className="font-mono">{user ? (user.uid || '—') : '—'}</span></div>
-                  </div>
+                            </div>
                 </div>
               </div>
               {/* Section: Person data */}

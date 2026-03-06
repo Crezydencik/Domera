@@ -144,7 +144,9 @@ export const getDocument = async (
 ): Promise<DocumentData | null> => {
   try {
     const docSnapshot = await getDoc(doc(db, collectionName, docId));
-    return docSnapshot.exists() ? docSnapshot.data() : null;
+    if (!docSnapshot.exists()) return null;
+    const data = docSnapshot.data();
+    return { id: docSnapshot.id, ...data };
   } catch (error) {
     console.error(`Error getting document from ${collectionName}:`, error);
     throw error;

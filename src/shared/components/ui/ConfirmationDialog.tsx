@@ -54,10 +54,10 @@ export function ConfirmationDialog({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-70 flex items-center justify-center bg-slate-950/80 p-4">
-      <div className="w-full max-w-md rounded-xl border border-slate-700 bg-slate-900 p-5 shadow-2xl">
-        <h3 className="text-lg font-semibold text-white">{title}</h3>
-        <p className="mt-2 text-sm text-slate-300">{description}</p>
+    <div className="fixed inset-0 z-70 flex items-center justify-center bg-black/20 p-4">
+      <div className="w-full max-w-md rounded-xl border border-gray-200 bg-white p-5 shadow-2xl">
+        <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+        <p className="mt-2 text-sm text-gray-700">{description}</p>
 
         {details.length > 0 && (
           <div className="mt-3 space-y-1 rounded-md border border-slate-700 bg-slate-800/70 p-3 text-sm text-slate-300">

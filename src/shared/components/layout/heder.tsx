@@ -1,16 +1,19 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { NotificationsDropdown, NotificationItem } from '../ui/NotificationsDropdown';
 import { getInvitationByEmail } from '@/modules/invitations/services/invitationsService';
 import Link from 'next/link';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { useLanguage } from '../../providers/LanguageProvider';
 import { HeaderProps } from '../../types';
+import { useAuth } from '../../hooks/useAuth';
 
 
 
 const Header: React.FC<HeaderProps> = ({ userName = '',  userAvatarUrl = '', userEmail = '', pageTitle = 'Dashboard', onLogout }) => {
-    // Дефолтная функция выхода, если onLogout не передан
-    const handleLogout = onLogout || (() => {
-      alert('Logout! (onLogout не передан)');
+  const { user, refreshUser } = useAuth();
+  // Дефолтная функция выхода, если onLogout не передан
+  const handleLogout = onLogout || (() => {
+    alert('Logout! (onLogout не передан)');
     });
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -24,14 +27,29 @@ const Header: React.FC<HeaderProps> = ({ userName = '',  userAvatarUrl = '', use
   const [lang, setLang] = useState('lv'); // TODO: get/set from user/profile/global
   const dropdownRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
-    const { locale, setLocale } = useLanguage();
-    const handleLanguageChange = (newLang: string) => {
-      setLocale(newLang);
+  const { locale, setLocale } = useLanguage();
+  const handleLanguageChange = (newLang: string) => {
+    setLocale(newLang);
     };
-
-  // Check for pending invitation on mount or when userEmail changes
-  useEffect(() => {
-    let ignore = false;
+    
+  // Формируем массив уведомлений мемоизированно
+  const notifications: NotificationItem[] = useMemo(() => {
+    const notifs: NotificationItem[] = [];
+    if (pendingInvitation) {
+      notifs.push({
+        id: 'invite',
+        type: 'invite',
+        title: 'Вам пришло приглашение!',
+        message: 'Вас пригласили присоединиться к квартире.',
+        link: `/accept-invitation?token=${pendingInvitation.token}`,
+        linkLabel: 'Принять приглашение'
+      });
+    }
+    return notifs;
+  }, [user, pendingInvitation]);
+    // Check for pending invitation on mount or when userEmail changes
+    useEffect(() => {
+      let ignore = false;
     async function checkInvitation() {
       if (!userEmail) return;
       try {
@@ -109,32 +127,21 @@ const Header: React.FC<HeaderProps> = ({ userName = '',  userAvatarUrl = '', use
             <button
               className="relative p-2 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500"
               onClick={() => setNotifOpen((v) => !v)}
+              aria-label="Открыть уведомления"
             >
               <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                 <path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
               </svg>
-              {pendingInvitation && (
+              {notifications.length > 0 && (
                 <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
               )}
             </button>
-            {notifOpen && pendingInvitation && (
-              <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-gray-100 z-50 animate-fade-in p-4">
-                <div className="flex items-center gap-3 mb-3">
-                  <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-blue-100 text-blue-600 text-xl">🏠</span>
-                  <div>
-                    <div className="font-semibold text-gray-900">Вам пришло приглашение!</div>
-                    <div className="text-gray-500 text-sm">Вас пригласили присоединиться к квартире.</div>
-                  </div>
-                </div>
-                <Link
-                  href={`/accept-invitation?token=${pendingInvitation.token}`}
-                  className="block w-full text-center bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg py-2 mt-2 transition"
-                  onClick={() => setNotifOpen(false)}
-                >
-                  Принять приглашение
-                </Link>
-              </div>
-            )}
+            <NotificationsDropdown
+              open={notifOpen}
+              onClose={() => setNotifOpen(false)}
+              anchorRef={notifRef}
+              notifications={notifications}
+            />
           </div>
           {/* User avatar, name, dropdown */}
           <div className="relative" ref={dropdownRef}>

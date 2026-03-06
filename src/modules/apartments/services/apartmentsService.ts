@@ -1,7 +1,41 @@
 /**
  * Add tenant to apartment by email
  */
-import { getUserByEmail } from '@/modules/auth/services/authService';
+import { getUserByEmail, registerUser } from '@/modules/auth/services/authService';
+/**
+ * Add or invite tenant to apartment by email (создаёт гостевой аккаунт если не найден)
+ */
+export const addOrInviteTenantToApartment = async (
+  apartmentId: string,
+  email: string
+): Promise<void> => {
+  let user = await getUserByEmail(email);
+  if (!user) {
+    // Создаём гостевой аккаунт (Resident, без пароля)
+    user = await registerUser({ email, password: Math.random().toString(36).slice(-8) }, 'Resident', '', undefined);
+    // Можно отправить приглашение на email здесь (реализуйте отправку письма отдельно)
+  }
+
+  const apartment = await getApartment(apartmentId);
+  if (!apartment) throw new Error('Квартира не найдена');
+
+  const tenants = Array.isArray(apartment.tenants) ? apartment.tenants : [];
+  if (tenants.some((t) => t.userId === user.uid)) {
+    throw new Error('Этот пользователь уже имеет доступ');
+  }
+
+  const newTenant: TenantAccess = {
+    userId: user.uid,
+    name: user.displayName || 'Неизвестно',
+    email: user.email,
+    permissions: ['submitMeter'],
+    invitedAt: new Date(),
+  };
+
+  await updateApartment(apartmentId, {
+    tenants: [...tenants, newTenant],
+  });
+};
 import type { TenantAccess, Apartment, MeterReading } from '@/shared/types';
 
 export const addTenantToApartment = async (

@@ -32,15 +32,17 @@ const formatDateTime = (value: ReadingTimestampLike): string => {
   if (!timestamp) return "—";
   return new Intl.DateTimeFormat("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(timestamp));
 };
-const getMeterDisplayName = (meter: Meter): string => {
-  const name = meter.name?.toString().trim() ?? "";
-  if (!name) return meter.serialNumber?.trim() || meter.id;
+const getMeterDisplayName = (meter?: Meter | null): string => {
+  if (!meter) return '';
+  const name = meter.name?.toString().trim() ?? '';
+  if (!name) return meter.serialNumber?.trim() || meter.id || '';
   const code = name.toLowerCase();
-  if (code === "hwm") return "ГВС";
-  if (code === "cwm") return "ХВС";
+  if (code === 'hwm') return 'ГВС';
+  if (code === 'cwm') return 'ХВС';
   return name;
 };
 // ...existing code...
+
 
 export default function MeterReadingsManagerPage() {
   const { user, loading } = useAuth();
@@ -70,6 +72,36 @@ export default function MeterReadingsManagerPage() {
   const [deleteMultiRight, setDeleteMultiRight] = useState(true);
   // Селектор дома
   const [selectedBuildingId, setSelectedBuildingId] = useState<string>('');
+
+  // Если есть только один дом, выбираем его автоматически
+  useEffect(() => {
+    if (!selectedBuildingId && buildings.length === 1) {
+      setSelectedBuildingId(buildings[0].id);
+    }
+  }, [selectedBuildingId, buildings]);
+
+  // --- Состояния для ручного выбора дат периода сдачи показаний (перенесено из рендера) ---
+  const [manualPeriod, setManualPeriod] = useState<{from: string, to: string} | null>(null);
+  useEffect(() => {
+    setManualPeriod(null);
+  }, [selectedBuildingId, readings.length]);
+
+  // Состояния для редактирования периода сдачи показаний ---
+  const [editOpenDate, setEditOpenDate] = useState<string>('');
+  const [editCloseDate, setEditCloseDate] = useState<string>('');
+  const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [isMonthly, setIsMonthly] = useState<boolean>(true);
+  // Синхронизировать с выбранным домом
+  useEffect(() => {
+    if (!selectedBuildingId) {
+        setEditOpenDate(''); setEditCloseDate('');
+      return;
+    }
+    const selectedBuilding = buildings.find(b => b.id === selectedBuildingId);
+    setEditOpenDate(selectedBuilding?.waterSubmissionOpenDate || '');
+    setEditCloseDate(selectedBuilding?.waterSubmissionCloseDate || '');
+      setIsMonthly(selectedBuilding?.waterSubmissionIsMonthly !== false);
+  }, [selectedBuildingId, buildings]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -333,7 +365,115 @@ export default function MeterReadingsManagerPage() {
           </div>
         </div>
 
-        {/* Основная часть: карточки квартир */}
+
+        {/* Основная часть: общий период сдачи показаний по всем квартирам выбранного дома */}
+        {(() => {
+          // Собираем все показания по квартирам выбранного дома (или по всем квартирам, если фильтр не выбран)
+          const filteredApartments = apartments.filter(apartment => !selectedBuildingId || apartment.buildingId === selectedBuildingId);
+          const allReadings = readings.filter(r => filteredApartments.some(a => a.id === r.apartmentId));
+          let minDateAll = null, maxDateAll = null;
+          if (allReadings.length > 0) {
+            const allTimestamps = allReadings
+              .map(r => toTimestampMs(r.submittedAt))
+              .filter(ts => !!ts)
+              .sort((a, b) => a - b);
+            if (allTimestamps.length > 0) {
+              minDateAll = new Date(allTimestamps[0]);
+              maxDateAll = new Date(allTimestamps[allTimestamps.length - 1]);
+            }
+          }
+          // Получаем выбранный дом
+          const selectedBuilding = selectedBuildingId ? buildings.find(b => b.id === selectedBuildingId) : null;
+          // Сохранение изменений
+          const handleSaveDays = async () => {
+            console.log('handleSaveDays called', { editOpenDate, editCloseDate, selectedBuilding });
+            if (!selectedBuilding) {
+              console.error('Нет выбранного дома!');
+              return;
+            }
+            setIsSaving(true);
+            try {
+              // Вычисляем день месяца из даты закрытия
+              let closeDay: number | undefined = undefined;
+              if (editCloseDate) {
+                const d = new Date(editCloseDate);
+                if (!isNaN(d.getTime())) closeDay = d.getDate();
+              }
+              const update: any = {
+                waterSubmissionOpenDate: editOpenDate || undefined,
+                waterSubmissionCloseDate: editCloseDate || undefined,
+              };
+              // Удаляем все undefined поля
+              Object.keys(update).forEach(key => update[key] === undefined && delete update[key]);
+              const mod = await import('@/modules/invoices/services/buildings/services/buildingsService');
+              await mod.updateBuilding(selectedBuilding.id, update);
+              toast.success('Период сдачи показаний успешно сохранён!');
+              // Обновить данные о домах после сохранения
+              const bData = await getBuildingsByCompany(user.companyId);
+              setBuildings(bData);
+            } catch (e) {
+              console.error('Ошибка при сохранении периода сдачи:', e);
+              toast.error('Ошибка при сохранении периода сдачи!');
+            } finally {
+              setIsSaving(false);
+            }
+          };
+
+          // Вычисляем отображаемые даты
+          let displayFrom = minDateAll, displayTo = maxDateAll;
+          if (manualPeriod && manualPeriod.from && manualPeriod.to) {
+            displayFrom = new Date(manualPeriod.from);
+            displayTo = new Date(manualPeriod.to);
+          }
+
+          return (
+            <div className="mb-8">
+              <div className="rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 to-white shadow-lg px-6 py-5 flex flex-col gap-4 transition-all">
+                <div className="flex-1 min-w-0">
+                  <div className="text-base font-bold text-blue-900 flex items-center gap-2 mb-1">
+                    <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="4" stroke="currentColor" strokeWidth="2" fill="none"/><path d="M16 2v4M8 2v4M3 10h18" stroke="currentColor" strokeWidth="2"/></svg>
+                    Период сдачи показаний по выбранному дому
+                  </div>
+                  <div className="text-lg text-gray-800 font-medium mb-2">
+                    <span>c <span className="font-semibold text-blue-700">{editOpenDate ? new Date(editOpenDate).toLocaleDateString('ru-RU') : '—'}</span> по <span className="font-semibold text-blue-700">{editCloseDate ? new Date(editCloseDate).toLocaleDateString('ru-RU') : '—'}</span></span>
+                  </div>
+                  <div className="flex flex-row flex-wrap items-center gap-4 mb-2">
+                    <label className="text-sm text-gray-700 flex flex-col">
+                      <span className="mb-1">Дата открытия</span>
+                      <input
+                        type="date"
+                        className="px-2 py-1 border border-gray-300 rounded"
+                        value={editOpenDate}
+                        onChange={e => setEditOpenDate(e.target.value)}
+                      />
+                    </label>
+                    <label className="text-sm text-gray-700 flex flex-col">
+                      <span className="mb-1">Дата закрытия</span>
+                      <input
+                        type="date"
+                        className="px-2 py-1 border border-gray-300 rounded"
+                        value={editCloseDate}
+                        onChange={e => setEditCloseDate(e.target.value)}
+                      />
+                    </label>
+                    <button
+                      className="h-10 mt-5 px-4 py-2 rounded bg-blue-600 text-white font-semibold hover:bg-blue-700 transition disabled:opacity-60"
+                      onClick={handleSaveDays}
+                      type="button"
+                      disabled={isSaving || !editOpenDate || !editCloseDate || !selectedBuildingId}
+                    >
+                      {isSaving ? 'Сохраняю...' : 'Сохранить'}
+                    </button>
+                    {!selectedBuildingId && (
+                      <div className="text-xs text-red-500 mt-2">Выберите дом для сохранения периода!</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
         {loadError && (
           <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-6 py-4 text-base text-red-700 shadow-sm animate-fade-in">
             {loadError}
@@ -355,6 +495,7 @@ export default function MeterReadingsManagerPage() {
                   .map((apartment) => {
                     const buildingName = buildingNameById[apartment.buildingId] ?? t('notSpecified');
                     const meters = metersByApartmentId[apartment.id] || [];
+                    const apartmentReadings = readings.filter(r => r.apartmentId === apartment.id);
                     return (
                       <div key={apartment.id} className="rounded-2xl border border-gray-100 bg-white p-6 shadow-lg transition-all duration-200 hover:shadow-2xl hover:bg-blue-50 group">
                         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -369,7 +510,6 @@ export default function MeterReadingsManagerPage() {
                         {/* Показания сгруппированы по месяцам (аккордеоны) */}
                         <div className="mt-4 space-y-4">
                           {(() => {
-                            const apartmentReadings = readings.filter(r => r.apartmentId === apartment.id);
                             if (apartmentReadings.length === 0) {
                               return <div className="text-gray-400 text-sm italic">Нет показаний</div>;
                             }
@@ -389,11 +529,12 @@ export default function MeterReadingsManagerPage() {
                             return sortedKeys.map(key => {
                               const [year, month] = key.split('-').map(Number);
                               const label = `${year}. gads ${String(month).padStart(2, '0')}`;
+                              const readingsInMonth = grouped[key];
                               return (
                                 <details key={key} className="rounded-lg border border-gray-200 bg-gray-50 p-4">
                                   <summary className="cursor-pointer font-semibold text-blue-700">{label}</summary>
                                   <div className="mt-2 space-y-2">
-                                    {grouped[key].map(reading => (
+                                    {readingsInMonth.map(reading => (
                                       <div key={reading.id} className="flex flex-col md:flex-row md:items-center md:gap-6 gap-1 text-sm border-b border-gray-100 pb-2 last:border-b-0 text-gray-900">
                                         <span><span className="font-semibold">Счётчик:</span> <span className="font-normal">{meterById[reading.meterId] ? getMeterDisplayName(meterById[reading.meterId]) : reading.meterId}</span></span>
                                         <span><span className="font-semibold">Текущее:</span> <span className="font-normal">{reading.currentValue}</span></span>

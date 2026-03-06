@@ -1,4 +1,16 @@
 {
+  "app": {
+    "title": "Domera - Apartment management made easy",
+    "description": "Domera is a SaaS platform for managing houses, apartments, and payments. It provides tools for both managers and residents to streamline communication and operations.",
+    "keywords": "apartment management, house management, payment management, SaaS, property management, resident portal, manager dashboard"
+  },  
+  "system": {
+    "loading": "Processing...",
+    "notifications": {
+      "noNewNotifications": "No new notifications",
+      "allEventsViewed": "All events viewed"
+    }
+  },
   "home": {
     "subtitleManagement": "Manage houses, apartments, and payments in one place",
     "subtitleResident": "Submit readings, check bills, and manage your profile",
@@ -134,6 +146,7 @@
         "submit": "Submit readings",
         "submitting": "Submitting readings...",
         "deleteConfirmation": "Confirm reading deletion. This action cannot be undone.",
+        "selectBuilding": "Select building",
         "deleteSelectedConfirmation": "Confirm deletion of selected readings. This action cannot be undone.",
         "deletingSelected": "Deleting selected readings...",
         "edit": "Edit reading",
@@ -144,6 +157,8 @@
         "noReadingsForApartment": "No readings for this apartment"
       },
       "profile": {
+        "profileIncompleteTitle": "Profile incomplete",
+        "profileIncompleteMessage": "Please fill in your name and phone number in the profile.",
         "loading": "Loading...",
         "tabs": {
           "profile": "Profile",

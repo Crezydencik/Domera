@@ -1,4 +1,11 @@
 {
+    "system": {
+    "loading": "Обработка...",
+    "notifications": {
+      "noNewNotifications": "Нет новых уведомлений",
+      "allEventsViewed": "Все события просмотрены"
+    }
+  },
   "home": {
     "subtitleManagement": "Управляйте домами, квартирами и платежами в одном месте",
     "subtitleResident": "Передавайте показания, проверяйте счета и управляйте профилем",
@@ -141,9 +148,15 @@
       "notSpecified": "Не указано",
       "invalidDate": "Неверная дата. Пожалуйста, введите корректную дату.",
       "noReadingsForApartment": "Нет показаний для этой квартиры",
-      "selectBuilding": "Выбрать дом"
+      "selectBuilding": "Выбрать дом",
+        "selectApartment": "Выбрать квартиру",
+        "selectMeter": "Выбрать счетчик",
+        "history": "История показаний",
+        "noHistory": "Нет истории показаний"
     },
     "profile": {
+  "profileIncompleteTitle": "Профиль не заполнен",
+  "profileIncompleteDesc": "Пожалуйста, заполните имя и телефон в профиле.",
   "loading": "Загрузка...",
   "tabs": {
     "profile": "Профиль",

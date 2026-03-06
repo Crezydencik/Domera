@@ -69,9 +69,13 @@ export interface Building {
       submissionOpenDay?: number;
     };
   };
+  // Новые поля для периода сдачи показаний (строки-даты)
+  waterSubmissionOpenDate?: string;
+  waterSubmissionCloseDate?: string;
   // legacy fields (kept for backward compatibility)
   waterMeterTemplates?: string[];
   waterSubmissionOpenDay?: number;
+  waterSubmissionCloseDay?: number;
 }
       
 export interface TenantAccess {
@@ -92,6 +96,10 @@ export interface Apartment {
   residentId?: string; // legacy, для совместимости
   tenants?: TenantAccess[];
   waterReadings?: MeterReading[];
+  // Новые поля для информации о квартире
+  description?: string; // Описание квартиры
+  area?: number;        // Площадь (кв.м)
+  rooms?: number;       // Количество комнат
 }
 
 export type MeterType = 'water' | 'electricity' | 'heat';
