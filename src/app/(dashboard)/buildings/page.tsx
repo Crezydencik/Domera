@@ -1,7 +1,9 @@
 'use client';
 
 import { useAuth } from '@/shared/hooks/useAuth';
-import Link from 'next/link';
+import Header from '@/shared/components/layout/heder';
+import React from 'react';
+
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import type { Building } from '@/shared/types';
@@ -161,26 +163,31 @@ export default function BuildingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-slate-900 to-slate-800">
-      {/* Header */}
-      <header className="bg-slate-800 border-b border-slate-700">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <Link href="/dashboard" className="text-gray-400 hover:text-white">
-            ← Вернуться
-          </Link>
-          <h1 className="text-2xl font-bold text-white">Управление домами</h1>
-          <button
-            disabled={!canCreateBuilding}
-            type="button"
-            onClick={() => setShowCreateForm((prev) => !prev)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {canCreateBuilding ? '+ Добавить дом' : 'Лимит: 1 дом'}
-          </button>
-        </div>
-      </header>
-
+    <div>
+      <Header
+        userName={user?.displayName || user?.name || ''}
+        userEmail={user?.email || ''}
+        pageTitle="Управление домами"
+      />
       <main className="max-w-7xl mx-auto px-4 py-8">
+        <div className="flex justify-end mb-6">
+          {canCreateBuilding ? (
+            <button
+              type="button"
+              onClick={() => setShowCreateForm((prev) => !prev)}
+              className="flex items-center justify-center w-10 h-10 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+              title="Добавить дом"
+            >
+              <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="11" stroke="currentColor" strokeWidth="2.2" fill="none"/>
+                <line x1="12" y1="8" x2="12" y2="16" stroke="currentColor" strokeWidth="2.2"/>
+                <line x1="8" y1="12" x2="16" y2="12" stroke="currentColor" strokeWidth="2.2"/>
+              </svg>
+            </button>
+          ) : (
+            <span className="px-4 py-2 bg-gray-200 text-gray-500 rounded-lg">Лимит: 1 дом</span>
+          )}
+        </div>
         {showCreateForm && canCreateBuilding && (
           <div className="bg-slate-800 border border-slate-700 rounded-lg p-6 mb-8">
             <h2 className="text-xl font-bold text-white mb-4">Новый дом</h2>

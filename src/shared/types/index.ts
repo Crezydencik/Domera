@@ -6,6 +6,7 @@ export interface HeaderProps {
   pageTitle?: string;
   pageSubtitle?: string;
   onLogout?: () => void;
+  right?: React.ReactNode;
 }
 
 /**

@@ -11,7 +11,7 @@ import { Switch } from '@/shared/components/ui/Switch';
 import Header from '../../../shared/components/layout/heder';
 import { useTranslations } from 'next-intl';
 import { FiCheck, FiX } from 'react-icons/fi';
-import { NotificationItem } from '../../../shared/components/ui/NotificationsDropdown';
+import { NotificationItem, NotificationsDropdown } from '../../../shared/components/ui/NotificationsDropdown';
 
 
 export default function ProfilePage() {
@@ -361,11 +361,19 @@ export default function ProfilePage() {
                   <div className="px-6 py-8">
                     <div className="text-lg font-semibold text-black mb-4">{t('notificationSettings')}</div>
                     <div className="space-y-4 mx-auto">
-                      <div className="flex items-center justify-between">
+                      {/* <div className="flex items-center justify-between">
                         <span className="text-neutral-700">{t('emailNotifications')}</span>
                         <Switch
                           checked={notif.email}
                           onChange={val => handleNotifChange('email', val)}
+                          disabled={notifSaving}
+                        />
+                      </div> */}
+                      <div className="flex items-center justify-between">
+                        <span className="text-neutral-700">{t('notification.general')}</span>
+                        <Switch
+                          checked={notif.general}
+                          onChange={val => handleNotifChange('general', val)}
                           disabled={notifSaving}
                         />
                       </div>
@@ -382,14 +390,6 @@ export default function ProfilePage() {
                         <Switch
                           checked={notif.paymentReminder}
                           onChange={val => handleNotifChange('paymentReminder', val)}
-                          disabled={notifSaving}
-                        />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-neutral-700">{t('notification.general')}</span>
-                        <Switch
-                          checked={notif.general}
-                          onChange={val => handleNotifChange('general', val)}
                           disabled={notifSaving}
                         />
                       </div>

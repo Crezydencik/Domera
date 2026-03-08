@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react';
 import { getApartment, updateApartment, addTenantToApartment, removeTenantFromApartment, addOrInviteTenantToApartment } from '@/modules/apartments/services/apartmentsService';
 import { getBuilding } from '@/modules/invoices/services/buildings/services/buildingsService';
 import type { Apartment, Building, TenantAccess } from '@/shared/types';
-import { useTranslations } from 'use-intl';
+import { useTranslations } from 'next-intl';
 import Loading from '../../../shared/components/ui/loading';
 import Header from '../../../shared/components/layout/heder';
 
@@ -56,9 +56,9 @@ export default function ResidentApartmentsPage() {
         area: area ? Number(area) : undefined,
         rooms: rooms ? Number(rooms) : undefined,
       });
-      setSuccessMsg('Информация о квартире сохранена!');
+      setSuccessMsg(t('successSaveInfo'));
     } catch (err: any) {
-      setErrorMsg(err.message || 'Ошибка при сохранении информации');
+      setErrorMsg(err.message || t('errorSaveInfo'));
     } finally {
       setSaving(false);
     }
@@ -84,10 +84,10 @@ export default function ResidentApartmentsPage() {
       await addTenantToApartment(apartment.id, newTenantEmail);
       const updated = await getApartment(apartment.id);
       setTenants(updated.tenants || []);
-      setSuccessMsg('Жилец успешно приглашён!');
+      setSuccessMsg(t('successAddTenant'));
       setNewTenantEmail('');
     } catch (err: any) {
-      setErrorMsg(err.message || 'Ошибка при добавлении жильца');
+      setErrorMsg(err.message || t('errorAddTenant'));
     } finally {
       setSaving(false);
     }
@@ -102,9 +102,9 @@ export default function ResidentApartmentsPage() {
       await removeTenantFromApartment(apartment.id, userId);
       const updated = await getApartment(apartment.id);
       setTenants(updated.tenants || []);
-      setSuccessMsg('Жилец удалён!');
+      setSuccessMsg(t('successRemoveTenant'));
     } catch (err: any) {
-      setErrorMsg(err.message || 'Ошибка при удалении жильца');
+      setErrorMsg(err.message || t('errorRemoveTenant'));
     } finally {
       setSaving(false);
     }
@@ -146,14 +146,14 @@ export default function ResidentApartmentsPage() {
         });
       }
       setTenants((await getApartment(apartment.id)).tenants || []);
-      setSuccessMsg('Арендатор успешно добавлен!');
+      setSuccessMsg(t('successAddRenter'));
       setRenterEmail('');
       setRenterFirstName('');
       setRenterLastName('');
       setRenterDateFrom('');
       setRenterDateTo('');
     } catch (err: any) {
-      setErrorMsg(err.message || 'Ошибка при добавлении арендатора');
+      setErrorMsg(err.message || t('errorAddRenter'));
     } finally {
       setSaving(false);
     }
@@ -165,13 +165,13 @@ export default function ResidentApartmentsPage() {
       <main className="max-w-2xl mx-auto px-4 py-8">
         <div className="bg-white border border-blue-100 rounded-lg p-8 shadow-lg">
           <h2 className="text-2xl font-bold text-blue-700 mb-2 flex items-center gap-2">
-            🏠 Квартира № {apartment?.number || '—'}
+            🏠 {t('apartmentNumber')} {apartment?.number || '—'}
           </h2>
-          <div className="mb-1 text-gray-500">Дом: <span className="font-semibold">{building?.address || '—'}</span></div>
-          <div className="mb-4 text-gray-400">УК: {building?.managedBy?.companyName || '—'}</div>
+          <div className="mb-1 text-gray-500">{t('building')}: <span className="font-semibold">{building?.address || '—'}</span></div>
+          <div className="mb-4 text-gray-400">{t('company')}: {building?.managedBy?.companyName || '—'}</div>
 
           {/* Информация о квартире — только не для арендатора */}
-          {!isRenter && (
+          {/* {!isRenter && (
             <div className="mb-8">
               <h3 className="font-semibold text-lg mb-2">Информация о квартире</h3>
               <form onSubmit={handleSaveInfo} className="space-y-3">
@@ -219,17 +219,17 @@ export default function ResidentApartmentsPage() {
                 >Сохранить</button>
               </form>
             </div>
-          )}
+          )} */}
 
           {/* Добавить арендатора — только не для арендатора */}
           {!isRenter && (
             <div className="mb-6">
-              <h3 className="font-semibold text-lg mb-2">Добавить арендатора</h3>
+              <h3 className="font-semibold text-lg mb-2">{t('addRenter')}</h3>
               <form onSubmit={handleAddRenter} className="grid grid-cols-1 md:grid-cols-5 gap-2 mt-2 items-end">
                 <input
                   type="text"
                   className="border rounded px-2 py-1 bg-white text-gray-900 placeholder-gray-400"
-                  placeholder="Имя"
+                  placeholder={t('firstName')}
                   value={renterFirstName}
                   onChange={e => setRenterFirstName(e.target.value)}
                   required
@@ -238,7 +238,7 @@ export default function ResidentApartmentsPage() {
                 <input
                   type="text"
                   className="border rounded px-2 py-1 bg-white text-gray-900 placeholder-gray-400"
-                  placeholder="Фамилия"
+                  placeholder={t('lastName')}
                   value={renterLastName}
                   onChange={e => setRenterLastName(e.target.value)}
                   required
@@ -247,7 +247,7 @@ export default function ResidentApartmentsPage() {
                 <input
                   type="email"
                   className="border rounded px-2 py-1 bg-white text-gray-900 placeholder-gray-400"
-                  placeholder="Email арендатора"
+                  placeholder={t('renterEmail')}
                   value={renterEmail}
                   onChange={e => setRenterEmail(e.target.value)}
                   required
@@ -256,7 +256,7 @@ export default function ResidentApartmentsPage() {
                 <input
                   type="date"
                   className="border rounded px-2 py-1 bg-white text-gray-900 placeholder-gray-400"
-                  placeholder="Срок с"
+                  placeholder={t('dateFrom')}
                   value={renterDateFrom}
                   onChange={e => setRenterDateFrom(e.target.value)}
                   required
@@ -265,7 +265,7 @@ export default function ResidentApartmentsPage() {
                 <input
                   type="date"
                   className="border rounded px-2 py-1 bg-white text-gray-900 placeholder-gray-400"
-                  placeholder="Срок по"
+                  placeholder={t('dateTo')}
                   value={renterDateTo}
                   onChange={e => setRenterDateTo(e.target.value)}
                   required
@@ -275,30 +275,30 @@ export default function ResidentApartmentsPage() {
                   type="submit"
                   className="bg-blue-600 text-white px-4 py-1 rounded hover:bg-blue-700 disabled:opacity-50 md:col-span-5"
                   disabled={saving || !renterEmail || !renterFirstName || !renterLastName || !renterDateFrom || !renterDateTo}
-                >Добавить</button>
+                >{t('add')}</button>
               </form>
             </div>
           )}
 
           {/* Жильцы */}
           <div className="mb-6">
-            <h3 className="font-semibold text-lg mb-2">Жильцы</h3>
+            <h3 className="font-semibold text-lg mb-2">{t('tenants')}</h3>
             <div className="overflow-x-auto rounded-lg shadow border border-blue-100 bg-white">
               <table className="min-w-full text-sm rounded-lg overflow-hidden">
                 <thead className="bg-blue-50 sticky top-0 z-10">
                   <tr>
-                    <th className="px-3 py-2 font-semibold text-gray-700 text-center">Имя</th>
-                    <th className="px-3 py-2 font-semibold text-gray-700 text-center">Фамилия</th>
-                    <th className="px-3 py-2 font-semibold text-gray-700 text-center">Email</th>
-                    <th className="px-3 py-2 font-semibold text-gray-700 text-center">Срок с</th>
-                    <th className="px-3 py-2 font-semibold text-gray-700 text-center">Срок по</th>
-                    <th className="px-3 py-2 font-semibold text-gray-700 text-center">Тип</th>
-                    {!isRenter && <th className="px-3 py-2 font-semibold text-gray-700 text-center">Действия</th>}
+                    <th className="px-3 py-2 font-semibold text-gray-700 text-center">{t('firstName')}</th>
+                    <th className="px-3 py-2 font-semibold text-gray-700 text-center">{t('lastName')}</th>
+                    <th className="px-3 py-2 font-semibold text-gray-700 text-center">{t('email')}</th>
+                    <th className="px-3 py-2 font-semibold text-gray-700 text-center">{t('dateFrom')}</th>
+                    <th className="px-3 py-2 font-semibold text-gray-700 text-center">{t('dateTo')}</th>
+                    <th className="px-3 py-2 font-semibold text-gray-700 text-center">{t('type')}</th>
+                    {!isRenter && <th className="px-3 py-2 font-semibold text-gray-700 text-center">{t('actions')}</th>}
                   </tr>
                 </thead>
                 <tbody>
                   {tenants.length === 0 && (
-                    <tr><td colSpan={7} className="text-gray-400 text-center py-4">Нет жильцов</td></tr>
+                    <tr><td colSpan={7} className="text-gray-400 text-center py-4">{t('noTenants')}</td></tr>
                   )}
                   {tenants.map((tenant, idx) => {
                     const isRenter = tenant.permissions.length === 1 && tenant.permissions[0] === 'submitMeter';
@@ -313,14 +313,14 @@ export default function ResidentApartmentsPage() {
                         <td className="px-3 py-2 text-center">{tenant.email}</td>
                         <td className="px-3 py-2 text-center">{tenant.rentDateFrom || ''}</td>
                         <td className="px-3 py-2 text-center">{tenant.rentDateTo || ''}</td>
-                        <td className="px-3 py-2 text-center">{isRenter ? <span className="text-blue-600 font-medium">арендатор</span> : <span className="text-green-600 font-medium">житель</span>}</td>
+                        <td className="px-3 py-2 text-center">{isRenter ? <span className="text-blue-600 font-medium">{t('renter')}</span> : <span className="text-green-600 font-medium">{t('resident')}</span>}</td>
                         {!isRenter && (
                           <td className="px-3 py-2 text-center">
                             <button
                               className="text-red-600 hover:bg-red-50 border border-red-200 rounded px-2 py-1 transition disabled:opacity-50"
                               onClick={() => handleRemoveTenant(tenant.userId)}
                               disabled={saving}
-                            >Удалить</button>
+                            >{t('delete')}</button>
                           </td>
                         )}
                       </tr>
