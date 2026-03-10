@@ -253,125 +253,62 @@ export const submitMeterReading = async (
     }
 
     const id = generateId();
-    const baseReading: MeterReading = {
+    const submittedDate = new Date();
+    const createdReading = {
       id,
-      ...data,
-      submittedAt: new Date(),
-    };
-
-    // attach WMETNUM (meter serial) and date metadata to the reading when stored inside apartment.groups
-    const meterDocForMeta = await getDocument(FIRESTORE_COLLECTIONS.METERS, data.meterId).catch(() => null) as Meter | null;
-    const meterSerialForMeta = meterDocForMeta?.serialNumber ?? '';
-    const createdReading: Record<string, unknown> = {
-      ...baseReading,
-      WMETNUM: meterSerialForMeta,
-      date: baseReading.submittedAt,
-    };
+      apartmentId: data.apartmentId,
+      meterId: data.meterId,
+      submittedAt: submittedDate,
+      previousValue: data.previousValue,
+      currentValue: data.currentValue,
+      consumption: data.consumption,
+      buildingId: data.buildingId,
+      month: submittedDate.getMonth() + 1,
+      year: submittedDate.getFullYear(),
+    } as MeterReading;
 
     const currentReadings = Array.isArray(apartment.waterReadings) ? apartment.waterReadings : [];
 
-    // Detect grouped structure: elements that have a 'history' array (group per meter)
-    const hasGrouped = currentReadings.some((r) => typeof r === 'object' && Array.isArray((r as any).history));
+    // Find or create meter group (object with meterId and history array)
+    let meterGroup: Record<string, unknown> | undefined = currentReadings.find(
+      (r) => typeof r === 'object' && (r as Record<string, unknown>).meterId === data.meterId
+    ) as Record<string, unknown> | undefined;
 
-    if (hasGrouped) {
-      // Find group for this meterId
-      const next = [...currentReadings];
-      const groupIndex = next.findIndex((g) => (g as any).meterId === data.meterId);
-      if (groupIndex >= 0) {
-        const group = { ...(next[groupIndex] as any) };
-        const existingHistory = Array.isArray(group.history) ? [...group.history] : [];
-        // Server-side duplicate check: only one reading per meter per month/year
-        const duplicate = existingHistory.some((h: any) => Number(h.month) === Number(data.month) && Number(h.year) === Number(data.year));
-        if (duplicate) {
-          throw new Error('Показание для этого счетчика уже подано за указанный месяц');
-        }
-        group.history = [...existingHistory, createdReading];
-
-        // ensure group meta fields exist (wrname, wrnum, wrexdate)
-        try {
-          const meterDoc = (await getDocument(FIRESTORE_COLLECTIONS.METERS, data.meterId)) as Meter | null;
-          if (meterDoc) {
-            group.wrname = meterDoc.name ?? group.wrname ?? '';
-            group.wrnum = meterDoc.serialNumber ?? group.wrnum ?? '';
-            group.wrexdate = meterDoc.checkDueDate ?? group.wrexdate ?? null;
-          }
-        } catch (e) {
-          // ignore
-        }
-
-        next[groupIndex] = group;
-      } else {
-        // create new group with meta
-        let wrname = '';
-        let wrnum = '';
-        let wrexdate: unknown = null;
-        try {
-          const meterDoc = (await getDocument(FIRESTORE_COLLECTIONS.METERS, data.meterId)) as Meter | null;
-          if (meterDoc) {
-            wrname = meterDoc.name ?? '';
-            wrnum = meterDoc.serialNumber ?? '';
-            wrexdate = meterDoc.checkDueDate ?? null;
-          }
-        } catch (e) {
-          // ignore
-        }
-
-        (next as any[]).push({ meterId: data.meterId, wrname, wrnum, wrexdate, history: [createdReading] });
-      }
-
-        await updateDocument(FIRESTORE_COLLECTIONS.APARTMENTS, data.apartmentId, {
-          waterReadings: next,
-        });
-
-        // No meter-level subcollection write — history is stored inside apartment.waterReadings groups only.
-    } else {
-      // Legacy flat array: migrate to grouped format so each meter keeps history
-      // Build groups from existing flat readings
-      const groups: Record<string, MeterReading[]> = {};
-      for (const r of currentReadings) {
-        if (r && typeof r === 'object' && typeof (r as any).meterId === 'string') {
-          const mid = (r as any).meterId as string;
-          groups[mid] = groups[mid] || [];
-          groups[mid].push(r as MeterReading);
-        }
-      }
-
-      // Ensure group for incoming meter
-      groups[data.meterId] = groups[data.meterId] || [];
-      // Server-side duplicate check for legacy data: prevent two readings for same meter/month
-      const dupLegacy = groups[data.meterId].some((h) => Number(h.month) === Number(data.month) && Number(h.year) === Number(data.year));
-      if (dupLegacy) {
+    // Server-side duplicate check: only one reading per meter per month/year
+    if (meterGroup && typeof meterGroup === 'object' && Array.isArray((meterGroup as any).history)) {
+      const duplicate = (meterGroup as any).history.some((h: any) => {
+        return Number(h.month) === Number(createdReading.month) && Number(h.year) === Number(createdReading.year);
+      });
+      if (duplicate) {
         throw new Error('Показание для этого счетчика уже подано за указанный месяц');
       }
-      groups[data.meterId].push(createdReading as MeterReading);
+    }
 
-      // enrich groups with meter meta (wrname, wrnum, wrexdate)
-      const meterIds = Object.keys(groups);
-      const meterDocs = await Promise.all(
-        meterIds.map(async (mid) => {
-          try {
-            return (await getDocument(FIRESTORE_COLLECTIONS.METERS, mid)) as Meter | null;
-          } catch (e) {
-            return null;
-          }
-        })
-      );
+    // Update or create the meter group with history
+    const nextReadings = [...currentReadings];
+    const meterIndex = nextReadings.findIndex(
+      (r) => typeof r === 'object' && (r as Record<string, unknown>).meterId === data.meterId
+    );
 
-      const next = meterIds.map((mid, idx) => {
-        const md = meterDocs[idx];
-        return {
-          meterId: mid,
-          wrname: md?.name ?? '',
-          wrnum: md?.serialNumber ?? '',
-          wrexdate: md?.checkDueDate ?? null,
-          history: groups[mid],
-        };
-      });
-
-      await updateDocument(FIRESTORE_COLLECTIONS.APARTMENTS, data.apartmentId, {
-        waterReadings: next,
+    if (meterIndex >= 0) {
+      // Update existing meter group
+      const group = nextReadings[meterIndex] as Record<string, unknown>;
+      const history = Array.isArray(group.history) ? [...(group.history as any[])] : [];
+      nextReadings[meterIndex] = {
+        ...group,
+        history: [...history, createdReading],
+      };
+    } else {
+      // Create new meter group
+      nextReadings.push({
+        meterId: data.meterId,
+        history: [createdReading],
       });
     }
+
+    await updateDocument(FIRESTORE_COLLECTIONS.APARTMENTS, data.apartmentId, {
+      waterReadings: nextReadings,
+    });
 
     return createdReading;
   } catch (error) {
@@ -393,9 +330,29 @@ export const getMeterReadingsByApartmentAndPeriod = async (
       throw new Error('Apartment ID must be a string');
     }
     const apartment = (await getDocument(FIRESTORE_COLLECTIONS.APARTMENTS, apartmentId)) as Apartment | null;
-    const readings = Array.isArray(apartment?.waterReadings) ? apartment.waterReadings : [];
+    if (!apartment) {
+      return [];
+    }
 
-    return readings.filter((reading) => reading.month === month && reading.year === year);
+    const readings = Array.isArray(apartment.waterReadings) ? apartment.waterReadings : [];
+    const allReadings: MeterReading[] = [];
+
+    for (const item of readings) {
+      if (item && typeof item === 'object') {
+        const itemObj = item as Record<string, unknown>;
+        if (Array.isArray(itemObj.history)) {
+          // Meter group with history array
+          for (const h of itemObj.history) {
+            allReadings.push(h as MeterReading);
+          }
+        }
+      }
+    }
+
+    return allReadings
+      .filter((reading) => {
+        return Number(reading.month) === Number(month) && Number(reading.year) === Number(year);
+      });
   } catch (error) {
     console.error('Error getting meter readings:', error);
     throw error;
@@ -411,29 +368,26 @@ export const getMeterReadingsByApartment = async (apartmentId: string): Promise<
       throw new Error('Apartment ID must be a string');
     }
     const apartment = (await getDocument(FIRESTORE_COLLECTIONS.APARTMENTS, apartmentId)) as Apartment | null;
-    const raw = Array.isArray(apartment?.waterReadings) ? apartment.waterReadings : [];
+    if (!apartment) {
+      return [];
+    }
 
-    // Normalize: if grouped by meter (objects with history arrays) then flatten
-    // Preserve group-level metadata (wrnum, wrexdate) by attaching them to each flattened reading
-    const flattened: MeterReading[] = [];
-    for (const item of raw) {
-      if (item && typeof item === 'object' && Array.isArray((item as any).history)) {
-        const group = item as any;
-        const groupWrnum = group.wrnum ?? group.WRNUM ?? '';
-        const groupWrexdate = group.wrexdate ?? group.WREXDATE ?? null;
-        for (const h of group.history) {
-          const enriched = { ...(h as Record<string, unknown>) } as any;
-          if (!enriched.WMETNUM && groupWrnum) enriched.WMETNUM = groupWrnum;
-          if (enriched.wrexdate === undefined || enriched.wrexdate === null) enriched.wrexdate = groupWrexdate;
-          flattened.push(enriched as MeterReading);
+    const readings = Array.isArray(apartment.waterReadings) ? apartment.waterReadings : [];
+    const allReadings: MeterReading[] = [];
+
+    for (const item of readings) {
+      if (item && typeof item === 'object') {
+        const itemObj = item as Record<string, unknown>;
+        if (Array.isArray(itemObj.history)) {
+          // Meter group with history array
+          for (const h of itemObj.history) {
+            allReadings.push(h as MeterReading);
+          }
         }
-      } else if (item && typeof item === 'object' && typeof (item as any).meterId === 'string') {
-        // legacy single reading object
-        flattened.push(item as MeterReading);
       }
     }
 
-    return flattened;
+    return allReadings;
   } catch (error) {
     console.error('Error getting meter readings by apartment:', error);
     throw error;
@@ -451,27 +405,14 @@ export const getMeterReadingsByCompany = async (companyId: string): Promise<Mete
     // apartments store company ids in array field 'companyIds' (or legacy companyId). Use service to handle both schemas.
     const apartments = await getApartmentsByCompany(companyId);
 
-    // flatten per-apartment readings and preserve group-level metadata
-    return apartments.flatMap((apartment) => {
-      const raw = Array.isArray(apartment.waterReadings) ? apartment.waterReadings : [];
-      const flattened: MeterReading[] = [];
-      for (const item of raw) {
-        if (item && typeof item === 'object' && Array.isArray((item as any).history)) {
-          const group = item as any;
-          const groupWrnum = group.wrnum ?? group.WRNUM ?? '';
-          const groupWrexdate = group.wrexdate ?? group.WREXDATE ?? null;
-          for (const h of group.history) {
-            const enriched = { ...(h as Record<string, unknown>) } as any;
-            if (!enriched.WMETNUM && groupWrnum) enriched.WMETNUM = groupWrnum;
-            if (enriched.wrexdate === undefined || enriched.wrexdate === null) enriched.wrexdate = groupWrexdate;
-            flattened.push(enriched as MeterReading);
-          }
-        } else if (item && typeof item === 'object' && typeof (item as any).meterId === 'string') {
-          flattened.push(item as MeterReading);
-        }
-      }
-      return flattened;
-    });
+    // Collect readings from all apartment meters
+    const allReadings: MeterReading[] = [];
+    for (const apartment of apartments) {
+      const readings = await getMeterReadingsByApartment(apartment.id);
+      allReadings.push(...readings);
+    }
+
+    return allReadings;
   } catch (error) {
     console.error('Error getting meter readings by company:', error);
     throw error;
@@ -487,25 +428,26 @@ export const getLastMeterReading = async (
 ): Promise<MeterReading | null> => {
   try {
     const apartment = (await getDocument(FIRESTORE_COLLECTIONS.APARTMENTS, apartmentId)) as Apartment | null;
-    const raw = Array.isArray(apartment?.waterReadings) ? apartment.waterReadings : [];
-    const candidates: MeterReading[] = [];
-    for (const item of raw) {
-      if (item && typeof item === 'object' && Array.isArray((item as any).history)) {
-        for (const h of (item as any).history) {
-          if ((h as any).meterId === meterId) candidates.push(h as MeterReading);
-        }
-      } else if (item && typeof item === 'object' && (item as any).meterId === meterId) {
-        candidates.push(item as MeterReading);
-      }
+    if (!apartment) {
+      return null;
     }
 
-    if (candidates.length === 0) return null;
+    const readings = Array.isArray(apartment.waterReadings) ? apartment.waterReadings : [];
+    const meterGroup = readings.find(
+      (r) => typeof r === 'object' && (r as Record<string, unknown>).meterId === meterId
+    ) as Record<string, unknown> | undefined;
 
-    const sorted = candidates.sort(
+    if (!meterGroup || !Array.isArray(meterGroup.history) || (meterGroup.history as any[]).length === 0) {
+      return null;
+    }
+
+    const history = meterGroup.history as MeterReading[];
+    const sorted = history.sort(
       (a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()
     );
 
-    return sorted[0];
+    const lastReading = sorted[0];
+    return lastReading;
   } catch (error) {
     console.error('Error getting last meter reading:', error);
     throw error;
@@ -521,34 +463,46 @@ export const updateMeterReading = async (
   data: Partial<Omit<MeterReading, 'id'>>
 ): Promise<void> => {
   try {
+    // Get apartment to find which meter this reading belongs to
     const apartment = (await getDocument(FIRESTORE_COLLECTIONS.APARTMENTS, apartmentId)) as Apartment | null;
     if (!apartment) {
       throw new Error('Квартира не найдена');
     }
 
-    const raw = Array.isArray(apartment.waterReadings) ? apartment.waterReadings : [];
-    const hasGrouped = raw.some((r) => typeof r === 'object' && Array.isArray((r as any).history));
+    // Get all meters for this apartment
+    const meters = await getMetersByApartment(apartmentId);
+    
+    // Find which meter contains this reading
+    let foundMeter: Meter | null = null;
+    let foundReadingIndex = -1;
 
-    if (hasGrouped) {
-      const next = raw.map((item) => {
-        if (item && typeof item === 'object' && Array.isArray((item as any).history)) {
-          const group = { ...(item as any) };
-          group.history = group.history.map((h: any) => (h.id === readingId ? { ...h, ...data } : h));
-          return group;
+    for (const meter of meters) {
+      const meterDoc = await getDocument(FIRESTORE_COLLECTIONS.METERS, meter.id) as Meter | null;
+      if (meterDoc?.history) {
+        const idx = meterDoc.history.findIndex((h) => h.id === readingId);
+        if (idx >= 0) {
+          foundMeter = meterDoc;
+          foundReadingIndex = idx;
+          break;
         }
-        return item;
-      });
-
-      await updateDocument(FIRESTORE_COLLECTIONS.APARTMENTS, apartmentId, { waterReadings: next });
-      return;
+      }
     }
 
-    const readings = raw as any[];
-    const nextReadings = readings.map((reading) => (reading.id === readingId ? { ...reading, ...data } : reading));
+    if (!foundMeter || foundReadingIndex === -1) {
+      throw new Error('Показание не найдено');
+    }
 
-    await updateDocument(FIRESTORE_COLLECTIONS.APARTMENTS, apartmentId, {
-      waterReadings: nextReadings,
-    });
+    // Update the reading in the meter's history
+    const updatedHistory = [...foundMeter.history!];
+    const oldReading = updatedHistory[foundReadingIndex];
+    updatedHistory[foundReadingIndex] = {
+      ...oldReading,
+      ...data,
+      id: oldReading.id, // Preserve ID
+    } as MeterReading;
+
+    // Save updated meter
+    await updateMeter(foundMeter.id, { history: updatedHistory } as Partial<Meter>);
   } catch (error) {
     console.error('Error updating meter reading:', error);
     throw error;
@@ -563,68 +517,55 @@ export const deleteMeterReading = async (
   readingId: string
 ): Promise<void> => {
   try {
+    // Get apartment to find which meter this reading belongs to
     const apartment = (await getDocument(FIRESTORE_COLLECTIONS.APARTMENTS, apartmentId)) as Apartment | null;
     if (!apartment) {
       throw new Error('Квартира не найдена');
     }
-
-    const raw = Array.isArray(apartment.waterReadings) ? apartment.waterReadings : [];
-    const hasGrouped = raw.some((r) => typeof r === 'object' && Array.isArray((r as any).history));
 
     // only allow deleting readings for the current month/year
     const now = new Date();
     const currentMonth = now.getMonth() + 1; // JS months 0-11 -> 1-12
     const currentYear = now.getFullYear();
 
-    if (hasGrouped) {
-      let found = false;
-      let forbidden = false;
-      const next = raw.map((item) => {
-        if (item && typeof item === 'object' && Array.isArray((item as any).history)) {
-          const group = { ...(item as any) };
-          const newHistory: any[] = [];
-          for (const h of group.history) {
-            if (h && (h as any).id === readingId) {
-              found = true;
-              if (Number((h as any).month) !== Number(currentMonth) || Number((h as any).year) !== Number(currentYear)) {
-                forbidden = true;
-              }
-              // skip (delete) this reading
-              continue;
-            }
-            newHistory.push(h);
-          }
-          group.history = newHistory;
-          return group;
+    // Get all meters for this apartment
+    const meters = await getMetersByApartment(apartmentId);
+    
+    // Find which meter contains this reading
+    let foundMeter: Meter | null = null;
+    let foundReadingIndex = -1;
+
+    for (const meter of meters) {
+      const meterDoc = await getDocument(FIRESTORE_COLLECTIONS.METERS, meter.id) as Meter | null;
+      if (meterDoc?.history) {
+        const idx = meterDoc.history.findIndex((h) => h.id === readingId);
+        if (idx >= 0) {
+          foundMeter = meterDoc;
+          foundReadingIndex = idx;
+          break;
         }
-        return item;
-      });
-
-      if (forbidden) {
-        throw new Error('Нельзя удалять показания прошлых месяцев');
       }
-
-      if (found) {
-        await updateDocument(FIRESTORE_COLLECTIONS.APARTMENTS, apartmentId, { waterReadings: next });
-        return;
-      }
-      // fall through to legacy handling if not found
     }
 
-    const readings = raw as any[];
-    const idx = readings.findIndex((reading) => reading.id === readingId);
-    if (idx === -1) {
+    if (!foundMeter || foundReadingIndex === -1) {
       throw new Error('Показание не найдено');
     }
 
-    const target = readings[idx];
-    if (Number(target.month) !== Number(currentMonth) || Number(target.year) !== Number(currentYear)) {
+    // Check if reading is from current month/year
+    const reading = foundMeter.history![foundReadingIndex];
+    const readDate = reading.submittedAt instanceof Date ? reading.submittedAt : new Date(String(reading.submittedAt));
+    const readMonth = readDate.getMonth() + 1;
+    const readYear = readDate.getFullYear();
+
+    if (Number(readMonth) !== Number(currentMonth) || Number(readYear) !== Number(currentYear)) {
       throw new Error('Нельзя удалять показания прошлых месяцев');
     }
 
-    await updateDocument(FIRESTORE_COLLECTIONS.APARTMENTS, apartmentId, {
-      waterReadings: readings.filter((reading) => reading.id !== readingId),
-    });
+    // Remove the reading from meter's history
+    const updatedHistory = foundMeter.history!.filter((h) => h.id !== readingId);
+
+    // Save updated meter
+    await updateMeter(foundMeter.id, { history: updatedHistory } as Partial<Meter>);
   } catch (error) {
     console.error('Error deleting meter reading:', error);
     throw error;

@@ -2,7 +2,6 @@
 
 import { useAuth } from '@/shared/hooks/useAuth';
 import { useEffect, useMemo, useState, useCallback } from 'react';
-import * as XLSX from 'xlsx';
 import { getApartmentsByCompany, getApartment } from '@/modules/apartments/services/apartmentsService';
 import { getBuildingsByCompany, getBuilding } from '@/modules/invoices/services/buildings/services/buildingsService';
 import {
@@ -103,8 +102,8 @@ const getMeterDisplayName = (meter?: Meter | null): string => {
   const name = meter.name?.toString().trim() ?? '';
   if (!name) return meter.serialNumber?.trim() || meter.id || '';
   const code = name.toLowerCase();
-  if (code === 'hwm') return 'HWM';
-  if (code === 'cwm') return 'CWM';
+  if (code === 'hwm') return 'hwm';
+  if (code === 'cwm') return 'cwm';
   return name;
 };
 

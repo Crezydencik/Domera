@@ -238,7 +238,7 @@ export default function BuildingsPage() {
 
         {buildings.length === 0 ? (
           <div className="text-center py-12">
-            <div className="text-6xl mb-4">🏢</div>
+            <img src="/Logo1.png" alt="Domera Logo" className="w-24 h-24 mx-auto mb-4 object-contain" />
             <h2 className="text-2xl font-bold text-white mb-2">Нет домов</h2>
             <p className="text-gray-400 mb-6">Можно создать только один дом для одного управляющего</p>
             <button

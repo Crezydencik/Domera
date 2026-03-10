@@ -6,6 +6,7 @@ import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { confirmPasswordReset, verifyPasswordResetCode } from 'firebase/auth';
 import { auth } from '@/firebase/config';
 import { useTranslations } from 'use-intl';
+import AuthLayout from '@/shared/components/layout/AuthLayout';
 
 function EyeIcon({ crossed = false }: { crossed?: boolean }) {
   if (crossed) {
@@ -133,55 +134,53 @@ export default function ResetPasswordConfirmPage() {
   };
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-slate-900 to-slate-800 flex items-center justify-center px-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">🔐 {t('resetPasswordTitle')}</h1>
-          <p className="text-gray-400">Domera</p>
+    <AuthLayout>
+      <div className="w-full max-w-md mx-auto">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2 text-center">Сброс пароля</h1>
+          <p className="text-gray-500 text-center">Введите новый пароль для аккаунта</p>
         </div>
 
-        <div className="bg-slate-800 rounded-lg p-8 border border-slate-700">
-         
-
+        <div className="bg-white rounded-lg p-8 border border-gray-200 shadow">
           {loadingCode ? (
-            <p className="text-sm text-gray-300">{t('loading')}</p>
+            <p className="text-sm text-gray-500">{t('loading')}</p>
           ) : (
             <>
-                {email && (
-                  <p className="mb-4 text-sm text-slate-300">
-                  {t('resetPasswordAccount')}: <span className="font-medium text-white">{email}</span>
+              {email && (
+                <p className="mb-4 text-sm text-gray-700">
+                  {t('resetPasswordAccount')}: <span className="font-medium text-gray-900">{email}</span>
                 </p>
               )}
 
               {error && (
-                <div className="bg-red-500/20 border border-red-500 text-red-200 px-4 py-3 rounded-lg mb-6 text-sm">
+                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-6 text-sm">
                   {error}
                 </div>
               )}
 
               {success && (
-                <div className="bg-green-500/20 border border-green-500 text-green-200 px-4 py-3 rounded-lg mb-6 text-sm">
+                <div className="bg-green-100 border border-green-400 text-green-800 px-4 py-3 rounded-lg mb-6 text-sm">
                   {success}
                 </div>
               )}
 
               {!success && !error.includes('недействительна') && !error.includes('истекла') && (
-                <form onSubmit={handleSubmit} className="space-y-5">
+                <form onSubmit={handleSubmit} className="space-y-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">{t('newPasswordLabel')}</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">{t('newPasswordLabel')}</label>
                     <div className="relative">
                       <input
                         type={showNewPassword ? 'text' : 'password'}
                         value={newPassword}
                         onChange={(event) => setNewPassword(event.target.value)}
                         placeholder="••••••••"
-                        className="w-full px-4 py-2 pr-24 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition"
+                        className="w-full px-4 py-2 pr-24 bg-gray-100 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:border-indigo-500 transition"
                         required
                       />
                       <button
                         type="button"
                         onClick={() => setShowNewPassword((prev) => !prev)}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md border border-slate-500 p-1.5 text-slate-200 hover:bg-slate-600"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md border border-gray-300 p-1.5 text-gray-700 hover:bg-gray-200"
                         aria-label={showNewPassword ? t('resetPasswordHidePassword') : t('resetPasswordShowPassword')}
                         title={showNewPassword ? t('resetPasswordHidePassword') : t('resetPasswordShowPassword')}
                       >
@@ -191,20 +190,20 @@ export default function ResetPasswordConfirmPage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">{t('repeatPasswordLabel')}</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">{t('repeatPasswordLabel')}</label>
                     <div className="relative">
                       <input
                         type={showConfirmPassword ? 'text' : 'password'}
                         value={confirmNewPassword}
                         onChange={(event) => setConfirmNewPassword(event.target.value)}
                         placeholder="••••••••"
-                        className="w-full px-4 py-2 pr-24 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition"
+                        className="w-full px-4 py-2 pr-24 bg-gray-100 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:border-indigo-500 transition"
                         required
                       />
                       <button
                         type="button"
                         onClick={() => setShowConfirmPassword((prev) => !prev)}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md border border-slate-500 p-1.5 text-slate-200 hover:bg-slate-600"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md border border-gray-300 p-1.5 text-gray-700 hover:bg-gray-200"
                         aria-label={showConfirmPassword ? t('resetPasswordHidePassword') : t('resetPasswordShowPassword')}
                         title={showConfirmPassword ? t('resetPasswordHidePassword') : t('resetPasswordShowPassword')}
                       >
@@ -216,15 +215,15 @@ export default function ResetPasswordConfirmPage() {
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="w-full bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 disabled:bg-gray-600 transition"
+                    className="w-full bg-indigo-600 text-white py-2 rounded-lg font-semibold hover:bg-indigo-700 disabled:bg-gray-400 transition-all duration-150"
                   >
                     {submitting ? t('savingNewPassword') : t('saveNewPassword')}
                   </button>
                 </form>
               )}
 
-              <p className="text-center text-gray-400 mt-6 text-sm">
-                <Link href="/login" className="text-blue-400 hover:text-blue-300 transition">
+              <p className="text-center text-gray-500 mt-6 text-sm">
+                <Link href="/login" className="text-indigo-600 hover:underline">
                   {t('backToLogin')}
                 </Link>
               </p>
@@ -232,6 +231,6 @@ export default function ResetPasswordConfirmPage() {
           )}
         </div>
       </div>
-    </div>
+    </AuthLayout>
   );
 }

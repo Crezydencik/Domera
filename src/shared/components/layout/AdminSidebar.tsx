@@ -36,13 +36,9 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
 
   return (
     <aside className="fixed top-0 left-0 z-40 h-screen w-72 bg-white border-r border-gray-100 flex flex-col shadow-sm">
-      {/* Логотип и название */}
-      <div className="flex items-center gap-3 px-7 py-7 border-b border-gray-100">
-        <span className="inline-block w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-400 to-indigo-500 flex items-center justify-center">
-          {/* SVG-логотип */}
-          <svg width="28" height="28" viewBox="0 0 28 28" fill="none"><ellipse cx="14" cy="14" rx="14" ry="14" fill="#fff"/><path d="M7 21V7h7a7 7 0 110 14H7z" fill="#6366F1"/><path d="M21 21a7 7 0 01-7-7V7h7v14z" fill="#38BDF8"/></svg>
-        </span>
-        <span className="font-extrabold text-2xl text-gray-900 tracking-tight">Modernize</span>
+      {/* Логотип */}
+      <div className="flex items-center justify-center px-7 py-7 border-b border-gray-100">
+        <img src="/Logo1.png" alt="Domera Logo" className="w-56 h-12  object-contain" />
       </div>
       <nav className="flex-1 px-4 py-6 overflow-y-auto">
         <ul className="space-y-1">

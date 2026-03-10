@@ -113,6 +113,8 @@ export interface Meter {
   name?: string;
   // Optional date (ISO string or Date) indicating next/assigned check due date for this meter
   checkDueDate?: string | Date;
+  // History of meter readings stored directly in the meter document
+  history?: MeterReading[];
 }
 
 export interface MeterReading {

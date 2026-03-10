@@ -1,6 +1,7 @@
 {
     "system": {
     "loading": "Обработка...",
+    "noAccess": "Нет доступа",
     "notifications": {
       "noNewNotifications": "Нет новых уведомлений",
       "allEventsViewed": "Все события просмотрены"
@@ -244,70 +245,72 @@
   "deleteRequestSent": "Запрос на удаление отправлен"
 }
   },
-  "auth": {
-    "resetPasswordEmailLabel": "E-mail",
-    "resetPasswordEmailPlaceholder": "Введите ваш e-mail",
-    "resetPasswordSubmitButton": "Отправить ссылку для сброса",
-    "resetPasswordSuccess": "Письмо со ссылкой для сброса пароля отправлено на {email}",
-    "resetPasswordError": "Не удалось отправить письмо для сброса пароля",
-    "resetPasswordInvalidEmail": "Введите корректный e-mail",
-    "resetPasswordEnterEmail": "Введите e-mail",
-    "resetPasswordLoading": "Отправляем...",
-    "resetPasswordBackToLogin": "Назад к входу",
-    "resetPasswordBackHome": "Назад на главную",
-    "resetPasswordAccount": "Аккаунт",
-    "resetPasswordNewPassword": "Новый пароль",
-    "resetPasswordRepeatPassword": "Повторите пароль",
-    "resetPasswordShowPassword": "Показать пароль",
-    "resetPasswordHidePassword": "Скрыть пароль",
-    "login": "Вход",
-    "forgotPassword": "Забыли пароль?",
-    "noAccount": "Нет аккаунта?",
-    "register": "Регистрация",
-    "companyNameLabel": "Название компании",
-    "companyNamePlaceholder": "ООО Управляющая компания",
-    "emailPlaceholder": "example@mail.com",
-    "passwordPlaceholder": "••••••••",
-    "confirmPasswordLabel": "Повторите пароль",
-    "confirmPasswordPlaceholder": "••••••••",
-    "termsLabel": "Я согласен с условиями использования",
-    "submitButton": "Зарегистрироваться",
-    "alreadyHaveAccount": "Уже есть аккаунт?",
-    "loginLink": "Войти",
-    "backHomeLink": "← Вернуться на главную",
-    "minPasswordLength": "Минимум 6 символов",
-    "creatingCompany": "Создаем компанию...",
-    "creatingAccount": "Создаем аккаунт...",
-    "registrationComplete": "✓ Регистрация завершена! Перенаправляем...",
-    "registrationError": "Ошибка регистрации",
-    "emailInUse": "E-mail уже зарегистрирован",
-    "weakPassword": "Пароль слишком простой",
-    "invalidEmail": "Неверный формат e-mail",
-    "permissionDenied": "Нет доступа к базе данных. Проверьте правила безопасности Firebase.",
-    "dbError": "Ошибка подключения к базе данных. Попробуйте еще раз.",
-    "passwordsDoNotMatch": "Пароли не совпадают",
-    "passwordTooShort": "Пароль должен содержать минимум 6 символов",
-    "enterEmail": "Введите e-mail",
-    "enterCompanyName": "Введите название компании",
-    "emailLabel": "E-mail",
-    "passwordLabel": "Пароль",
-    "loginButton": "Войти",
-    "loginInProgress": "Вход в систему...",
-    "resetPasswordTitle": "Сброс пароля",
-    "resetPasswordSubtitle": "Введите e-mail, и мы отправим ссылку для сброса",
-    "sendResetLink": "Отправить ссылку",
-    "sending": "Отправляем...",
-    "rememberPassword": "Помните пароль?",
-    "registrationInProgress": "Идет регистрация...",
-    "backToLogin": "Назад к входу",
-    "newPasswordLabel": "Новый пароль",
-    "repeatPasswordLabel": "Повторите пароль",
-    "saveNewPassword": "Сохранить новый пароль",
-    "savingNewPassword": "Сохраняем...",
-    "passwordResetSuccess": "Пароль успешно сброшен. Теперь вы можете войти с новым паролем.",
-    "passwordResetError": "Ошибка при сбросе пароля. Пожалуйста, попробуйте еще раз.",
-    "hidePassword": "Скрыть пароль",
-    "showPassword": "Показать пароль"
+"auth": {
+    "welcome": "Добро пожаловать в Domera",
+    "subtitle": "Управляйте вашими квартирами и платежами с легкостью",
+    "common": {
+      "email": "Email",
+      "emailPlaceholder": "example@mail.com",
+      "password": "Пароль",
+      "passwordPlaceholder": "••••••••",
+      "confirmPassword": "Повторите пароль",
+      "showPassword": "Показать пароль",
+      "hidePassword": "Скрыть пароль",
+      "backToLogin": "Вернуться к входу",
+      "backHome": "← На главную",
+      "minPasswordLength": "Минимум 6 символов",
+      "sending": "Отправка..."
+    },
+    "login": {
+      "title": "Вход",
+      "subtitle": "Введите email и пароль для входа",
+      "submit": "Войти",
+      "inProgress": "Вход в систему...",
+      "noAccount": "Нет аккаунта?",
+      "forgotPassword": "Забыли пароль?"
+    },
+    "register": {
+      "title": "Регистрация",
+      "submit": "Зарегистрироваться",
+      "inProgress": "Регистрация...",
+      "alreadyHaveAccount": "Уже есть аккаунт?",
+      "termsLabel": "Я согласен с условиями использования",
+      "company": {
+        "nameLabel": "Название компании",
+        "namePlaceholder": "ООО Управляющая компания",
+        "creating": "Создание компании..."
+      },
+      "resident": {
+        "creatingAccount": "Создание аккаунта..."
+      },
+      "status": {
+        "complete": "✓ Регистрация завершена! Перенаправление...",
+        "error": "Ошибка регистрации"
+      }
+    },
+    "resetPassword": {
+      "title": "Сброс пароля",
+      "subtitle": "Введите ваш email, и мы отправим ссылку для сброса",
+      "submit": "Отправить ссылку",
+      "success": "Ссылка для сброса пароля отправлена на {email}",
+      "error": "Ошибка сброса пароля. Попробуйте еще раз.",
+      "saveNew": "Сохранить новый пароль",
+      "saving": "Сохранение...",
+      "remembered": "Вспомнили пароль?"
+    },
+    "validation": {
+      "invalidEmail": "Некорректный формат email",
+      "emailInUse": "Email уже зарегистрирован",
+      "weakPassword": "Слишком простой пароль",
+      "passwordsDoNotMatch": "Пароли не совпадают",
+      "passwordTooShort": "Пароль должен быть не менее 6 символов",
+      "requiredEmail": "Введите email",
+      "requiredCompanyName": "Введите название компании"
+    },
+    "system": {
+      "permissionDenied": "Доступ запрещен. Проверьте правила безопасности Firebase.",
+      "dbError": "Ошибка подключения к базе данных. Попробуйте снова."
+    }
   },
   "invitation": {
     "invalidToken": "Недействительный токен приглашения",

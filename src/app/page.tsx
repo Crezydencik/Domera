@@ -10,8 +10,8 @@ export default function Home() {
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       {/* Navigation */}
       <nav className="flex items-center justify-between px-6 py-4 max-w-7xl mx-auto">
-        <div className="text-2xl font-bold text-white">
-          🏢 Domera
+        <div className="flex items-center">
+          <img src="/Logo1.png" alt="Domera Logo" className="w-56 h-12" />
         </div>
         <div className="space-x-4">
 

@@ -123,15 +123,24 @@ export const login = async (credentials: AuthCredentials): Promise<User | null> 
       
       try {
         await setDocument(FIRESTORE_COLLECTIONS.USERS, userId, newUserData);
-        user = { id: userId, ...newUserData, createdAt: new Date(newUserData.createdAt), updatedAt: new Date(newUserData.updatedAt) } as User;
+        user = {
+          id: userId,
+          uid: userId,
+          email: credentials.email,
+          name: credentials.email, // Используем email как name по умолчанию
+          role: 'Resident',
+          createdAt: new Date(newUserData.createdAt ?? Date.now()),
+          updatedAt: new Date(newUserData.updatedAt ?? Date.now()),
+        } as User;
       } catch (firestoreError) {
         console.error('Error creating user in Firestore:', firestoreError);
         // User was authenticated in Firebase but failed to create Firestore doc
         // This is not critical for login, so we can proceed
-        user = { 
-          id: userId, 
-          uid: userId, 
+        user = {
+          id: userId,
+          uid: userId,
           email: credentials.email,
+          name: credentials.email, // Используем email как name по умолчанию
           role: 'Resident',
           createdAt: new Date(),
           updatedAt: new Date(),

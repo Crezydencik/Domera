@@ -1,18 +1,19 @@
 'use client';
 
+
 import { useState } from 'react';
+import Input from '@/shared/components/ui/Input';
 import { toast } from 'react-toastify';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { login } from '@/modules/auth/services/authService';
-import { useTranslations } from 'use-intl';
-// ...existing code...
-
-
-
 import { useAuth } from '@/shared/hooks/useAuth';
+import AuthLayout from '@/shared/components/layout/AuthLayout';
+import { useTranslations } from 'next-intl';
 
 export default function LoginPage() {
+  
+    const t = useTranslations('auth');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -21,7 +22,6 @@ export default function LoginPage() {
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get('redirect');
   // Локализация отключена, все надписи статичные на русском
-  const t = useTranslations('auth');
   const { isAuthenticated, loading: authLoading } = useAuth();
 
   // Если пользователь уже залогинен, редиректим на dashboard
@@ -96,83 +96,63 @@ export default function LoginPage() {
   // Локализация отключена
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-slate-900 to-slate-800 flex items-center justify-center px-4">
-      <div className="w-full max-w-md">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">🏢 Domera</h1>
-          <p className="text-gray-400">{t('login')}</p>
+    <AuthLayout>
+      <div className="w-full max-w-md mx-auto">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2 text-center">{t('welcome')}</h1>
+          <p className="text-gray-500 text-center">{t('login.subtitle')}</p>
         </div>
-
-        {/* Form Card */}
-        <div className="bg-slate-800 rounded-lg p-8 border border-slate-700">
-          {/* Языки убраны */}
-
-
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Email */}
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                {t('emailLabel')}
-              </label>
-              <input
-                type="text"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="example@mail.com"
-                className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition"
-              />
-            </div>
-
-            {/* Password */}
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                {t('passwordLabel')}  
-              </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition"
-                required
-              />
-            </div>
-
-            {/* Forgot Password */}
-            <div className="text-right">
-              <Link href="/reset-password" className="text-sm text-blue-400 hover:text-blue-300 transition">
-                {t('forgotPassword')}
-              </Link>
-            </div>
-
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 disabled:bg-gray-600 transition"
-            >
-              {loading ? t('loginInProgress') : t('loginButton')}
-            </button>
-          </form>
-
-          {/* Sign Up Link */}
-          <p className="text-center text-gray-400 mt-6">
-            {t('noAccount')}{' '}
-            <Link href="/register" className="text-blue-400 hover:text-blue-300 transition">
-              {t('register')}
-            </Link>
-          </p>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Email */}
+          <Input
+            label={t('common.email')}
+            type="email"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            placeholder={t('common.emailPlaceholder')}
+            autoComplete="email"
+            required
+          />
+          {/* Password */}
+          <Input
+            label={t('common.password')}
+            type="password"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            placeholder={t('common.passwordPlaceholder')}
+            autoComplete="current-password"
+            required
+            showPasswordToggle
+          />
+          {/* Remember Me & Forgot Password */}
+          <div className="flex items-center justify-between">
+            <label className="flex items-center text-sm text-gray-600">
+              <input type="checkbox" className="mr-2 accent-indigo-600" /> {t('resetPassword.remembered')}
+            </label>
+            <Link href="/reset-password" className="text-sm text-indigo-600 hover:underline">{t('login.forgotPassword')}</Link>
+          </div>
+          {/* Submit Button */}
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-indigo-600 text-white py-2 rounded-lg font-semibold hover:bg-indigo-700 disabled:bg-gray-400 transition"
+          >
+            {loading ? t('login.inProgress') : t('login.submit')}
+          </button>
+        </form>
+        {/* Divider */}
+        <div className="flex items-center my-6">
+          <div className="flex-grow h-px bg-gray-200" />
+          <span className="mx-4 text-gray-400 text-sm">{t('or')}</span>
+          <div className="flex-grow h-px bg-gray-200" />
         </div>
-
-        {/* Back to Home */}
-        <div className="text-center mt-6">
-          <Link href="/" className="text-gray-400 hover:text-gray-300 transition">
-            {t('backHomeLink')}
-          </Link>
-        </div>
+        {/* Social Buttons (заглушки) */}
+        {/* Register Link */}
+        <p className="text-center text-gray-500 mt-4">
+          {t('login.noAccount')}{' '}
+          <Link href="/register" className="text-indigo-600 hover:underline">{t('register.title')}</Link>
+        </p>
       </div>
-    </div>
+    </AuthLayout>
   );
 }

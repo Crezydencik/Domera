@@ -6,6 +6,7 @@
   },  
   "system": {
     "loading": "Processing...",
+    "noAccess": "No access",
     "notifications": {
       "noNewNotifications": "No new notifications",
       "allEventsViewed": "All events viewed"
@@ -246,71 +247,75 @@
         "deleteRequestSent": "Delete request sent"
       }
     },
-    "auth": {
-      "resetPasswordEmailLabel": "Email",
-      "resetPasswordEmailPlaceholder": "Enter your email",
-      "resetPasswordSubmitButton": "Send reset link",
-      "resetPasswordSuccess": "An email with a password reset link has been sent to {email}",
-      "resetPasswordError": "Failed to send password reset email",
-      "resetPasswordInvalidEmail": "Enter a valid email",
-      "resetPasswordEnterEmail": "Enter email",
-      "resetPasswordLoading": "Sending...",
-      "resetPasswordBackToLogin": "Back to login",
-      "resetPasswordBackHome": "Back to home",
-      "resetPasswordAccount": "Account",
-      "resetPasswordNewPassword": "New password",
-      "resetPasswordRepeatPassword": "Repeat password",
-      "resetPasswordShowPassword": "Show password",
-      "resetPasswordHidePassword": "Hide password",
-      "login": "Login",
-      "forgotPassword": "Forgot password?",
-      "noAccount": "No account?",
-      "register": "Registration",
-      "companyNameLabel": "Company name",
-      "companyNamePlaceholder": "Management Company LLC",
+
+  "auth": {
+    "welcome": "Welcome to Domera",
+    "subtitle": "Manage your apartments and payments with ease",
+    "or": "or",
+    "common": {
+      "email": "Email",
       "emailPlaceholder": "example@mail.com",
+      "password": "Password",
       "passwordPlaceholder": "••••••••",
-      "confirmPasswordLabel": "Repeat password",
-      "confirmPasswordPlaceholder": "••••••••",
-      "termsLabel": "I agree to the terms of use",
-      "submitButton": "Register",
-      "alreadyHaveAccount": "Already have an account?",
-      "loginLink": "Log in",
-      "backHomeLink": "← Return to home",
+      "confirmPassword": "Repeat password",
+      "showPassword": "Show password",
+      "hidePassword": "Hide password",
+      "backToLogin": "Back to login",
+      "backHome": "← Return to home",
       "minPasswordLength": "Minimum 6 characters",
-      "creatingCompany": "Creating company...",
-      "creatingAccount": "Creating account...",
-      "registrationComplete": "✓ Registration complete! Redirecting...",
-      "registrationError": "Registration error",
+      "sending": "Sending..."
+    },
+    "login": {
+      "title": "Login",
+      "subtitle": "Enter your email and password to log in",
+      "submit": "Log in",
+      "inProgress": "Logging in...",
+      "noAccount": "No account?",
+      "forgotPassword": "Forgot password?"
+    },
+    "register": {
+      "title": "Registration",
+      "submit": "Register",
+      "inProgress": "Registration in progress...",
+      "alreadyHaveAccount": "Already have an account?",
+      "termsLabel": "I agree to the terms of use",
+      "company": {
+        "nameLabel": "Company name",
+        "namePlaceholder": "Management Company LLC",
+        "creating": "Creating company..."
+      },
+      "resident": {
+        "creatingAccount": "Creating account..."
+      },
+      "status": {
+        "complete": "✓ Registration complete! Redirecting...",
+        "error": "Registration error"
+      }
+    },
+    "resetPassword": {
+      "title": "Password Reset",
+      "subtitle": "Enter your email and we will send a reset link",
+      "submit": "Send reset link",
+      "success": "An email with a password reset link has been sent to {email}",
+      "error": "Error resetting password. Please try again.",
+      "saveNew": "Save new password",
+      "saving": "Saving...",
+      "remembered": "Remember your password?"
+    },
+    "validation": {
+      "invalidEmail": "Invalid email format",
       "emailInUse": "Email already registered",
       "weakPassword": "Password is too simple",
-      "invalidEmail": "Invalid email format",
-      "permissionDenied": "No database access. Check Firebase security rules.",
-      "dbError": "Error connecting to the database. Try again.",
       "passwordsDoNotMatch": "Passwords do not match",
       "passwordTooShort": "Password must be at least 6 characters",
-      "enterEmail": "Enter email",
-      "enterCompanyName": "Enter company name",
-      "emailLabel": "Email",
-      "passwordLabel": "Password",
-      "loginButton": "Log in",
-      "loginInProgress": "Logging in...",
-      "resetPasswordTitle": "Password Reset",
-      "resetPasswordSubtitle": "Enter your email and we will send a reset link",
-      "sendResetLink": "Send link",
-      "sending": "Sending...",
-      "rememberPassword": "Remember your password?",
-      "registrationInProgress": "Registration in progress...",
-      "backToLogin": "Back to login",
-      "newPasswordLabel": "New password",
-      "repeatPasswordLabel": "Repeat password",
-      "saveNewPassword": "Save new password",
-      "savingNewPassword": "Saving...",
-      "passwordResetSuccess": "Password reset successfully. You can now log in with your new password.",
-      "passwordResetError": "Error resetting password. Please try again.",
-      "hidePassword": "Hide password",
-      "showPassword": "Show password"
+      "requiredEmail": "Enter email",
+      "requiredCompanyName": "Enter company name"
     },
+    "system": {
+      "permissionDenied": "No database access. Check Firebase security rules.",
+      "dbError": "Error connecting to the database. Try again."
+    }
+  },
     "invitation": {
       "invalidToken": "Invalid invitation token",
       "acceptingInvitation": "Accepting invitation...",
