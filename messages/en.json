@@ -14,6 +14,7 @@
   },
   "home": {
     "subtitleManagement": "Manage houses, apartments, and payments in one place",
+    "subtitleManagementHighlight": "easily",
     "subtitleResident": "Submit readings, check bills, and manage your profile",
     "feature1": "House and apartment management",
     "feature2": "Meter reading submission",
@@ -41,12 +42,25 @@
     "saasPlatformForApartmentManagement": "SaaS platform for apartment management",
     "loginRequired": "Login required",
     "noAccess": "No access",
+    "loginDescription": "Please log in to your account to continue",
+    "noAccessDescription": "You do not have permission to access this resource. Please contact the administrator.",
+    "needHelp": "Need help?",
+    "contactSupport": "Contact support",
     "backButton": "Back",
     "myApartmentTitle": "My Apartment",
     "apartmentLabel": "Apartment",
     "buildingLabel": "Building",
     "managementCompanyLabel": "Management company",
-    "residentPageMetersHint": "Here you can add readings, documents, etc."
+    "residentPageMetersHint": "Here you can add readings, documents, etc.",
+    "newWayToManage": "A new way to manage",
+    "faq1Question": "How to get started with the platform?",
+    "faq1Answer": "Create a manager account in a few minutes and manage your buildings and apartments.",
+    "faq2Question": "What features are available?",
+    "faq2Answer": "Apartment management, meter reading tracking, invoicing, and communication with residents.",
+    "faq3Question": "Are my data secure?",
+    "faq3Answer": "Yes, we use multi-level security architecture and data is stored in secure cloud databases.",
+    "faq4Question": "Is there a trial period?",
+    "faq4Answer": "Yes, you can try the platform for free before any payments."
   },
     "dashboard": {
       "loading": "Loading...",
@@ -366,5 +380,39 @@
       "dataTodo": "TODO: Load data",
       "subscriptionActive": "Active",
       "loading": "Loading..."
-    }
+    },
+    "input": {
+      "hidePassword": "Hide password",
+      "showPassword": "Show password"
+    },
+    "invitation": {
+      "invalidToken": "Invalid invitation token",
+      "invitationError": "Error processing invitation",
+      "gdprConsentRequired": "GDPR consent is required",
+      "passwordTooShort": "Password is too short",
+      "passwordsDoNotMatch": "Passwords do not match",
+      "emailInUse": "This email is already in use",
+      "validatingInvitation": "Validating invitation...",
+      "acceptInvitation": "Accept invitation",
+      "invitedAsResident": "You are invited as resident",
+      "gdprConsent": "I agree to the processing of personal data",
+      "acceptingInvitation": "Accepting...",
+      "acceptAccess": "Accept access",
+      "newPasswordLabel": "New password",
+      "registrationInProgress": "Registration in progress...",
+      "andAcceptAccessWithoutCreatingNewPassword": "and accept access without creating a new password",
+      "loginInstead": "Or simply",
+      "loginAndAcceptAccess": "log in and accept access",
+      "accountCreated": "Account successfully created",
+      "userAdded": "User successfully added"
+    },
+    "user": "User",
+    "successSaveInfo": "Information saved",
+    "errorSaveInfo": "Error saving information",
+    "successAddTenant": "Tenant added successfully",
+    "errorAddTenant": "Error adding tenant",
+    "noNewNotifications": "No new notifications",
+    "allEventsViewed": "All events viewed",
+    "apartments": "Apartments"
   }
+}

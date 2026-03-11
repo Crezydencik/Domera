@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuth } from '@/shared/hooks/useAuth';
+import { AccessError } from '@/shared/components/AccessError';
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
@@ -71,8 +72,8 @@ export default function ResidentApartmentsPage() {
   }, [apartment]);
 
   if (loading) return <Loading text={t('loading')} />;
-  if (!user) return <div className="text-white">{t('loginRequired')}</div>;
-  if (!isResident) return <div className="text-white">{t('noAccess')}</div>;
+  if (!user) return <AccessError type="loginRequired" />;
+  if (!isResident) return <AccessError type="noAccess" />;
 
   const handleAddTenant = async (e: React.FormEvent) => {
     e.preventDefault();

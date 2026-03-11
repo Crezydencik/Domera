@@ -8,7 +8,9 @@
     }
   },
   "home": {
+    "newWayToManage": "Новый способ управления",
     "subtitleManagement": "Управляйте домами, квартирами и платежами в одном месте",
+      "subtitleManagementHighlight": "легко",
     "subtitleResident": "Передавайте показания, проверяйте счета и управляйте профилем",
     "feature1": "Управление домами и квартирами",
     "feature2": "Передача показаний счетчиков",
@@ -30,18 +32,30 @@
     "modularArchitecture": "Модульная архитектура позволяет быстро и безопасно добавлять новые функции.",
     "readyToStart": "Готовы начать?",
     "createManagerAccountOrRequestInvite": "Создайте аккаунт управляющего или запросите приглашение как житель",
-    "register": "Регистрация",
+     "register": "Регистрация",
     "login": "Войти",
     "allRightsReserved": "Все права защищены.",
     "saasPlatformForApartmentManagement": "SaaS платформа для управления многоквартирными домами",
     "loginRequired": "Требуется авторизация",
     "noAccess": "Нет доступа",
+    "loginDescription": "Пожалуйста, выполните вход в свою учетную запись, чтобы продолжить",
+    "noAccessDescription": "У вас нет прав для доступа к этому ресурсу. Пожалуйста, свяжитесь с администратором.",
+    "needHelp": "Нужна помощь?",
+    "contactSupport": "Свяжитесь с поддержкой",
     "backButton": "Назад",
     "myApartmentTitle": "Моя квартира",
     "apartmentLabel": "Квартира",
     "buildingLabel": "Дом",
     "managementCompanyLabel": "Управляющая компания",
-    "residentPageMetersHint": "Здесь можно добавить показания, документы и т.д."
+    "residentPageMetersHint": "Здесь можно добавить показания, документы и т.д.",
+    "faq1Question": "Как начать пользоваться платформой?",
+    "faq1Answer": "Создайте аккаунт менеджера за несколько минут и управляйте своими зданиями и квартирами.",
+    "faq2Question": "Какие функции доступны?",
+    "faq2Answer": "Управление квартирами, отслеживание показаний счетчиков, выставление счетов и коммуникация с жильцами.",
+    "faq3Question": "Безопасны ли мои данные?",
+    "faq3Answer": "Да, мы используем многоуровневую архитектуру безопасности и данные хранятся в защищенных облачных базах.",
+    "faq4Question": "Есть ли пробный период?",
+    "faq4Answer": "Да, вы можете попробовать платформу бесплатно перед любыми платежами."
   },
   "dashboard": {
     "loading": "Загрузка...",
@@ -248,19 +262,6 @@
 "auth": {
     "welcome": "Добро пожаловать в Domera",
     "subtitle": "Управляйте вашими квартирами и платежами с легкостью",
-    "common": {
-      "email": "Email",
-      "emailPlaceholder": "example@mail.com",
-      "password": "Пароль",
-      "passwordPlaceholder": "••••••••",
-      "confirmPassword": "Повторите пароль",
-      "showPassword": "Показать пароль",
-      "hidePassword": "Скрыть пароль",
-      "backToLogin": "Вернуться к входу",
-      "backHome": "← На главную",
-      "minPasswordLength": "Минимум 6 символов",
-      "sending": "Отправка..."
-    },
     "login": {
       "title": "Вход",
       "subtitle": "Введите email и пароль для входа",
@@ -269,6 +270,13 @@
       "noAccount": "Нет аккаунта?",
       "forgotPassword": "Забыли пароль?"
     },
+    "login.title": "Вход",
+    "register.title": "Регистрация",
+    "alreadyHaveAccount": "Уже есть аккаунт?",
+    "login": "Войти",
+    "repeatPasswordLabel": "Повторите пароль",
+    "password": "Пароль",
+    "backToLogin": "Вернуться к входу",
     "register": {
       "title": "Регистрация",
       "submit": "Зарегистрироваться",
@@ -288,12 +296,60 @@
         "error": "Ошибка регистрации"
       }
     },
+    "common": {
+      "email": "Email",
+      "emailPlaceholder": "example@mail.com",
+      "password": "Пароль",
+      "passwordPlaceholder": "••••••••",
+      "confirmPassword": "Повторите пароль",
+      "showPassword": "Показать пароль",
+      "hidePassword": "Скрыть пароль",
+      "backToLogin": "Вернуться к входу",
+      "backHome": "← На главную",
+      "minPasswordLength": "Минимум 6 символов",
+      "sending": "Отправка..."
+    },
     "resetPassword": {
       "title": "Сброс пароля",
       "subtitle": "Введите ваш email, и мы отправим ссылку для сброса",
       "submit": "Отправить ссылку",
       "success": "Ссылка для сброса пароля отправлена на {email}",
-      "error": "Ошибка сброса пароля. Попробуйте еще раз.",
+      "error": "Ошибка сброса пароля. Попробуйте еще раз."
+    }
+  },
+  "input": {
+    "hidePassword": "Скрыть пароль",
+    "showPassword": "Показать пароль"
+  },
+  "invitation": {
+    "invalidToken": "Неверный токен приглашения",
+    "invitationError": "Ошибка при обработке приглашения",
+    "gdprConsentRequired": "Согласие на обработку данных обязательно",
+    "passwordTooShort": "Пароль слишком короткий",
+    "passwordsDoNotMatch": "Пароли не совпадают",
+    "emailInUse": "Этот email уже используется",
+    "validatingInvitation": "Проверка приглашения...",
+    "acceptInvitation": "Подтвердить приглашение",
+    "invitedAsResident": "Вы приглашены как житель",
+    "gdprConsent": "Я согласен на обработку личных данных",
+    "acceptingInvitation": "Подтверждение...",
+    "acceptAccess": "Подтвердить доступ",
+    "newPasswordLabel": "Новый пароль",
+    "registrationInProgress": "Регистрация в процессе...",
+    "andAcceptAccessWithoutCreatingNewPassword": "и подтвердить доступ без создания нового пароля",
+    "loginInstead": "Или просто",
+    "loginAndAcceptAccess": "войдите и подтвердите доступ",
+    "accountCreated": "Аккаунт успешно создан",
+    "userAdded": "Пользователь успешно добавлен",
+  "user": "Пользователь",
+  "successSaveInfo": "Информация сохранена",
+  "errorSaveInfo": "Ошибка при сохранении информации",
+  "successAddTenant": "Жилец успешно добавлен",
+  "errorAddTenant": "Ошибка при добавлении жильца",
+  "noNewNotifications": "Нет новых уведомлений",
+  "allEventsViewed": "Все события просмотрены",
+  "loading": "Загрузка...",
+  "apartments": "Квартиры",
       "saveNew": "Сохранить новый пароль",
       "saving": "Сохранение...",
       "remembered": "Вспомнили пароль?"
@@ -320,8 +376,7 @@
     "invitationAccepted": "Приглашение принято! Перенаправляем...",
     "invitationError": "Ошибка при принятии приглашения. Пожалуйста, попробуйте еще раз.",
       "gdprNotice": "GDPR: Отправляйте приглашение только при наличии законных оснований и проинформировав субъекта данных."
-  }
-}, 
+  },
   "ui": {
     "apartmentsManagement": "Управление квартирами",
     "managementCompany": "Управляющая компания",

@@ -1,6 +1,7 @@
 'use client';
 
 import { useAuth } from '@/shared/hooks/useAuth';
+import { AccessError } from '@/shared/components/AccessError';
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { getApartmentsByCompany, getApartment } from '@/modules/apartments/services/apartmentsService';
 import { getBuildingsByCompany, getBuilding } from '@/modules/invoices/services/buildings/services/buildingsService';
@@ -895,7 +896,7 @@ export default function MeterReadingsPage() {
   }
 
   if (!user) {
-    return <div className="text-white">{t('loginRequired')}</div>;
+    return <AccessError type="loginRequired" />;
   }
 
   // Новый компонент для истории показаний в стиле аккордеона

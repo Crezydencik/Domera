@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/shared/hooks/useAuth";
+import { AccessError } from "@/shared/components/AccessError";
 import { useTranslations } from "next-intl";
 import * as XLSX from "xlsx";
 import { getApartmentsByCompany } from "@/modules/apartments/services/apartmentsService";
@@ -432,11 +433,7 @@ export default function MeterReadingsManagerPage() {
     );
   }
   if (!user) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-white flex items-center justify-center">
-        <p className="text-gray-700 font-medium">{t('loginRequired')}</p>
-      </div>
-    );
+    return <AccessError type="loginRequired" />;
   }
 
   return (

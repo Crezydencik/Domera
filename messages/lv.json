@@ -9,7 +9,9 @@
   },
   "home": {
     "subtitleManagement": "Pārvaldiet māju, dzīvokļus un maksājumus vienuviet",
+    "subtitleManagementHighlight": "vieglāk",
     "subtitleResident": "Nododiet rādījumus, pārbaudiet rēķinus un pārvaldiet profilu",
+
     "feature1": "Māju un dzīvokļu pārvaldība",
     "feature2": "Skaitītāju rādījumu nodošana",
     "feature3": "Rēķinu un maksājumu arhīvs",
@@ -36,12 +38,25 @@
     "saasPlatformForApartmentManagement": "SaaS platforma daudzdzīvokļu māju pārvaldībai",
     "loginRequired": "Nepieciešama pieteikšanās",
     "noAccess": "Nav piekļuves",
+    "loginDescription": "Lūdzu, piesakieties savā kontā, lai turpinātu",
+    "noAccessDescription": "Jums nav atļaujas piekļūt šim resursam. Lūdzu, sazinieties ar administratoru.",
+    "needHelp": "Jums nepieciešama palīdzība?",
+    "contactSupport": "Sazinieties ar atbalstu",
     "backButton": "Atpakaļ",
     "myApartmentTitle": "Mans dzīvoklis",
     "apartmentLabel": "Dzīvokli",
     "buildingLabel": "Māja",
     "managementCompanyLabel": "Pārvaldības uzņēmums",
-    "residentPageMetersHint": "Šeit var pievienot rādījumus, dokumentus utt."
+    "residentPageMetersHint": "Šeit var pievienot rādījumus, dokumentus utt.",
+    "newWayToManage": "Jauns pārvaldības veids",
+    "faq1Question": "Kā sākt ar platformu?",
+    "faq1Answer": "Izveidojiet pārvaldnieka kontu dažu minūšu laikā un pārvaldiet savus ēkas un dzīvokļus.",
+    "faq2Question": "Kādas funkcijas ir pieejamas?",
+    "faq2Answer": "Dzīvokļu pārvaldība, skaitītāju rādījumu izsekošana, rēķinu izrakstīšana un komunikācija ar iedzīvotājiem.",
+    "faq3Question": "Vai mani dati ir droši?",
+    "faq3Answer": "Jā, mēs izmantojam daudzlīmeņu drošības arhitektūru, un dati tiek glabāti drošos mākoņu datubāzēs.",
+    "faq4Question": "Vai ir izmēģinājuma periods?",
+    "faq4Answer": "Jā, jūs varat bez maksas izmēģināt platformu pirms jebkādu maksājumu."
   },
   "dashboard": {
     "loading": "Ielāde...",
@@ -124,7 +139,6 @@
     },
     "meterReadings": {
           "apartment": "Dzīvoklis",
-          "building": "Māja",
           "meter": "Skaitītājs",
           "period": "Periods",
           "submittedAt": "Iesniegts",
@@ -140,7 +154,6 @@
           "to": "līdz",
           "openDate": "Atvēršanas datums",
           "closeDate": "Slēgšanas datums",
-          "saving": "Saglabājam...",
           "save": "Saglabāt",
           "selectBuildingToSave": "Izvēlieties māju, lai saglabātu periodu!",
         "hotWater": "Karstais ūdens",
@@ -169,9 +182,6 @@
       "deleteCold": "Dzēst auksto",
       "deleteHot": "Dzēst karsto",
       "deleting": "Dzēšam...",
-      "apartment": "Dzīvoklis",
-      "meter": "Skaitītājs",
-      "period": "Periods",
       "entries": "Ieraksti",
       "delete": "Dzēst",
       "deleteSelected": "Dzēst izvēlētos",
@@ -240,70 +250,70 @@
   
   },
 "auth": {
-    "welcome": "Добро пожаловать в Domera",
-    "subtitle": "Управляйте вашими квартирами и платежами с легкостью",
+    "welcome": "Laipni lūdzam, {name}!",
+    "subtitle": "Pārvaldiet savus dzīvokļus un maksājumus ar vieglumu",
     "common": {
       "email": "Email",
       "emailPlaceholder": "example@mail.com",
-      "password": "Пароль",
+      "password": "Parole",
       "passwordPlaceholder": "••••••••",
-      "confirmPassword": "Повторите пароль",
-      "showPassword": "Показать пароль",
-      "hidePassword": "Скрыть пароль",
-      "backToLogin": "Вернуться к входу",
-      "backHome": "← На главную",
-      "minPasswordLength": "Минимум 6 символов",
-      "sending": "Отправка..."
+      "confirmPassword": "Apstipriniet paroli",
+      "showPassword": "Rādīt paroli",
+      "hidePassword": "Slēpt paroli",
+      "backToLogin": "Atpakaļ uz ievadi",
+      "backHome": "← Uz sākumlapu",
+      "minPasswordLength": "Vismaz 6 simboli",
+      "sending": "Sūtīšana..."
     },
     "login": {
-      "title": "Вход",
-      "subtitle": "Введите email и пароль для входа",
-      "submit": "Войти",
-      "inProgress": "Вход в систему...",
-      "noAccount": "Нет аккаунта?",
-      "forgotPassword": "Забыли пароль?"
+      "title": "Ievade",
+      "subtitle": "Ievadiet email un paroli, lai pieslēgtos",
+      "submit": "Pieslēgties",
+      "inProgress": "Pieslēgšanās...",
+      "noAccount": "Nav konta?",
+      "forgotPassword": "Aizmirsāt paroli?"
     },
     "register": {
-      "title": "Регистрация",
-      "submit": "Зарегистрироваться",
-      "inProgress": "Регистрация...",
-      "alreadyHaveAccount": "Уже есть аккаунт?",
-      "termsLabel": "Я согласен с условиями использования",
+      "title": "Reģistrācija",
+      "submit": "Reģistrēties",
+      "inProgress": "Reģistrācija...",
+      "alreadyHaveAccount": "Jau ir konts?",
+      "termsLabel": "Es piekrītu lietošanas noteikumiem",
       "company": {
-        "nameLabel": "Название компании",
-        "namePlaceholder": "ООО Управляющая компания",
-        "creating": "Создание компании..."
+        "nameLabel": "Uzņēmuma nosaukums",
+        "namePlaceholder": "SIA Pārvaldības uzņēmums",
+        "creating": "Uzņēmuma izveide..."
       },
       "resident": {
-        "creatingAccount": "Создание аккаунта..."
+        "creatingAccount": "Konts tiek izveidots..."
       },
       "status": {
-        "complete": "✓ Регистрация завершена! Перенаправление...",
-        "error": "Ошибка регистрации"
+        "complete": "✓ Reģistrācija pabeigta! Pāradresējam...",
+        "error": "Reģistrācijas kļūda. Lūdzu, mēģiniet vēlreiz."
       }
     },
     "resetPassword": {
-      "title": "Сброс пароля",
-      "subtitle": "Введите ваш email, и мы отправим ссылку для сброса",
-      "submit": "Отправить ссылку",
-      "success": "Ссылка для сброса пароля отправлена на {email}",
-      "error": "Ошибка сброса пароля. Попробуйте еще раз.",
-      "saveNew": "Сохранить новый пароль",
-      "saving": "Сохранение...",
-      "remembered": "Вспомнили пароль?"
+      "title": "Paroles atiestatīšana",
+      "subtitle": "Ievadiet savu e-pastu, un mēs nosūtīsim saiti paroles atiestatīšanai", 
+      "submit": "Nosūtīt saiti",
+      "success": "Saiti paroles atiestatīšanai nosūtīta uz {email}",
+      "error": "Kļūda paroles atiestatīšanā. Lūdzu, mēģiniet vēlreiz.",
+      "saveNew": "Saglabāt jauno paroli",
+      "saving": "Saglabāšana...",
+      "remembered": "Atcerējāties paroli?"
     },
     "validation": {
-      "invalidEmail": "Некорректный формат email",
-      "emailInUse": "Email уже зарегистрирован",
-      "weakPassword": "Слишком простой пароль",
-      "passwordsDoNotMatch": "Пароли не совпадают",
-      "passwordTooShort": "Пароль должен быть не менее 6 символов",
-      "requiredEmail": "Введите email",
-      "requiredCompanyName": "Введите название компании"
+      "invalidEmail": "Nederīgs e-pasta formāts",
+      "emailInUse": "E-pasts jau reģistrēts",
+      "weakPassword": "Parole ir pārāk vienkārša",
+      "passwordsDoNotMatch": "Paroles nesakrīt",
+      "passwordTooShort": "Parolei jābūt vismaz 6 simbolus garai",
+      "requiredEmail": "Ievadiet e-pastu",
+      "requiredCompanyName": "Ievadiet uzņēmuma nosaukumu"
     },
     "system": {
-      "permissionDenied": "Доступ запрещен. Проверьте правила безопасности Firebase.",
-      "dbError": "Ошибка подключения к базе данных. Попробуйте снова."
+      "permissionDenied": "Piekļuve liegta. Pārbaudiet Firebase drošības noteikumus.",
+      "dbError": "Kļūda, pieslēdzoties datu bāzei. Lūdzu, mēģiniet vēlreiz."
     },
 
   "invitation": {
@@ -391,5 +401,46 @@
     "notificationsSaved": "Paziņojumi saglabāti",
     "privacySaved": "Privātuma piekrišana saglabāta",
     "deleteRequestSent": "Dzēšanas pieprasījums nosūtīts"
-  }
+  },
+  "input": {
+    "hidePassword": "Slēpt paroli",
+    "showPassword": "Rādīt paroli"
+  },
+  "invitation": {
+    "invalidToken": "Nederīgs ielūguma tokens",
+    "invitationError": "Kļūda apstrādājot ielūgumu",
+    "gdprConsentRequired": "GDPR piekrišana ir obligāta",
+    "passwordTooShort": "Parole ir pārāk īsa",
+    "passwordsDoNotMatch": "Paroles nesakrīt",
+    "emailInUse": "Šis e-pasts jau tiek izmantots",
+    "validatingInvitation": "Tiek pārbaudīts ielūgums...",
+    "acceptInvitation": "Pieņemt ielūgumu",
+    "invitedAsResident": "Jūs esat aicināts kā iedzīvotājs",
+    "gdprConsent": "Es piekrītu personas datu apstrādei",
+    "acceptingInvitation": "Pieņemam...",
+    "acceptAccess": "Pieņemt piekļuvi",
+    "newPasswordLabel": "Jauna parole",
+    "registrationInProgress": "Reģistrācija notiek...",
+    "andAcceptAccessWithoutCreatingNewPassword": "un pieņem piekļuvi bez jaunas paroles izveides",
+    "loginInstead": "Vai vienkārši",
+    "loginAndAcceptAccess": "Pierakstieties un pieņemiet piekļuvi",
+    "accountCreated": "Konts veiksmīgi izveidots",
+    "userAdded": "Lietotājs veiksmīgi pievienots"
+  },
+  "auth.login.title": "Pierakstīties",
+  "auth.register.title": "Reģistrēties",
+  "auth.alreadyHaveAccount": "Jau ir konts?",
+  "auth.login": "Pierakstīties",
+  "auth.repeatPasswordLabel": "Atkārtojiet paroli",
+  "auth.password": "Parole",
+  "auth.backToLogin": "Atgriezties pie pierakstīšanās",
+  "user": "Lietotājs",
+  "successSaveInfo": "Informācija saglabāta",
+  "errorSaveInfo": "Kļūda saglabājot informāciju",
+  "successAddTenant": "Iedzīvotājs veiksmīgi pievienots",
+  "errorAddTenant": "Kļūda pievienojot iedzīvotāju",
+  "noNewNotifications": "Nav jaunu paziņojumu",
+  "allEventsViewed": "Visi notikumi apskatīti",
+  "loading": "Ielāde...",
+  "apartments": "Dzīvokļi"
 }
