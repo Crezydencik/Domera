@@ -19,6 +19,7 @@ export const FIRESTORE_COLLECTIONS = {
   METER_READINGS: 'meter_readings',
   INVOICES: 'invoices',
   INVITATIONS: 'invitations',
+  NOTIFICATIONS: 'notifications',
 } as const;
 
 // Meter types

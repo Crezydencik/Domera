@@ -119,10 +119,6 @@
         "errorAddRenter": "Kļūda, pievienojot īrnieku.",
       "loading": "Ielāde...",
       "noApartments": "Nav piešķirtu dzīvokļu. Sazinieties ar pārvaldnieku.",
-      "apartmentNumber": "Dzīvokļa numurs",
-      "building": "Māja",
-      "company": "Pārvaldības uzņēmums",
-      "actions": "Darbības",
       "viewReadings": "Skatīt rādījumus",
       "viewInvoices": "Skatīt rēķinus"
     },
@@ -308,80 +304,15 @@
     "system": {
       "permissionDenied": "Доступ запрещен. Проверьте правила безопасности Firebase.",
       "dbError": "Ошибка подключения к базе данных. Попробуйте снова."
-    }
-  },"auth": {
-    "welcome": "Добро пожаловать в Domera",
-    "subtitle": "Управляйте вашими квартирами и платежами с легкостью",
-    "common": {
-      "email": "Email",
-      "emailPlaceholder": "example@mail.com",
-      "password": "Пароль",
-      "passwordPlaceholder": "••••••••",
-      "confirmPassword": "Повторите пароль",
-      "showPassword": "Показать пароль",
-      "hidePassword": "Скрыть пароль",
-      "backToLogin": "Вернуться к входу",
-      "backHome": "← На главную",
-      "minPasswordLength": "Минимум 6 символов",
-      "sending": "Отправка..."
     },
-    "login": {
-      "title": "Вход",
-      "subtitle": "Введите email и пароль для входа",
-      "submit": "Войти",
-      "inProgress": "Вход в систему...",
-      "noAccount": "Нет аккаунта?",
-      "forgotPassword": "Забыли пароль?"
-    },
-    "register": {
-      "title": "Регистрация",
-      "submit": "Зарегистрироваться",
-      "inProgress": "Регистрация...",
-      "alreadyHaveAccount": "Уже есть аккаунт?",
-      "termsLabel": "Я согласен с условиями использования",
-      "company": {
-        "nameLabel": "Название компании",
-        "namePlaceholder": "ООО Управляющая компания",
-        "creating": "Создание компании..."
-      },
-      "resident": {
-        "creatingAccount": "Создание аккаунта..."
-      },
-      "status": {
-        "complete": "✓ Регистрация завершена! Перенаправление...",
-        "error": "Ошибка регистрации"
-      }
-    },
-    "resetPassword": {
-      "title": "Сброс пароля",
-      "subtitle": "Введите ваш email, и мы отправим ссылку для сброса",
-      "submit": "Отправить ссылку",
-      "success": "Ссылка для сброса пароля отправлена на {email}",
-      "error": "Ошибка сброса пароля. Попробуйте еще раз.",
-      "saveNew": "Сохранить новый пароль",
-      "saving": "Сохранение...",
-      "remembered": "Вспомнили пароль?"
-    },
-    "validation": {
-      "invalidEmail": "Некорректный формат email",
-      "emailInUse": "Email уже зарегистрирован",
-      "weakPassword": "Слишком простой пароль",
-      "passwordsDoNotMatch": "Пароли не совпадают",
-      "passwordTooShort": "Пароль должен быть не менее 6 символов",
-      "requiredEmail": "Введите email",
-      "requiredCompanyName": "Введите название компании"
-    },
-    "system": {
-      "permissionDenied": "Доступ запрещен. Проверьте правила безопасности Firebase.",
-      "dbError": "Ошибка подключения к базе данных. Попробуйте снова."
-    }
-  },  
+
   "invitation": {
     "invalidToken": "Nederīgs ielūguma tokens",
     "acceptingInvitation": "Pieņemam ielūgumu...",
     "invitationAccepted": "Ielūgums pieņemts! Pāradresējam...",
     "invitationError": "Kļūda, pieņemot ielūgumu. Lūdzu, mēģiniet vēlreiz."
-  },
+  }
+},
  
   "ui": {
     "apartmentsManagement": "Dzīvokļu pārvaldība",

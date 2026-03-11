@@ -11,8 +11,11 @@ import { ConfirmationDialog } from "@/shared/components/ui/ConfirmationDialog";
 import { toast } from "react-toastify";
 import type { Apartment, Building, Meter, MeterReading } from "@/shared/types";
 import Header from "../../../shared/components/layout/heder";
- import { useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { logout } from "../../../modules/auth/services/authService";
+
+// Styles imports
+import "@/app/globals.css";
 
 
 // Вспомогательные функции (скопированы из page.tsx)
@@ -419,26 +422,37 @@ export default function MeterReadingsManagerPage() {
   
 
   if (loading) {
-    return <div className="text-black bg-white min-h-screen flex items-center justify-center">{t('loading')}</div>;
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-3 border-blue-500 border-t-blue-300 rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-700 font-medium">{t('loading')}</p>
+        </div>
+      </div>
+    );
   }
   if (!user) {
-    return <div className="text-black bg-white min-h-screen flex items-center justify-center">{t('loginRequired')}</div>;
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-white flex items-center justify-center">
+        <p className="text-gray-700 font-medium">{t('loginRequired')}</p>
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-white text-gray-900">
       <Header userName={user.name || user.email || t('user')} userEmail={user.email} onLogout={handleLogout} pageTitle={t('waterReadings')} />
 
       <main className="max-w-7xl mx-auto px-4 py-10">
         {/* Верхняя панель: фильтр и экспорт */}
-        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8">
-          <div className="flex flex-col w-full max-w-xs">
-            <label className="block text-base font-semibold text-gray-700 mb-2" htmlFor="building-select">
+        <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 mb-12">
+          <div className="flex-1 max-w-sm">
+            <label className="block text-sm font-semibold text-gray-700 mb-3" htmlFor="building-select">
               {t('selectBuilding') !== 'dashboard.meterReadings.selectBuilding' ? t('selectBuilding') : 'Выбрать дом'}
             </label>
             <select
               id="building-select"
-              className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-base text-gray-700 shadow-sm focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition"
+              className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-900 shadow-md hover:border-gray-300 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition"
               value={selectedBuildingId}
               onChange={e => setSelectedBuildingId(e.target.value)}
             >
@@ -448,30 +462,29 @@ export default function MeterReadingsManagerPage() {
               ))}
             </select>
           </div>
-          <div className="flex flex-row flex-wrap items-end gap-3">
+          <div className="flex flex-row gap-3 items-center">
             <button
               type="button"
               onClick={handleExportCsv}
               disabled={exportRows.length === 0}
-              className="inline-flex items-center gap-2 rounded-xl border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 bg-white shadow-sm transition hover:bg-gray-100 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-200 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 transition shadow-md disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-white"
             >
-              <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M8 17l4 4 4-4m-4-5v9" /></svg>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
               CSV
             </button>
             <button
               type="button"
               onClick={handleExportXlsx}
               disabled={exportRows.length === 0}
-              className="inline-flex items-center gap-2 rounded-xl bg-linear-to-r from-blue-500 to-blue-400 px-4 py-2 text-sm font-semibold text-white shadow-md transition hover:from-blue-600 hover:to-blue-500 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-200 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg hover:from-blue-600 hover:to-blue-700 hover:shadow-xl transition disabled:cursor-not-allowed disabled:opacity-40"
             >
-              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M8 17l4 4 4-4m-4-5v9" /></svg>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
               XLSX
             </button>
           </div>
         </div>
 
-
-        {/* Основная часть: общий период сдачи показаний по всем квартирам выбранного дома */}
+        {/* Основная часть: период сдачи показаний */}
         {(() => {
           // Собираем все показания по квартирам выбранного дома (или по всем квартирам, если фильтр не выбран)
           const filteredApartments = apartments.filter(apartment => !selectedBuildingId || apartment.buildingId === selectedBuildingId);
@@ -532,47 +545,58 @@ export default function MeterReadingsManagerPage() {
           }
 
           return (
-            <div className="mb-8">
-              <div className="rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 to-white shadow-lg px-6 py-5 flex flex-col gap-4 transition-all">
-                <div className="flex-1 min-w-0">
-                  <div className="text-base font-bold text-blue-900 flex items-center gap-2 mb-1">
-                    <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="4" stroke="currentColor" strokeWidth="2" fill="none"/><path d="M16 2v4M8 2v4M3 10h18" stroke="currentColor" strokeWidth="2"/></svg>
-                    {t('submissionPeriodForBuilding')}
+            <div className="mb-12">
+              <div className="rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 to-white shadow-md p-6 lg:p-8">
+                <div className="flex items-start gap-4 mb-6">
+                  <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-blue-100">
+                    <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h18M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
                   </div>
-                  <div className="text-lg text-gray-800 font-medium mb-2">
-                    <span>{t('from')} <span className="font-semibold text-blue-700">{editOpenDate ? new Date(editOpenDate).toLocaleDateString() : '—'}</span> {t('to')} <span className="font-semibold text-blue-700">{editCloseDate ? new Date(editCloseDate).toLocaleDateString() : '—'}</span></span>
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900">{t('submissionPeriodForBuilding')}</h3>
+                    <p className="text-sm text-gray-600 mt-1">
+                      {editOpenDate && editCloseDate
+                        ? `${new Date(editOpenDate).toLocaleDateString('ru-RU')} — ${new Date(editCloseDate).toLocaleDateString('ru-RU')}`
+                        : 'Даты не установлены'
+                      }
+                    </p>
                   </div>
-                  <div className="flex flex-row flex-wrap items-center gap-4 mb-2">
-                    <label className="text-sm text-gray-700 flex flex-col">
-                      <span className="mb-1">{t('openDate')}</span>
-                      <input
-                        type="date"
-                        className="px-2 py-1 border border-gray-300 rounded"
-                        value={editOpenDate}
-                        onChange={e => setEditOpenDate(e.target.value)}
-                      />
-                    </label>
-                    <label className="text-sm text-gray-700 flex flex-col">
-                      <span className="mb-1">{t('closeDate')}</span>
-                      <input
-                        type="date"
-                        className="px-2 py-1 border border-gray-300 rounded"
-                        value={editCloseDate}
-                        onChange={e => setEditCloseDate(e.target.value)}
-                      />
-                    </label>
-                    <button
-                      className="h-10 mt-5 px-4 py-2 rounded bg-blue-600 text-white font-semibold hover:bg-blue-700 transition disabled:opacity-60"
-                      onClick={handleSaveDays}
-                      type="button"
-                      disabled={isSaving || !editOpenDate || !editCloseDate || !selectedBuildingId}
-                    >
-                      {isSaving ? t('saving') : t('save')}
-                    </button>
-                    {!selectedBuildingId && (
-                      <div className="text-xs text-red-500 mt-2">{t('selectBuildingToSave')}</div>
-                    )}
-                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                  <label className="block">
+                    <span className="text-sm font-semibold text-gray-700 mb-2 block">{t('openDate')}</span>
+                    <input
+                      type="date"
+                      className="w-full px-4 py-2.5 border border-gray-200 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition shadow-sm"
+                      value={editOpenDate}
+                      onChange={e => setEditOpenDate(e.target.value)}
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="text-sm font-semibold text-gray-700 mb-2 block">{t('closeDate')}</span>
+                    <input
+                      type="date"
+                      className="w-full px-4 py-2.5 border border-gray-200 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition shadow-sm"
+                      value={editCloseDate}
+                      onChange={e => setEditCloseDate(e.target.value)}
+                    />
+                  </label>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <button
+                    className="px-6 py-2.5 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold hover:from-blue-600 hover:to-blue-700 transition shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={handleSaveDays}
+                    type="button"
+                    disabled={isSaving || !editOpenDate || !editCloseDate || !selectedBuildingId}
+                  >
+                    {isSaving ? 'Сохранение...' : t('save')}
+                  </button>
+                  {!selectedBuildingId && (
+                    <p className="text-xs text-red-600 self-center">{t('selectBuildingToSave')}</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -586,98 +610,125 @@ export default function MeterReadingsManagerPage() {
         )}
 
         {isLoadingData ? (
-              <div className="rounded-2xl border border-gray-200 bg-gray-50 p-8 text-lg text-gray-600 shadow animate-pulse">
-                {t('loadingApartmentsAndReadings')}
-              </div>
-            ) : apartments.length === 0 ? (
-              <div className="rounded-2xl border border-gray-200 bg-gray-50 p-12 text-center shadow">
-                <p className="text-gray-500 text-lg font-medium">{t('noApartmentsFound')}</p>
-              </div>
-            ) : (
-              <div className="space-y-8">
-                {apartments
-                  .filter(apartment => !selectedBuildingId || apartment.buildingId === selectedBuildingId)
-                  .map((apartment) => {
-                    const buildingName = buildingNameById[apartment.buildingId] ?? t('notSpecified');
-                    const meters = metersByApartmentId[apartment.id] || [];
-                    const apartmentReadings = readings.filter(r => r.apartmentId === apartment.id);
-                    return (
-                      <div key={apartment.id} className="rounded-2xl border border-gray-100 bg-white p-6 shadow-lg transition-all duration-200 hover:shadow-2xl hover:bg-blue-50 group">
-                        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                          <div className="flex items-center gap-4">
-                            <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                              <span className="inline-block w-2 h-2 rounded-full bg-blue-400 group-hover:bg-blue-600 transition"></span>
-                              {t('apartment')} {apartment.number}
-                            </h2>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <p className="text-xs text-gray-400 mt-1">{t('building')}: <span className="font-medium text-gray-600">{buildingName}</span></p>
-                            <button className="ml-2 text-blue-600 hover:text-blue-800 bg-white rounded-full p-2 border border-blue-200 shadow" title="Редактировать счетчики" onClick={() => openEditModal(apartment.id)}>
-                              <svg width="22" height="22" fill="none" viewBox="0 0 24 24"><path d="M12 15.5c2.485 0 4.5-2.015 4.5-4.5s-2.015-4.5-4.5-4.5-4.5 2.015-4.5 4.5 2.015 4.5 4.5 4.5zm0 0v3m0-3v-3m0 3h3m-3 0H9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2"/></svg>
-                            </button>
-                          </div>
-                        </div>
-                                {/* Модальное окно редактирования счетчиков */}
-                                {editModalOpen && (
-                                  <div
-                                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/20"
-                                    onClick={e => {
-                                      // Закрыть при клике вне модалки
-                                      if (e.target === e.currentTarget) setEditModalOpen(false);
+          <div className="rounded-xl border border-gray-200 bg-gray-50 p-12 text-center shadow-sm animate-pulse">
+            <p className="text-gray-600 text-lg font-medium">{t('loadingApartmentsAndReadings')}</p>
+          </div>
+        ) : apartments.length === 0 ? (
+          <div className="rounded-xl border border-gray-200 bg-gray-50 p-12 text-center shadow-sm">
+            <svg className="w-12 h-12 text-gray-400 mx-auto mb-3" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+            </svg>
+            <p className="text-gray-600 text-lg font-medium">{t('noApartmentsFound')}</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+            {apartments
+              .filter(apartment => !selectedBuildingId || apartment.buildingId === selectedBuildingId)
+              .map((apartment) => {
+                const buildingName = buildingNameById[apartment.buildingId] ?? t('notSpecified');
+                const meters = metersByApartmentId[apartment.id] || [];
+                const apartmentReadings = readings.filter(r => r.apartmentId === apartment.id);
+                return (
+                  <div key={apartment.id} className="rounded-2xl border border-gray-200 bg-gradient-to-br from-white to-gray-50 p-6 shadow-md hover:shadow-lg hover:border-blue-300 transition-all duration-300 group">
+                    {/*Заголовок с номером квартиры*/}
+                    <div className="flex items-start justify-between gap-4 mb-6 pb-4 border-b border-gray-200">
+                      <div className="flex-1 min-w-0">
+                        <div className="text-3xl font-bold text-gray-900 mb-1">{apartment.number}</div>
+                        <p className="text-sm text-gray-600">{t('building')}: <span className="text-gray-800 font-medium">{buildingName}</span></p>
+                      </div>
+                      <button
+                        className="flex items-center justify-center w-10 h-10 rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-200 transition shadow-sm group-hover:shadow-md"
+                        title="Edit meters"
+                        onClick={() => openEditModal(apartment.id)}
+                      >
+                        <svg width="20" height="20" fill="none" viewBox="0 0 24 24">
+                          <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                          <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15H9v-3L18.5 2.5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </button>
+                    </div>
+
+                    {/* Модальное окно редактирования счетчиков */}
+                    {editModalOpen && editApartmentId === apartment.id && (
+                      <div
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/10"
+                        onClick={e => {
+                          if (e.target === e.currentTarget) setEditModalOpen(false);
                                     }}
                                   >
-                                    <div className="relative bg-white rounded-xl shadow-lg p-6 min-w-[320px] max-w-[90vw]">
-                                      {/* Крестик */}
+                                    <div className="relative bg-white rounded-2xl shadow-xl p-8 w-full max-w-md max-h-[90vh] overflow-y-auto border border-gray-200">
                                       <button
-                                        className="absolute top-3 right-3 text-gray-400 hover:text-gray-700 text-2xl font-bold"
+                                        className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition"
                                         type="button"
                                         onClick={() => setEditModalOpen(false)}
-                                        title="Закрыть"
                                       >
-                                        ×
+                                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                          <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                                        </svg>
                                       </button>
-                                      <h3 className="text-lg font-bold text-black mb-4">Редактировать данные счетчиков</h3>
+                                      <h3 className="text-2xl font-bold text-gray-900 mb-6 pr-8">Данные счетчиков</h3>
                                       {editMeters.length === 0 ? (
-                                        <div className="text-gray-500">Нет счетчиков</div>
+                                        <p className="text-gray-600 text-center py-8">Счетчики не найдены</p>
                                       ) : (
-                                        <form onSubmit={e => { e.preventDefault(); handleSaveMeters(); }}>
+                                        <form onSubmit={e => { e.preventDefault(); handleSaveMeters(); }} className="space-y-6">
                                           {editMeters.map(meter => (
-                                            <div key={meter.id} className="mb-4 flex flex-col gap-2">
-                                              <div className="text-sm font-bold text-gray-700 mb-1">
-                                                {meter.name && meter.name.toLowerCase() === 'hwm' ? 'Горячая вода' : 'Холодная вода'}
+                                            <div key={meter.id} className="pb-6 border-b border-gray-200 last:border-b-0">
+                                              <h4 className="text-sm font-bold text-gray-700 mb-4 px-3 py-2 bg-gray-100 rounded-lg">
+                                                {meter.name && meter.name.toLowerCase() === 'hwm' ? 'Горячая вода (ГВС)' : 'Холодная вода (ХВС)'}
+                                              </h4>
+                                              <div className="space-y-4">
+                                                <label className="block">
+                                                  <span className="text-sm font-semibold text-gray-700 mb-2 block">Номер счетчика</span>
+                                                  <input
+                                                    type="text"
+                                                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg bg-gray-50 text-gray-900 focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition placeholder-gray-400"
+                                                    placeholder="Введите номер"
+                                                    value={editSerials[meter.id] || ''}
+                                                    onChange={e => setEditSerials(prev => ({ ...prev, [meter.id]: e.target.value }))}
+                                                  />
+                                                </label>
+                                                <label className="block">
+                                                  <span className="text-sm font-semibold text-gray-700 mb-2 block">Дата проверки</span>
+                                                  <input
+                                                    type="date"
+                                                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg bg-gray-50 text-gray-900 focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition"
+                                                    value={editChecks[meter.id] || ''}
+                                                    onChange={e => setEditChecks(prev => ({ ...prev, [meter.id]: e.target.value }))}
+                                                  />
+                                                </label>
                                               </div>
-                                              <label className="text-sm font-semibold text-gray-800">Номер счетчика:
-                                                <input
-                                                  type="text"
-                                                  className="mt-1 px-2 py-1 border border-gray-400 rounded w-full text-gray-900 bg-gray-100 font-semibold"
-                                                  value={editSerials[meter.id] || ''}
-                                                  onChange={e => setEditSerials(prev => ({ ...prev, [meter.id]: e.target.value }))}
-                                                />
-                                              </label>
-                                              <label className="text-sm font-semibold text-gray-800">Дата проверки:
-                                                <input
-                                                  type="date"
-                                                  className="mt-1 px-2 py-1 border border-gray-400 rounded w-full text-gray-900 bg-gray-100 font-semibold"
-                                                  value={editChecks[meter.id] || ''}
-                                                  onChange={e => setEditChecks(prev => ({ ...prev, [meter.id]: e.target.value }))}
-                                                />
-                                              </label>
                                             </div>
                                           ))}
-                                          <div className="flex justify-end gap-2 mt-4">
-                                            <button type="button" className="px-4 py-2 rounded bg-gray-200 text-gray-700 font-semibold" onClick={() => setEditModalOpen(false)}>Отмена</button>
-                                            <button type="submit" className="px-4 py-2 rounded bg-blue-600 text-white font-semibold">Сохранить</button>
+                                          <div className="flex gap-3 pt-4">
+                                            <button
+                                              type="button"
+                                              className="flex-1 px-4 py-2.5 rounded-lg bg-gray-100 text-gray-900 font-semibold hover:bg-gray-200 transition"
+                                              onClick={() => setEditModalOpen(false)}
+                                            >
+                                              Отмена
+                                            </button>
+                                            <button
+                                              type="submit"
+                                              className="flex-1 px-4 py-2.5 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold hover:from-blue-600 hover:to-blue-700 transition shadow-md"
+                                            >
+                                              Сохранить
+                                            </button>
                                           </div>
                                         </form>
                                       )}
                                     </div>
                                   </div>
                                 )}
-                        {/* Показания сгруппированы по месяцам (аккордеоны) */}
-                        <div className="mt-4 space-y-4">
-                          {(() => {
-                            if (apartmentReadings.length === 0) {
-                              return <div className="text-gray-400 text-sm italic">Нет показаний</div>;
+
+                    {/* Показание по месяцам */}
+                    <div className="mt-6 space-y-3">
+                      {(() => {
+                        if (apartmentReadings.length === 0) {
+                          return (
+                            <div className="text-center py-8 text-gray-500">
+                              <p className="text-sm">Нет показаний</p>
+                            </div>
+                          );
                             }
                             // Группировка по месяцам/годам
                             const grouped = apartmentReadings.reduce((acc, reading) => {
@@ -697,15 +748,32 @@ export default function MeterReadingsManagerPage() {
                               const label = `${year}. gads ${String(month).padStart(2, '0')}`;
                               const readingsInMonth = grouped[key];
                               return (
-                                <details key={key} className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-                                  <summary className="cursor-pointer font-semibold text-blue-700">{label}</summary>
-                                  <div className="mt-2 space-y-2">
+                                <details key={key} className="group border border-gray-200 rounded-lg overflow-hidden hover:border-blue-300 transition">
+                                  <summary className="flex items-center justify-between px-4 py-3 bg-gray-50 cursor-pointer hover:bg-gray-100 transition font-semibold text-gray-900">
+                                    <span>{label}</span>
+                                    <svg className="w-5 h-5 text-gray-600 group-open:rotate-180 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                                    </svg>
+                                  </summary>
+                                  <div className="bg-white p-4 space-y-3 border-t border-gray-200">
                                     {readingsInMonth.map(reading => (
-                                      <div key={reading.id} className="flex flex-col md:flex-row md:items-center md:gap-6 gap-1 text-sm border-b border-gray-100 pb-2 last:border-b-0 text-gray-900">
-                                        <span><span className="font-semibold">Счётчик:</span> <span className="font-normal">{meterById[reading.meterId] ? getMeterDisplayName(meterById[reading.meterId]) : reading.meterId}</span></span>
-                                        <span><span className="font-semibold">Текущее:</span> <span className="font-normal">{reading.currentValue}</span></span>
-                                        <span><span className="font-semibold">Предыдущее:</span> <span className="font-normal">{reading.previousValue}</span></span>
-                                        <span><span className="font-semibold">Дата:</span> <span className="font-normal">{formatDateTime(reading.submittedAt)}</span></span>
+                                      <div key={reading.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                        <div className="flex-1 min-w-0">
+                                          <p className="text-sm text-gray-600">
+                                            <span className="font-semibold text-gray-900">{meterById[reading.meterId] ? getMeterDisplayName(meterById[reading.meterId]) : reading.meterId}</span>
+                                          </p>
+                                          <p className="text-xs text-gray-500 mt-1">{formatDateTime(reading.submittedAt)}</p>
+                                        </div>
+                                        <div className="flex items-center gap-4 text-sm">
+                                          <div className="text-center">
+                                            <p className="text-xs text-gray-500">Предыдущее</p>
+                                            <p className="font-semibold text-gray-900">{reading.previousValue}</p>
+                                          </div>
+                                          <div className="text-center">
+                                            <p className="text-xs text-gray-500">Текущее</p>
+                                            <p className="font-semibold text-gray-900">{reading.currentValue}</p>
+                                          </div>
+                                        </div>
                                       </div>
                                     ))}
                                   </div>
@@ -713,13 +781,12 @@ export default function MeterReadingsManagerPage() {
                               );
                             });
                           })()}
-                        </div>
                       </div>
-                    );
-                  })}
-              </div>
-            )}
-          
+                    </div>
+                  );
+              })}
+          </div>
+        )}
         <ConfirmationDialog
           isOpen={Boolean(deleteTarget)}
           title={t('deleteReading')}
@@ -752,24 +819,26 @@ export default function MeterReadingsManagerPage() {
           onConfirm={handleDeleteMultiConfirm}
         >
           {deleteMulti && (
-            <div className="mt-3 space-y-2">
-              <label className="flex items-center gap-2">
+            <div className="mt-4 space-y-3 bg-gray-100 p-4 rounded-lg">
+              <label className="flex items-center gap-3 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={deleteMultiLeft}
                   onChange={(e) => setDeleteMultiLeft(e.target.checked)}
+                  className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-300 cursor-pointer"
                 />
-                <span>
+                <span className="text-sm text-gray-900">
                   {deleteMulti.left ? (meterById[deleteMulti.left.meterId] ? getMeterDisplayName(meterById[deleteMulti.left.meterId]) : deleteMulti.left.meterId) : '-'}
                 </span>
               </label>
-              <label className="flex items-center gap-2">
+              <label className="flex items-center gap-3 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={deleteMultiRight}
                   onChange={(e) => setDeleteMultiRight(e.target.checked)}
+                  className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-300 cursor-pointer"
                 />
-                <span>
+                <span className="text-sm text-gray-900">
                   {deleteMulti.right ? (meterById[deleteMulti.right.meterId] ? getMeterDisplayName(meterById[deleteMulti.right.meterId]) : deleteMulti.right.meterId) : '-'}
                 </span>
               </label>

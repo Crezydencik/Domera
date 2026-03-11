@@ -1,21 +1,42 @@
-"use client";
+'use client';
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { getApartmentsFromDatabase, deleteApartment, unassignResidentFromApartment } from '@/modules/apartments/services/apartmentsService';
-// meters helper removed from this page
-import {  } from '@/modules/auth/services/authService';
+import { logout } from '@/modules/auth/services/authService';
 import { getBuildingsFromDatabase } from '@/firebase/services/firestoreService';
+import { revokeInvitation } from '@/modules/invitations/services/invitationsService';
 import { doc, addDoc, collection, onSnapshot, query, where, updateDoc, getDoc } from 'firebase/firestore';
 import { db } from '@/firebase/config';
+import { useAuth } from '@/shared/hooks/useAuth';
+import { useTranslations } from 'next-intl';
+import Header from '@/shared/components/layout/heder';
 import type { Apartment, Building, Invitation, InvitationGdprMeta } from '@/shared/types';
 type SelectedInvitation = Invitation & { sentAt?: Date };
 type SelectedApartment = Apartment & { invitations?: SelectedInvitation[] };
 import { ApartmentModal } from '@/shared/components/apartments/ApartmentModal';
+import { BuildingSelector } from '@/shared/components/apartments/BuildingSelector';
+import { ImportApartmentsModal } from '@/shared/components/apartments/ImportApartmentsModal';
+import { ApartmentCard } from './ApartmentCard';
 import { toast } from 'react-toastify';
 
 export default function ApartmentsManagementPage() {
+  const { user } = useAuth();
+  const router = useRouter();
+  const t = useTranslations();
+  
+  const handleLogout = async () => {
+    try {
+      await logout();
+      router.push('/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+      toast.error('Ошибка при выходе');
+    }
+  };
+
   const [apartments, setApartments] = useState<Apartment[]>([]);
   const [buildings, setBuildings] = useState<Building[]>([]);
+  const [selectedBuildingId, setSelectedBuildingId] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [isAddingApartment, setIsAddingApartment] = useState(false);
   const [showGlobalInvite, setShowGlobalInvite] = useState(false);
@@ -28,6 +49,7 @@ export default function ApartmentsManagementPage() {
   });
   const [selectedApartment, setSelectedApartment] = useState<SelectedApartment | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   // metersByApartmentId removed — not used in current list layout
   // kept import/getMetersByApartment for potential future use
 
@@ -82,7 +104,14 @@ export default function ApartmentsManagementPage() {
   }, []);
 
   if (loading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-3 border-blue-500 border-t-blue-300 rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-700 font-medium">Загрузка...</p>
+        </div>
+      </div>
+    );
   }
 
   const handleAddApartment = async () => {
@@ -268,58 +297,79 @@ export default function ApartmentsManagementPage() {
     }
   };
 
+  const handleCancelInvitation = async (invitationId: string) => {
+    if (!window.confirm('Вы уверены, что хотите отменить это приглашение?')) {
+      return;
+    }
+
+    try {
+      await revokeInvitation(invitationId);
+      setSelectedApartment(null);
+      setIsModalOpen(false);
+      toast.success('Приглашение успешно отменено');
+    } catch (error) {
+      console.error('Error canceling invitation:', error);
+      toast.error('Ошибка при отмене приглашения');
+    }
+  };
+
   // Password reset is handled inside the ApartmentModal now
 
   // Building CRUD helpers removed from this page (not used here)
   return (
-    <div className="min-h-screen bg-linear-to-br from-slate-900 to-slate-800">
-      {/* Header */}
-      <header className="bg-slate-800 border-b border-slate-700">
-          <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <Link href="/dashboard" className="text-gray-400 hover:text-white">← Вернуться</Link>
-          <h1 className="text-2xl font-bold text-white">Управление квартирами</h1>
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setShowGlobalInvite((s) => !s)}
-              className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition"
-            >
-              Добавить жильца
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsAddingApartment((prev) => !prev)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-            >
-              {isAddingApartment ? 'Отмена' : '+ Добавить квартиру'}
-            </button>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50">
+      <Header 
+        userName={user?.name || user?.email || t('user')} 
+        userEmail={user?.email}
+        onLogout={handleLogout}
+        pageTitle={t('apartments') || 'Управление квартирами'}
+      />
 
-      <main className="max-w-7xl mx-auto px-4 py-8">
+      <main className="max-w-7xl mx-auto px-6 py-12">
+        {/* Building Selector with Action Buttons */}
+        <BuildingSelector
+          buildings={buildings}
+          selectedBuildingId={selectedBuildingId}
+          onBuildingSelect={setSelectedBuildingId}
+          onAddResident={() => setShowGlobalInvite((s) => !s)}
+          onAddApartment={() => setIsAddingApartment((prev) => !prev)}
+          onImport={() => setIsImportModalOpen(true)}
+          showGlobalInvite={showGlobalInvite}
+          isAddingApartment={isAddingApartment}
+        />
+
         {showGlobalInvite && (
-          <div className="mb-6 rounded-lg border border-slate-700 bg-slate-800/60 p-6">
-            <h2 className="text-lg font-bold mb-3 text-white">Пригласить жильца (быстрый режим)</h2>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 items-end">
+          <div className="mb-8 rounded-2xl border border-emerald-100 bg-white p-8 shadow-sm hover:shadow-md transition">
+            <div className="flex items-center justify-between mb-6">
               <div>
-                <label className="block text-sm text-gray-300 mb-1">Email</label>
+                <h2 className="text-2xl font-bold text-gray-900">Пригласить жильца</h2>
+                <p className="text-gray-600 text-sm mt-1">Быстрое добавление нового жильца в квартиру</p>
+              </div>
+              <div className="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center">
+                <svg className="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                </svg>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:items-end">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Email адрес</label>
                 <input
                   type="email"
                   value={globalInviteEmail}
                   onChange={(e) => setGlobalInviteEmail(e.target.value)}
-                  placeholder="email@domain.com"
-                  className="w-full rounded-md bg-gray-800 border border-gray-600 text-white px-3 py-2"
+                  placeholder="example@domain.com"
+                  className="w-full rounded-lg bg-gray-50 border-2 border-gray-200 text-gray-900 px-4 py-3 focus:border-emerald-500 focus:outline-none transition"
                 />
               </div>
               <div>
-                <label className="block text-sm text-gray-300 mb-1">Квартира</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Выберите квартиру</label>
                 <select
                   value={globalInviteApartmentId}
                   onChange={(e) => setGlobalInviteApartmentId(e.target.value || undefined)}
-                  className="w-full rounded-md bg-gray-800 border border-gray-600 text-white px-3 py-2"
+                  className="w-full rounded-lg bg-gray-50 border-2 border-gray-200 text-gray-900 px-4 py-3 focus:border-emerald-500 focus:outline-none transition"
                 >
-                  <option value="">Выберите квартиру</option>
+                  <option value="">Выберите квартиру...</option>
                   {apartments
                     .filter(a => !a.residentId && !invitedApartmentIds.includes(a.id || ''))
                     .map(a => (
@@ -331,7 +381,6 @@ export default function ApartmentsManagementPage() {
                 <button
                   type="button"
                   onClick={async () => {
-                    // send invite
                     const email = (globalInviteEmail || '').trim();
                     if (!email || !email.includes('@')) {
                       toast.error('Введите корректный email');
@@ -353,7 +402,6 @@ export default function ApartmentsManagementPage() {
                       } else {
                         toast.success(`Приглашение отправлено на ${email}`);
                         setGlobalInviteEmail('');
-                        // update invited list so apartment disappears from selector
                         setInvitedApartmentIds(prev => Array.from(new Set([...prev, globalInviteApartmentId])));
                         setGlobalInviteApartmentId(undefined);
                       }
@@ -362,7 +410,7 @@ export default function ApartmentsManagementPage() {
                       toast.error('Ошибка при отправке приглашения');
                     }
                   }}
-                  className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700"
+                  className="flex-1 rounded-lg bg-gradient-to-r from-emerald-500 to-emerald-600 px-4 py-3 text-sm font-semibold text-white hover:shadow-lg transition"
                 >
                   Отправить приглашение
                 </button>
@@ -370,21 +418,31 @@ export default function ApartmentsManagementPage() {
                 <button
                   type="button"
                   onClick={() => setShowGlobalInvite(false)}
-                  className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-medium text-white bg-transparent hover:bg-slate-700"
+                  className="px-4 py-3 rounded-lg border-2 border-gray-200 text-gray-900 font-semibold bg-white hover:bg-gray-50 transition"
                 >
-                  Закрыть
+                  Отмена
                 </button>
               </div>
             </div>
-            <p className="mt-3 text-sm text-gray-300">В списке показаны квартиры без привязанного жильца и без активных приглашений.</p>
+            <p className="mt-4 text-sm text-gray-600">💡 В списке показаны квартиры без привязанного жильца и без активных приглашений.</p>
           </div>
         )}
         {isAddingApartment && (
-          <div className="mb-6 bg-slate-800 p-6 rounded-lg shadow-md">
-            <h2 className="text-lg font-bold mb-4">Добавить новую квартиру</h2>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="mb-8 rounded-2xl border border-blue-100 bg-white p-8 shadow-sm hover:shadow-md transition">
+            <div className="flex items-center justify-between mb-6">
               <div>
-                <label htmlFor="apartmentNumber" className="block text-sm font-medium text-gray-300 mb-2">
+                <h2 className="text-2xl font-bold text-gray-900">Добавить новую квартиру</h2>
+                <p className="text-gray-600 text-sm mt-1">Создайте новую квартиру в выбранном доме</p>
+              </div>
+              <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center">
+                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 mb-6">
+              <div>
+                <label htmlFor="apartmentNumber" className="block text-sm font-semibold text-gray-700 mb-2">
                   Номер квартиры
                 </label>
                 <input
@@ -392,23 +450,23 @@ export default function ApartmentsManagementPage() {
                   id="apartmentNumber"
                   value={newApartment.number}
                   onChange={(e) => setNewApartment({ ...newApartment, number: e.target.value })}
-                  className="mt-1 block w-full rounded-md bg-gray-800 border border-gray-600 text-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Введите номер квартиры"
+                  className="w-full rounded-lg bg-gray-50 border-2 border-gray-200 text-gray-900 px-4 py-3 focus:border-blue-500 focus:outline-none transition"
+                  placeholder="Н-р: 101"
                   required
                 />
               </div>
               <div>
-                <label htmlFor="buildingId" className="block text-sm font-medium text-gray-300 mb-2">
+                <label htmlFor="buildingId" className="block text-sm font-semibold text-gray-700 mb-2">
                   Выберите дом
                 </label>
                 <select
                   id="buildingId"
                   value={newApartment.buildingId}
                   onChange={(e) => setNewApartment({ ...newApartment, buildingId: e.target.value })}
-                  className="mt-1 block w-full rounded-md bg-gray-800 border border-gray-600 text-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full rounded-lg bg-gray-50 border-2 border-gray-200 text-gray-900 px-4 py-3 focus:border-blue-500 focus:outline-none transition"
                   required
                 >
-                  <option value="" disabled>Выберите дом</option>
+                  <option value="" disabled>Выберите дом...</option>
                   {buildings.map((building) => (
                     <option key={building.id} value={building.id}>
                       {building.name}
@@ -417,99 +475,38 @@ export default function ApartmentsManagementPage() {
                 </select>
               </div>
             </div>
-            <div className="mt-4 flex justify-end">
+            <div className="flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={() => setIsAddingApartment(false)}
+                className="px-6 py-3 rounded-lg border-2 border-gray-200 text-gray-900 font-semibold bg-white hover:bg-gray-50 transition"
+              >
+                Отмена
+              </button>
               <button
                 onClick={handleAddApartment}
-                className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="px-6 py-3 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold hover:shadow-lg transition"
               >
-                Добавить
+                Добавить квартиру
               </button>
             </div>
           </div>
         )}
 
-        <div className="flex flex-col gap-8">
-          {buildings.map((building) => {
-            const buildingApartments = apartments.filter(a => a.buildingId === building.id);
-            return (
-              <div
-                key={building.id}
-                className="group relative bg-slate-800 border border-slate-700 rounded-lg p-6 hover:border-slate-600 transition"
-              >
-                <div className="absolute right-4 top-4 z-10 flex items-center gap-2 rounded-xl border border-slate-600/70 bg-slate-900/70 p-1.5 shadow-lg shadow-slate-950/40 backdrop-blur">
-                  <button
-                    type="button"
-                    onClick={() => alert(`Дом: ${building.name}\nАдрес: ${building.address || '—'}`)}
-                    aria-label="Информация о доме"
-                    title="Информация о доме"
-                    className="group/btn relative inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-600 bg-slate-700/80 text-slate-100 transition hover:border-blue-500/60 hover:bg-slate-600"
-                  >
-                    <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      <circle cx="12" cy="12" r="9" />
-                      <line x1="12" y1="10" x2="12" y2="16" />
-                      <circle cx="12" cy="7" r="1" fill="currentColor" stroke="none" />
-                    </svg>
-                    <span className="pointer-events-none absolute -bottom-8 left-1/2 hidden -translate-x-1/2 rounded-md border border-slate-600 bg-slate-900 px-2 py-0.5 text-[10px] text-slate-200 shadow group-hover/btn:block whitespace-nowrap">
-                      Инфо
-                    </span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => { setIsAddingApartment(true); setNewApartment((p) => ({ ...p, buildingId: building.id })); }}
-                    aria-label="Добавить квартиру"
-                    title="Добавить квартиру"
-                    className="group/btn relative inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-600 bg-green-700/80 text-white transition hover:bg-green-600"
-                  >
-                    <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      <line x1="12" y1="5" x2="12" y2="19" />
-                      <line x1="5" y1="12" x2="19" y2="12" />
-                    </svg>
-                    <span className="pointer-events-none absolute -bottom-8 left-1/2 hidden -translate-x-1/2 rounded-md border border-slate-600 bg-slate-900 px-2 py-0.5 text-[10px] text-slate-200 shadow group-hover/btn:block whitespace-nowrap">
-                      Добавить
-                    </span>
-                  </button>
-                </div>
-
-                <h3 className="text-lg font-semibold text-white">{building.name}</h3>
-                <p className="text-gray-400">{building.address}</p>
-                <p className="mt-2 text-sm text-slate-300">Управляет: {building.managedBy?.companyName || building.managedBy?.managerEmail || 'Не указано'}</p>
-
-                <div className="mt-4">
-                  <h4 className="text-sm text-gray-300 mb-2">Квартиры</h4>
-                  {buildingApartments.length > 0 ? (
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      {buildingApartments.map((apartment) => {
-                        const residentEmail = apartment.tenants?.[0]?.email ?? undefined;
-                        const tenant0 = apartment.tenants?.[0] as unknown;
-                        const residentPhone = (typeof tenant0 === 'object' && tenant0 !== null && 'phone' in tenant0) ? (tenant0 as { phone?: string }).phone : undefined;
-                        return (
-                          <div key={apartment.id} className="bg-slate-900/40 border border-slate-700 rounded-md p-3">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <div className="text-white font-medium">Квартира {apartment.number}</div>
-                                <div className="text-sm text-gray-400">Email жильца: {residentEmail ?? '—'}</div>
-                                <div className="text-sm text-gray-400">Телефон: {residentPhone ?? '—'}</div>
-                             </div>
-                              <div className="flex gap-2">
-                                <button onClick={() => handleOpenModal(apartment)} className="px-3 py-1 rounded bg-blue-600 text-white text-sm">ℹ️</button>
-                                <button onClick={() => handleUnassignResidentFor(apartment.id)} className="px-3 py-1 rounded bg-amber-600 text-white text-sm">✖</button>
-                                <button onClick={() => handleDeleteApartment(apartment.id)} className="px-3 py-1 rounded bg-red-700 text-white text-sm">🗑</button>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-gray-400">В этом доме пока нет квартир</p>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+        <div className="flex flex-col gap-4">
+          {apartments
+            .filter(a => !selectedBuildingId || a.buildingId === selectedBuildingId)
+            .map((apartment) => (
+              <ApartmentCard
+                key={apartment.id}
+                apartment={apartment}
+                onDetails={handleOpenModal}
+                onUnassign={handleUnassignResidentFor}
+                onDelete={handleDeleteApartment}
+              />
+            ))}
         </div>
-
+ 
         {isModalOpen && selectedApartment && (
           (() => {
             // compute invitation meta (latest invitation) and account status + resident email
@@ -534,10 +531,18 @@ export default function ApartmentsManagementPage() {
               || invitations.find(inv => inv.status === 'accepted')?.email
               || undefined;
 
+            // Get resident joined date (acceptedAt from tenant)
+            const residentJoinedAt = selectedApartment.tenants && selectedApartment.tenants[0]?.acceptedAt
+              ? new Date(selectedApartment.tenants[0].acceptedAt)
+              : undefined;
+
             // determine account status
             let accountStatus: 'activated' | 'pending' | 'notAssigned' = 'notAssigned';
             if (selectedApartment.residentId) accountStatus = 'activated';
             else if (invitations.length > 0) accountStatus = 'pending';
+
+            // Find pending invitation (not accepted, not revoked)
+            const pendingInvitation = invitations.find(inv => inv.status === 'pending');
 
             return (
               <ApartmentModal
@@ -545,18 +550,29 @@ export default function ApartmentsManagementPage() {
                 invitationMeta={invitationMeta}
                 accountStatus={accountStatus}
                 residentEmail={residentEmail}
+                residentJoinedAt={residentJoinedAt}
                 onClose={handleCloseModal}
                 onDelete={() => handleDeleteApartment(selectedApartment.id)}
                 onUnassignResident={handleUnassignResident}
+                onCancelInvitation={pendingInvitation ? () => handleCancelInvitation(pendingInvitation.id) : undefined}
                 deleting={false}
                 sendingPasswordReset={false}
                 canDelete={true}
                 canSendPasswordReset={true}
                 canUnassignResident={true}
+                pendingInvitationId={pendingInvitation?.id}
               />
             );
           })()
         )}
+
+        <ImportApartmentsModal
+          buildings={buildings}
+          isOpen={isImportModalOpen}
+          onClose={() => setIsImportModalOpen(false)}
+          onImportSuccess={fetchData}
+        />
+         
       </main>
     </div>
   );

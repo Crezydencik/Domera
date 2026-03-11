@@ -314,14 +314,15 @@
     "system": {
       "permissionDenied": "No database access. Check Firebase security rules.",
       "dbError": "Error connecting to the database. Try again."
-    }
-  },
+    },
     "invitation": {
       "invalidToken": "Invalid invitation token",
       "acceptingInvitation": "Accepting invitation...",
       "invitationAccepted": "Invitation accepted! Redirecting...",
       "invitationError": "Error accepting invitation. Please try again."
-    },
+    }
+  }, 
+
     "ui": {
       "apartmentsManagement": "Apartment management",
       "managementCompany": "Management company",

@@ -8,6 +8,7 @@ import {
   acceptInvitationForAuthenticatedUser,
   getInvitationByToken,
 } from '@/modules/invitations/services/invitationsService';
+import { getUserByEmail } from '@/modules/auth/services/authService';
 import { useAuth } from '@/shared/hooks/useAuth';
 import { useTranslations } from 'use-intl';
 
@@ -22,21 +23,18 @@ export default function AcceptInvitationPage() {
   const [email, setEmail] = useState('');
   const [existingAccountDetected, setExistingAccountDetected] = useState(false);
   const [shouldLoginInstead, setShouldLoginInstead] = useState(false);
+  const [emailExistsInSystem, setEmailExistsInSystem] = useState(false);
   const [formData, setFormData] = useState({
     password: '',
     confirmPassword: '',
     gdprConsent: false,
   });
   const [submitting, setSubmitting] = useState(false);
-  const t = useTranslations('');
+  const t = useTranslations('auth');
   useEffect(() => {
-    // Если пользователь не авторизован — редиректим на логин
-    if (!user?.uid && !authLoading) {
-      router.push(`/login?redirect=${encodeURIComponent(`/accept-invitation?token=${token}`)}`);
-      return;
-    }
+    const validateAndProceed = async () => {
+      if (authLoading) return;
 
-    const validateToken = async () => {
       if (!token) {
         setError(t('invalidToken'));
         setLoading(false);
@@ -44,6 +42,7 @@ export default function AcceptInvitationPage() {
       }
 
       try {
+        // Получить и проверить приглашение
         const invitation = await getInvitationByToken(token);
         console.log('[AcceptInvitationPage] invitation:', invitation);
 
@@ -59,16 +58,45 @@ export default function AcceptInvitationPage() {
         }
 
         setEmail(invitation.email);
-        setExistingAccountDetected(Boolean(user?.email) && user.email.trim().toLowerCase() === invitation.email.trim().toLowerCase());
+
+        // Если пользователь уже авторизован
+        if (user?.uid) {
+          const userEmail = user.email.trim().toLowerCase();
+          const invitationEmail = invitation.email.trim().toLowerCase();
+          
+          if (userEmail === invitationEmail) {
+            // Email совпадает - показываем форму принятия для авторизованного пользователя
+            setExistingAccountDetected(true);
+            setLoading(false);
+            return;
+          } else {
+            // Email не совпадает - ошибка
+            setError(`Вы авторизованы как ${userEmail}, но приглашение на ${invitationEmail}`);
+            setLoading(false);
+            return;
+          }
+        }
+
+        // Если не авторизован - проверяем есть ли пользователь с таким email
+        const existingUser = await getUserByEmail(invitation.email);
+        
+        if (existingUser) {
+          // Пользователь существует - редирект на login
+          router.push(`/login?redirect=${encodeURIComponent(`/accept-invitation?token=${token}`)}`);
+        } else {
+          // Новый пользователь - показываем форму регистрации
+          setEmailExistsInSystem(false);
+          setLoading(false);
+        }
       } catch (err: any) {
+        console.error('[AcceptInvitationPage] Error:', err);
         setError(t('invitation.invitationError') + ': ' + (err?.message || err));
-      } finally {
         setLoading(false);
       }
     };
 
-    validateToken();
-  }, [token, user?.email, authLoading]);
+    validateAndProceed();
+  }, [token, user?.uid, user?.email, authLoading, router, t]);
 
   const handleAcceptForExistingAccount = async () => {
     setError('');

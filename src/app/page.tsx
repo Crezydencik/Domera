@@ -16,10 +16,10 @@ export default function Home() {
         <div className="space-x-4">
 
           <Link href="/login" className="text-white hover:text-blue-400 transition">
-            {t('auth.login')}
+            {t('auth.login.title')}
           </Link>
           <Link href="/register" className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
-            {t('auth.register')}
+            {t('auth.register.title')}
           </Link>
         </div>
       </nav>

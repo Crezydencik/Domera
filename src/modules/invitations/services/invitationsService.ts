@@ -7,8 +7,7 @@ import { registerUser } from '@/modules/auth/services/authService';
 import { assignResidentToApartment } from '@/modules/apartments/services/apartmentsService';
 import { getUserById } from '@/modules/auth/services/authService';
 import { validateEmail } from '@/shared/validation';
-// Удалён неиспользуемый импорт
-// Удалён дублирующий импорт
+import { createNotification } from '@/modules/notifications/services/notificationsService';
 
 const normalizeEmail = (email: string): string => email.trim().toLowerCase();
 
@@ -203,6 +202,20 @@ export const acceptInvitation = async (
     // Assign resident to apartment
     await assignResidentToApartment(invitation.apartmentId, user.uid);
 
+    // Create notification about joining apartment
+    try {
+      await createNotification(
+        user.uid,
+        'apartment-joined',
+        'Присоединение к квартире',
+        `Вы успешно зарегистрировались и присоединились к квартире.`,
+        { apartmentId: invitation.apartmentId }
+      );
+    } catch (notifErr) {
+      console.warn('Error creating notification:', notifErr);
+      // Don't throw, notification failure shouldn't block the flow
+    }
+
     return user;
   } catch (error) {
     console.error('Error accepting invitation:', error);
@@ -265,6 +278,20 @@ export const acceptInvitationForAuthenticatedUser = async (
     });
 
     await assignResidentToApartment(invitation.apartmentId, user.uid);
+
+    // Create notification about joining apartment
+    try {
+      await createNotification(
+        authenticatedUserId,
+        'apartment-joined',
+        'Присоединение к квартире',
+        `Вы успешно присоединились к квартире.`,
+        { apartmentId: invitation.apartmentId }
+      );
+    } catch (notifErr) {
+      console.warn('Error creating notification:', notifErr);
+      // Don't throw, notification failure shouldn't block the flow
+    }
   } catch (error) {
     console.error('Error accepting invitation for authenticated user:', error);
     throw error;

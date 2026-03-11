@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "analyze:excel": "tsx scripts/analyzeExcelStructure.ts",
+    "import:apartments": "tsx scripts/importApartmentsFromExcel.ts"
   },
   "dependencies": {
     "firebase": "^12.9.0",
@@ -31,6 +33,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "tailwindcss": "^4",
+    "tsx": "^4.21.0",
     "typescript": "5.9.3"
   }
 }

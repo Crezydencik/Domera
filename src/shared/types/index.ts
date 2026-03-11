@@ -97,10 +97,24 @@ export interface Apartment {
   residentId?: string; // legacy, для совместимости
   tenants?: TenantAccess[];
   waterReadings?: MeterReading[];
-  // Новые поля для информации о квартире
-  description?: string; // Описание квартиры
-  area?: number;        // Площадь (кв.м)
-  rooms?: number;       // Количество комнат
+  // Базовые поля
+  description?: string;              // Описание квартиры
+  area?: number;                    // Площадь (кв.м)
+  rooms?: number;                   // Количество комнат
+  // Поля из кадастра (импорт из Excel)
+  cadastralNumber?: string;          // Kadastra numurs
+  cadastralPart?: string;            // Domājamā daļa
+  address?: string;                  // Adrese
+  floor?: string;                    // Stavs (этаж)
+  apartmentType?: string;            // DZ t (тип квартиры)
+  commonPropertyShare?: string;      // Daļa (kopīpašums)
+  owner?: string;                    // Īpašnieks (собственник)
+  ownerEmail?: string;               // E pasts Reķiniem (email)
+  heatingArea?: number;              // Apkure (площадь отопления)
+  managementArea?: number;           // Apsaimn (площадь управления)
+  declaredResidents?: number;        // Dekl iedz (объявленные жители)
+  hotWaterMeterNumber?: string;      // Kartsais NR
+  coldWaterMeterNumber?: string;     // Aukstais NR
 }
 
 export type MeterType = 'water' | 'electricity' | 'heat';
@@ -177,6 +191,24 @@ export interface Invitation {
   revokedAt?: Date;
   gdpr?: InvitationGdprMeta;
   permissions?: TenantPermission[];
+}
+
+/**
+ * Notification types
+ */
+export type NotificationType = 'apartment-joined' | 'building-joined' | 'info' | 'warning' | 'success';
+
+export interface Notification {
+  id: string;
+  userId: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  apartmentId?: string;
+  buildingId?: string;
+  createdAt: Date;
+  read: boolean;
+  readAt?: Date;
 }
 
 /**
