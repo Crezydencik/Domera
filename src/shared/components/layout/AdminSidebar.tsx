@@ -108,8 +108,12 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
 
           <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
             {filteredItems.map((item) => {
-              const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
-
+              let isActive;
+              if (item.href === ROUTES.DASHBOARD) {
+                isActive = pathname === item.href;
+              } else {
+                isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+              }
               return (
                 <Link
                   key={item.href}
@@ -146,7 +150,7 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
               type="button"
               onClick={handleLogout}
               disabled={isLoggingOut}
-              className="w-full px-3 py-2 rounded-lg bg-red-600 hover:bg-red-900 border border-slate-700 text-white hover:bg-slate-700 transition disabled:opacity-60"
+              className="w-full px-3 py-2 rounded-lg bg-red-600 hover:bg-red-900 border border-slate-700 text-white transition disabled:opacity-60"
             >
               {isLoggingOut ? t('sidebar.loggingOut') : t('sidebar.logout')}
             </button>

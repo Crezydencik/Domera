@@ -59,6 +59,7 @@ export interface Building {
       
 export interface TenantAccess {
   userId: string;
+  name?: string;
   email: string;
   permissions: TenantPermission[];
   invitedAt: Date;

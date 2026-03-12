@@ -109,7 +109,7 @@ export default function BuildingsPage() {
           managerUid: user.uid,
           managerEmail: user.email,
         },
-      });
+      }, null);
       await loadBuildings();
       setBuildingName('');
       setBuildingAddress('');

@@ -57,6 +57,8 @@
     },
     "resident": {
       "welcome": "Laipni lūdzam, {name}!",
+      "loadingStats": "Ielāde...",
+
       "apartmentInfo": "Dzīvokļa informācija",
       "buildingInfo": "Mājas informācija",
       "companyInfo": "Pārvaldības uzņēmuma informācija",
@@ -91,7 +93,12 @@
       "company": "Pārvaldības uzņēmums",
       "actions": "Darbības",
       "viewReadings": "Skatīt rādījumus",
-      "viewInvoices": "Skatīt rēķinus"
+      "viewInvoices": "Skatīt rēķinus",
+      "loginRequired": "Nepieciešama pieteikšanās",
+      "noAccess": "Nav piekļuves",
+      "myApartmentTitle": "Mans dzīvoklis",
+      "apartmentLabel": "Dzīvokli",
+      "backButton": "Atpakaļ"
     },
     "meterReadings": {
       "loadingApartmentsAndReadings": "Ielāde...",
