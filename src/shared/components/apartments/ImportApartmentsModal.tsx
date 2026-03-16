@@ -160,7 +160,7 @@ export const ImportApartmentsModal: React.FC<ImportApartmentsModalProps> = ({
             </div>
           )}
 
-          {/* Info box */}
+          {/* Info box
           <div className="rounded-lg bg-amber-50 border border-amber-200 p-3">
             <p className="text-xs text-amber-900 font-medium">
               💡 Файл должен содержать следующие колонки:
@@ -172,7 +172,7 @@ export const ImportApartmentsModal: React.FC<ImportApartmentsModalProps> = ({
               <li>• Aukstais NR (номер счётчика холодной воды)</li>
               <li>• Показания счётчиков (в виде колонок Kartsais и Aukstais)</li>
             </ul>
-          </div>
+          </div> */}
         </div>
 
         {/* Buttons */}

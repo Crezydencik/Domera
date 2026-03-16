@@ -1,6 +1,7 @@
 import { getRequestConfig } from 'next-intl/server';
 import { cookies } from 'next/headers';
 import { defaultLocale, locales, type Locale } from './config';
+import { sanitizeMessages } from '../src/shared/lib/i18n';
 
 export default getRequestConfig(async () => {
   // 1. Читаем cookie NEXT_LOCALE (который установил middleware.ts)
@@ -16,6 +17,6 @@ export default getRequestConfig(async () => {
   // 3. Возвращаем язык и загружаем соответствующий JSON
   return {
     locale,
-    messages: (await import(`../messages/${locale}.json`)).default,
+    messages: sanitizeMessages((await import(`../messages/${locale}.json`)).default) as Record<string, unknown>,
   };
 });

@@ -338,14 +338,30 @@ export const  getApartmentsFromDatabase = async () => {
   const apartmentsCollection = collection(db, 'apartments');
   const snapshot = await getDocs(apartmentsCollection);
 
-  return snapshot.docs.map((doc) => ({
-    id: doc.id,
-    buildingId: doc.data().buildingId || '',
-    companyIds: doc.data().companyIds || [],
-    companyName: doc.data().companyName || '', // Include companyName
-    number: doc.data().number || '',
-    // Add other properties as needed
-  }));
+  return snapshot.docs.map((doc) => {
+    const data = doc.data() as Record<string, unknown>;
+    return {
+      id: doc.id,
+      buildingId: typeof data.buildingId === 'string' ? data.buildingId : '',
+      companyIds: Array.isArray(data.companyIds) ? data.companyIds as string[] : [],
+      companyName: typeof data.companyName === 'string' ? data.companyName : '',
+      number: typeof data.number === 'string' ? data.number : '',
+      residentId: typeof data.residentId === 'string' ? data.residentId : undefined,
+      tenants: Array.isArray(data.tenants) ? data.tenants as TenantAccess[] : undefined,
+      ownerEmail: typeof data.ownerEmail === 'string' ? data.ownerEmail : undefined,
+      owner: typeof data.owner === 'string' ? data.owner : undefined,
+      floor: typeof data.floor === 'string' ? data.floor : undefined,
+      area: typeof data.area === 'number' ? data.area : undefined,
+      managementArea: typeof data.managementArea === 'number' ? data.managementArea : undefined,
+      heatingArea: typeof data.heatingArea === 'number' ? data.heatingArea : undefined,
+      declaredResidents: typeof data.declaredResidents === 'number'
+        ? data.declaredResidents
+        : (typeof data.declaredResidents === 'string' && data.declaredResidents.trim() !== ''
+          ? Number(data.declaredResidents)
+          : undefined),
+      waterReadings: (data.waterReadings as Apartment['waterReadings']) ?? undefined,
+    };
+  });
 };
 
 /**
@@ -372,6 +388,7 @@ export const unassignResidentFromApartment = async (apartmentId: string): Promis
   try {
     await updateDocument(FIRESTORE_COLLECTIONS.APARTMENTS, apartmentId, {
       residentId: null, // Remove the residentId field
+      tenants: [],
     });
   } catch (error) {
     console.error('Error unassigning resident from apartment:', error);

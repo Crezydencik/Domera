@@ -16,9 +16,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Domera - SaaS платформа управления домами",
-  description: "Облачная платформа для управления многоквартирными домами",
-  keywords: "управление домом, жилищно-коммунальное хозяйство, квартиры, счетчики",
+  title: "Domera - SaaS platforma māju pārvaldībai",
+  description: "Mākoņdatošanas platforma daudzdzīvokļu māju pārvaldībai",
+  keywords: "māju pārvaldība, komunālie pakalpojumi, dzīvokļi, skaitītāji",
 };
 
 
@@ -29,7 +29,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ru">
+    <html lang="lv">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >

@@ -19,7 +19,7 @@ import { getCurrentMonthYear, isMeterSubmissionAllowed } from '@/shared/lib/util
 import { validateConsumption, validateMeterReading } from '@/shared/validation';
 import { ConfirmationDialog } from '@/shared/components/ui/ConfirmationDialog';
 import { toast } from 'react-toastify';
-import type { Apartment, Building, Meter, MeterReading } from '@/shared/types';
+import type { Apartment, Building, Meter, MeterReading, WaterMeterData } from '@/shared/types';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { logout } from '../../../modules/auth/services/authService';
@@ -118,6 +118,41 @@ const isHotMeter = (meter?: Meter | null): boolean => {
   // fallback to heuristic on display name/serial
   const display = getMeterDisplayName(meter);
   return /гвс|gvs|hot|hotwater|гор/i.test(display);
+};
+
+const getApartmentWaterMeterData = (
+  apartment: Apartment | null | undefined,
+  meterId: string
+): WaterMeterData | undefined => {
+  const waterReadings = apartment?.waterReadings as unknown;
+
+  if (!waterReadings || !meterId) {
+    return undefined;
+  }
+
+  if (Array.isArray(waterReadings)) {
+    return waterReadings.find(
+      (item): item is WaterMeterData =>
+        Boolean(item) &&
+        typeof item === 'object' &&
+        'meterId' in item &&
+        (item as WaterMeterData).meterId === meterId
+    );
+  }
+
+  if (typeof waterReadings === 'object') {
+    return (['coldmeterwater', 'hotmeterwater'] as const)
+      .map((key) => (waterReadings as Record<string, unknown>)[key])
+      .find(
+        (item): item is WaterMeterData =>
+          Boolean(item) &&
+          typeof item === 'object' &&
+          'meterId' in item &&
+          (item as WaterMeterData).meterId === meterId
+      );
+  }
+
+  return undefined;
 };
 
 
@@ -383,7 +418,7 @@ export default function MeterReadingsPage() {
                   <span>Nr. {(() => {
                     // Найти waterReading для текущей квартиры и meterId
                     const apartment = apartments.find(a => a.id === reading.apartmentId);
-                    const wr = apartment?.waterReadings?.find(w => w.meterId === meter.id);
+                    const wr = getApartmentWaterMeterData(apartment, meter.id);
                     return wr?.serialNumber || serial;
                   })()}</span>
                   {canEditMeta ? (
@@ -1043,7 +1078,7 @@ export default function MeterReadingsPage() {
                           if (!meter) return null;
                           const value = `${waterReadingIntegerByMeterId[meter.id] ?? ''}.${(waterReadingFractionByMeterId[meter.id] ?? '').padEnd(3, '0')}`;
                           // Найти serialNumber из waterReadings для текущей квартиры и meterId
-                          const wr = residentApartment?.waterReadings?.find(w => w.meterId === meter.id);
+                          const wr = getApartmentWaterMeterData(residentApartment, meter.id);
                           return (
                             <div key={meter.id} className="flex-1 min-w-0 flex flex-col items-stretch">
                               <MeterInputBlock

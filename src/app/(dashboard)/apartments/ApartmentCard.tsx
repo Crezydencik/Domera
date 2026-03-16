@@ -15,22 +15,39 @@ export function ApartmentCard({
   onUnassign,
   onDelete,
 }: ApartmentCardProps) {
+  const toNumber = (v: unknown): number | undefined => {
+    if (typeof v === 'number' && Number.isFinite(v)) return v;
+    if (typeof v === 'string' && v.trim() !== '') {
+      const n = Number(v.replace(',', '.'));
+      return Number.isFinite(n) ? n : undefined;
+    }
+    return undefined;
+  };
+
   const tenant0 = apartment.tenants?.[0] as unknown;
-  const residentEmail = (typeof tenant0 === 'object' && tenant0 !== null && 'email' in tenant0) 
-    ? (tenant0 as { email?: string }).email 
+  const residentEmailFromTenant = (typeof tenant0 === 'object' && tenant0 !== null && 'email' in tenant0)
+    ? (tenant0 as { email?: string }).email
     : undefined;
-  const residentName = (typeof tenant0 === 'object' && tenant0 !== null && 'name' in tenant0) 
-    ? (tenant0 as { name?: string }).name 
+  const residentNameFromTenant = (typeof tenant0 === 'object' && tenant0 !== null && 'name' in tenant0)
+    ? (tenant0 as { name?: string }).name
     : undefined;
+
+  const residentEmail = residentEmailFromTenant || apartment.ownerEmail;
+  const residentName = residentNameFromTenant || apartment.owner;
   const residentPhone = (typeof tenant0 === 'object' && tenant0 !== null && 'phone' in tenant0) 
     ? (tenant0 as { phone?: string }).phone 
     : undefined;
   const isOccupied = Boolean(apartment.tenants && apartment.tenants.length > 0);
+  const apartmentArea =
+    toNumber(apartment.area) ??
+    toNumber(apartment.managementArea) ??
+    toNumber(apartment.heatingArea);
+  const declaredResidents = toNumber(apartment.declaredResidents);
 
   return (
     <div className="rounded-xl border-2 border-gray-100 bg-white overflow-hidden hover:border-blue-300 hover:shadow-lg transition">
       {/* Header с номером и статусом */}
-      <div className="h-1 bg-gradient-to-r from-blue-500 to-cyan-500"></div>
+      <div className="h-1 bg-linear-to-r from-blue-500 to-cyan-500"></div>
       
       <div className="p-5">
         <div className="flex items-start justify-between mb-4">
@@ -80,41 +97,45 @@ export function ApartmentCard({
           </div>
         </div>
 
-        {/* Информация о жильце */}
-        {isOccupied ? (
-          <div className="mb-4 p-4 rounded-lg bg-gradient-to-br from-green-50 to-emerald-50 border border-green-100">
-            <p className="text-xs text-gray-600 font-semibold mb-2">Жилец</p>
-            {residentName && (
-              <div className="flex items-center gap-2 mb-2">
-                <svg className="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" />
-                </svg>
-                <span className="font-semibold text-gray-900">{residentName}</span>
-              </div>
-            )}
-            {residentEmail && (
-              <div className="flex items-center gap-2 mb-2">
-                <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                </svg>
-                <span className="text-sm text-gray-700 break-all font-medium">{residentEmail}</span>
-              </div>
-            )}
-            {residentPhone && (
-              <div className="flex items-center gap-2">
-                <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 00.948.684l1.498 7.487a1 1 0 00.502.756l1.813 1.206V9a2 2 0 012-2h3.26a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5z" />
-                </svg>
-                <span className="text-sm text-gray-700 font-medium">{residentPhone}</span>
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="mb-4 p-4 rounded-lg bg-gradient-to-br from-gray-50 to-slate-50 border-2 border-dashed border-gray-300">
-            <p className="text-sm text-gray-500 text-center font-medium">Квартира свободна</p>
-            <p className="text-xs text-gray-400 text-center mt-1">Ожидает нового жильца</p>
-          </div>
-        )}
+        {/* Excel-like row */}
+        <div className="mb-4 rounded-lg border border-gray-200 overflow-x-auto">
+          <table className="w-full min-w-max border-collapse text-sm">
+            <thead>
+              <tr className="bg-gray-100">
+                <th className="border border-gray-200 px-3 py-2 text-left font-semibold text-gray-700">Строка</th>
+                <th className="border border-gray-200 px-3 py-2 text-left font-semibold text-gray-700">Статус</th>
+                <th className="border border-gray-200 px-3 py-2 text-left font-semibold text-gray-700">Имя жильца</th>
+                <th className="border border-gray-200 px-3 py-2 text-left font-semibold text-gray-700">Email</th>
+                <th className="border border-gray-200 px-3 py-2 text-left font-semibold text-gray-700">Площадь</th>
+                <th className="border border-gray-200 px-3 py-2 text-left font-semibold text-gray-700">Декларированные</th>
+                <th className="border border-gray-200 px-3 py-2 text-left font-semibold text-gray-700">Этаж</th>
+                <th className="border border-gray-200 px-3 py-2 text-left font-semibold text-gray-700">Адрес</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="bg-white hover:bg-blue-50/30">
+                <td className="border border-gray-200 px-3 py-2 font-medium text-gray-900">{apartment.number || '—'}</td>
+                <td className="border border-gray-200 px-3 py-2 text-gray-700">{isOccupied ? 'Занята' : 'Свободна'}</td>
+                <td className="border border-gray-200 px-3 py-2 text-gray-900">{residentName || '—'}</td>
+                <td className="border border-gray-200 px-3 py-2 text-gray-900">{residentEmail || '—'}</td>
+                <td className="border border-gray-200 px-3 py-2 text-gray-900">{typeof apartmentArea === 'number' ? `${apartmentArea} м²` : '—'}</td>
+                <td className="border border-gray-200 px-3 py-2 text-gray-900">{typeof declaredResidents === 'number' ? declaredResidents : '—'}</td>
+                <td className="border border-gray-200 px-3 py-2 text-gray-900">{apartment.floor || '—'}</td>
+                <td className="border border-gray-200 px-3 py-2 text-gray-900">{apartment.address || '—'}</td>
+              </tr>
+            </tbody>
+          </table>
+          {!isOccupied && (
+            <div className="px-3 py-2 text-xs text-gray-500 border-t border-gray-200 bg-gray-50">
+              Квартира свободна — ожидает нового жильца
+            </div>
+          )}
+          {residentPhone && (
+            <div className="px-3 py-2 text-xs text-gray-600 border-t border-gray-200 bg-gray-50">
+              Телефон жильца: {residentPhone}
+            </div>
+          )}
+        </div>
 
         {/* Дополнительная информация */}
         {apartment.ResidencyAgreementLinks && (

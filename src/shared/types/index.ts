@@ -89,6 +89,21 @@ export interface TenantAccess {
 
 export type TenantPermission = 'viewDocuments' | 'submitMeter' | 'remove';
 
+export interface WaterMeterData {
+  meterId: string;
+  serialNumber?: string;
+  checkDueDate?: string;
+  currentValue?: number;
+  previousValue?: number;
+  submittedAt?: string | Date;
+  history?: MeterReading[];
+}
+
+export interface WaterReadings {
+  coldmeterwater?: WaterMeterData;
+  hotmeterwater?: WaterMeterData;
+}
+
 export interface Apartment {
   id: string;
   buildingId: string;
@@ -96,7 +111,7 @@ export interface Apartment {
   number: string;
   residentId?: string; // legacy, для совместимости
   tenants?: TenantAccess[];
-  waterReadings?: MeterReading[];
+  waterReadings?: WaterReadings;
   // Базовые поля
   description?: string;              // Описание квартиры
   area?: number;                    // Площадь (кв.м)

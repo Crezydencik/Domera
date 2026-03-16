@@ -10,7 +10,7 @@ import { getMeterReadingsByCompany, getMetersByApartment, deleteMeterReading } f
 import { updateMeter } from "@/modules/meters/services/metersService";
 import { ConfirmationDialog } from "@/shared/components/ui/ConfirmationDialog";
 import { toast } from "react-toastify";
-import type { Apartment, Building, Meter, MeterReading } from "@/shared/types";
+import type { Apartment, Building, Meter, MeterReading, WaterMeterData, WaterReadings } from "@/shared/types";
 import Header from "../../../shared/components/layout/heder";
 import { useRouter } from 'next/navigation';
 import { logout } from "../../../modules/auth/services/authService";
@@ -42,20 +42,9 @@ const getMeterDisplayName = (meter?: Meter | null): string => {
   const name = meter.name?.toString().trim() ?? '';
   if (!name) return meter.serialNumber?.trim() || meter.id || '';
   const code = name.toLowerCase();
-  if (code === 'hwm') return 'ГВС';
-  if (code === 'cwm') return 'ХВС';
+  if (code === 'hwm') return 'hmw';
+  if (code === 'cwm') return 'cwm';
   return name;
-};
-// ...existing code...
-// Тип для waterReadings внутри apartments
-type WaterReading = {
-  meterId: string;
-  serialNumber?: string;
-  checkDueDate?: string;
-  currentValue?: number;
-  previousValue?: number;
-  submittedAt?: string | Date;
-  // Добавьте другие поля по необходимости
 };
 
 
@@ -71,31 +60,75 @@ export default function MeterReadingsManagerPage() {
         const apartment = apartmentById[apartmentId];
         if (!apartment) return;
         setEditApartmentId(apartmentId);
-        const meters = metersByApartmentId[apartmentId] || [];
-        setEditMeters(meters);
-        setEditSerials(Object.fromEntries(meters.map(m => {
-          const wr = apartment?.waterReadings?.find(w => w.meterId === m.id);
-          return [m.id, wr?.serialNumber || ''];
+        const allMeters = metersByApartmentId[apartmentId] || [];
+        // Deduplicate: keep one meter per type (cwm/hwm), prefer the one in waterReadings
+        const dedupedMeters: Meter[] = [];
+        const seen = new Set<string>();
+        for (const m of allMeters) {
+          const isCold = m.name?.toLowerCase() === 'cwm';
+          const typeKey = isCold ? 'cwm' : 'hwm';
+          const wr = isCold ? apartment?.waterReadings?.coldmeterwater : apartment?.waterReadings?.hotmeterwater;
+          if (seen.has(typeKey)) {
+            // Already have a meter of this type; only replace if this one matches waterReadings
+            if (wr?.meterId === m.id) {
+              dedupedMeters.splice(dedupedMeters.findIndex(x => (x.name?.toLowerCase() === 'cwm') === isCold), 1, m);
+            }
+          } else {
+            seen.add(typeKey);
+            dedupedMeters.push(m);
+          }
+        }
+        setEditMeters(dedupedMeters);
+        setEditSerials(Object.fromEntries(dedupedMeters.map(m => {
+          const isCold = m.name?.toLowerCase() === 'cwm';
+          const wr = isCold ? apartment?.waterReadings?.coldmeterwater : apartment?.waterReadings?.hotmeterwater;
+          const match = wr?.meterId === m.id ? wr : undefined;
+          const fallback = isCold ? apartment.coldWaterMeterNumber : apartment.hotWaterMeterNumber;
+          return [m.id, match?.serialNumber || fallback || ''];
         })));
-        setEditChecks(Object.fromEntries(meters.map(m => {
-          const wr = apartment?.waterReadings?.find(w => w.meterId === m.id);
-          return [m.id, wr?.checkDueDate ? (typeof wr.checkDueDate === 'string' ? wr.checkDueDate : wr.checkDueDate?.toISOString().slice(0,10)) : ''];
+        setEditChecks(Object.fromEntries(dedupedMeters.map(m => {
+          const isCold = m.name?.toLowerCase() === 'cwm';
+          const wr = isCold ? apartment?.waterReadings?.coldmeterwater : apartment?.waterReadings?.hotmeterwater;
+          const match = wr?.meterId === m.id ? wr : undefined;
+          return [m.id, match?.checkDueDate ? (typeof match.checkDueDate === 'string' ? match.checkDueDate : '') : ''];
         })));
         setEditModalOpen(true);
       };
     // Открыть модалку для квартиры
     const openEditModal = (apartmentId: string) => {
       setEditApartmentId(apartmentId);
-      const meters = metersByApartmentId[apartmentId] || [];
-      setEditMeters(meters);
       const apartment = apartmentById[apartmentId];
-      setEditSerials(Object.fromEntries(meters.map(m => {
-        const wr = apartment?.waterReadings?.find(w => w.meterId === m.id);
-        return [m.id, wr?.serialNumber || ''];
+      const allMeters = metersByApartmentId[apartmentId] || [];
+      // Deduplicate: keep one meter per type (cwm/hwm), prefer the one in waterReadings
+      const dedupedMeters: Meter[] = [];
+      const seen = new Set<string>();
+      for (const m of allMeters) {
+        const isCold = m.name?.toLowerCase() === 'cwm';
+        const typeKey = isCold ? 'cwm' : 'hwm';
+        const wr = isCold ? apartment?.waterReadings?.coldmeterwater : apartment?.waterReadings?.hotmeterwater;
+        if (seen.has(typeKey)) {
+          // Already have a meter of this type; only replace if this one matches waterReadings
+          if (wr?.meterId === m.id) {
+            dedupedMeters.splice(dedupedMeters.findIndex(x => (x.name?.toLowerCase() === 'cwm') === isCold), 1, m);
+          }
+        } else {
+          seen.add(typeKey);
+          dedupedMeters.push(m);
+        }
+      }
+      setEditMeters(dedupedMeters);
+      setEditSerials(Object.fromEntries(dedupedMeters.map(m => {
+        const isCold = m.name?.toLowerCase() === 'cwm';
+        const wr = isCold ? apartment?.waterReadings?.coldmeterwater : apartment?.waterReadings?.hotmeterwater;
+        const match = wr?.meterId === m.id ? wr : undefined;
+        const fallback = isCold ? apartment?.coldWaterMeterNumber : apartment?.hotWaterMeterNumber;
+        return [m.id, match?.serialNumber || fallback || ''];
       })));
-      setEditChecks(Object.fromEntries(meters.map(m => {
-        const wr = apartment?.waterReadings?.find(w => w.meterId === m.id);
-        return [m.id, wr?.checkDueDate ? (typeof wr.checkDueDate === 'string' ? wr.checkDueDate : wr.checkDueDate?.toISOString().slice(0,10)) : ''];
+      setEditChecks(Object.fromEntries(dedupedMeters.map(m => {
+        const isCold = m.name?.toLowerCase() === 'cwm';
+        const wr = isCold ? apartment?.waterReadings?.coldmeterwater : apartment?.waterReadings?.hotmeterwater;
+        const match = wr?.meterId === m.id ? wr : undefined;
+        return [m.id, match?.checkDueDate ? (typeof match.checkDueDate === 'string' ? match.checkDueDate : '') : ''];
       })));
       setEditModalOpen(true);
     };
@@ -106,47 +139,46 @@ export default function MeterReadingsManagerPage() {
         // Получить текущий apartment
         const apartment = apartmentById[editApartmentId];
         if (!apartment) throw new Error('Квартира не найдена');
-        // Копия waterReadings
-        const waterReadings: WaterReading[] = Array.isArray(apartment.waterReadings) ? [...apartment.waterReadings] : [];
+        // Сохранить coldmeterwater / hotmeterwater в apartments
+        const waterReadingsUpdate: WaterReadings = { ...apartment.waterReadings };
         for (const meter of editMeters) {
           const serial = editSerials[meter.id] || '';
           const checkDate = editChecks[meter.id] || '';
-          let updated = false;
-          waterReadings.forEach((wr, idx) => {
-            if (wr.meterId === meter.id) {
-              waterReadings[idx] = {
-                ...wr,
-                serialNumber: serial,
-                checkDueDate: checkDate,
-              };
-              updated = true;
-            }
-          });
-          if (!updated) {
-            waterReadings.push({
-              meterId: meter.id,
-              serialNumber: serial,
-              checkDueDate: checkDate,
-            });
+          const isCold = meter.name?.toLowerCase() === 'cwm';
+          const existing = isCold ? apartment.waterReadings?.coldmeterwater : apartment.waterReadings?.hotmeterwater;
+          const meterData: WaterMeterData = {
+            ...(existing && existing.meterId === meter.id ? existing : {}),
+            meterId: meter.id,
+            serialNumber: serial,
+            checkDueDate: checkDate,
+          };
+          if (isCold) {
+            waterReadingsUpdate.coldmeterwater = meterData;
+          } else {
+            waterReadingsUpdate.hotmeterwater = meterData;
           }
         }
-        // Сохранить waterReadings в apartments
+        const updateData: Partial<Omit<Apartment, 'id'>> = { waterReadings: waterReadingsUpdate };
         const mod = await import('@/modules/apartments/services/apartmentsService');
-        await mod.updateApartment(editApartmentId, { waterReadings });
+        await mod.updateApartment(editApartmentId, updateData);
         toast.success('Сохранено!');
         // Обновить данные квартиры после сохранения
         const aData = await getApartmentsByCompany(user.companyId);
         setApartments(aData);
         // Найти обновлённую квартиру
         const updatedApartment = aData.find(a => a.id === editApartmentId);
-        if (updatedApartment && Array.isArray(updatedApartment.waterReadings)) {
+        if (updatedApartment) {
           setEditSerials(Object.fromEntries(editMeters.map(m => {
-            const wr = updatedApartment.waterReadings.find(w => w.meterId === m.id);
-            return [m.id, wr?.serialNumber || ''];
+            const isCold = m.name?.toLowerCase() === 'cwm';
+            const wr = isCold ? updatedApartment.waterReadings?.coldmeterwater : updatedApartment.waterReadings?.hotmeterwater;
+            const match = wr?.meterId === m.id ? wr : undefined;
+            return [m.id, match?.serialNumber || ''];
           })));
           setEditChecks(Object.fromEntries(editMeters.map(m => {
-            const wr = updatedApartment.waterReadings.find(w => w.meterId === m.id);
-            return [m.id, wr?.checkDueDate ? (typeof wr.checkDueDate === 'string' ? wr.checkDueDate : wr.checkDueDate.toISOString().slice(0,10)) : ''];
+            const isCold = m.name?.toLowerCase() === 'cwm';
+            const wr = isCold ? updatedApartment.waterReadings?.coldmeterwater : updatedApartment.waterReadings?.hotmeterwater;
+            const match = wr?.meterId === m.id ? wr : undefined;
+            return [m.id, match?.checkDueDate ? (typeof match.checkDueDate === 'string' ? match.checkDueDate : '') : ''];
           })));
         }
         setEditModalOpen(false);

@@ -10,7 +10,7 @@ const ManagerPage = dynamic(() => import("./page.manager"));
 
 export default function MeterReadingsPage() {
   const { user, loading, isResident } = useAuth();
-  const t = useTranslations('syystem');
+  const t = useTranslations('system');
   if (loading) return <Loader text={t('loading')} />;
   if (!user) return <AccessError type="loginRequired" />;
   if (isResident) return <ResidentPage />;

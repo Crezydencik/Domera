@@ -1,9 +1,25 @@
 import { defaultLocale } from "../../../i8n/config";
 
-type Messages = Record<string, any>;
+export type Messages = Record<string, unknown>;
 
-function isObject(value: any) {
-  return value && typeof value === 'object' && !Array.isArray(value);
+function isObject(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+export function sanitizeMessages(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(sanitizeMessages);
+  }
+
+  if (isObject(value)) {
+    return Object.fromEntries(
+      Object.entries(value)
+        .filter(([key]) => !key.includes('.'))
+        .map(([key, nestedValue]) => [key, sanitizeMessages(nestedValue)])
+    );
+  }
+
+  return value;
 }
 
 // Deep-merge: take primary messages, and where keys are missing use fallback
@@ -34,11 +50,14 @@ export async function messagesWithDefault(primary: Messages, _locale?: string) {
   } catch (e) {
     // If configured default missing, try English then empty
     try {
-      defaultMessages = (await import(`../../../messages/lv.json`)).default;
+      defaultMessages = (await import(`../../../messages/lv.json`)).default as Messages;
     } catch (err) {
       defaultMessages = {};
     }
   }
 
-  return mergeWithFallback(primary || {}, defaultMessages || {});
+  return mergeWithFallback(
+    sanitizeMessages(primary || {}) as Messages,
+    sanitizeMessages(defaultMessages || {}) as Messages
+  );
 }

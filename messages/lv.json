@@ -1,11 +1,13 @@
 {
     "system": {
-    "loading": "Apstrāde...",
+    "loadign": "Apstrāde...",
     "noAccess": "Nav piekļuves",
     "notifications": {
       "noNewNotifications": "Nav jaunu paziņojumu",
       "allEventsViewed": "Visi notikumi apskatīti"
-    }
+    },
+      "permissionDenied": "Piekļuve liegta. Pārbaudiet Firebase drošības noteikumus.",
+      "dbError": "Kļūda, pieslēdzoties datu bāzei. Lūdzu, mēģiniet vēlreiz."
   },
   "home": {
     "subtitleManagement": "Pārvaldiet māju, dzīvokļus un maksājumus vienuviet",
@@ -311,17 +313,42 @@
       "requiredEmail": "Ievadiet e-pastu",
       "requiredCompanyName": "Ievadiet uzņēmuma nosaukumu"
     },
-    "system": {
-      "permissionDenied": "Piekļuve liegta. Pārbaudiet Firebase drošības noteikumus.",
-      "dbError": "Kļūda, pieslēdzoties datu bāzei. Lūdzu, mēģiniet vēlreiz."
-    },
+   
 
-  "invitation": {
-    "invalidToken": "Nederīgs ielūguma tokens",
-    "acceptingInvitation": "Pieņemam ielūgumu...",
-    "invitationAccepted": "Ielūgums pieņemts! Pāradresējam...",
-    "invitationError": "Kļūda, pieņemot ielūgumu. Lūdzu, mēģiniet vēlreiz."
-  }
+"invitation": {
+  "invalidToken": "Nederīgs uzaicinājuma marķieris",
+  "invitationError": "Kļūda, apstrādājot uzaicinājumu",
+  "gdprConsentRequired": "Piekrišana datu apstrādei ir obligāta",
+  "passwordTooShort": "Parole ir pārāk īsa",
+  "passwordsDoNotMatch": "Paroles nesakrīt",
+  "emailInUse": "Šis e-pasts jau tiek izmantots",
+  "validatingInvitation": "Pārbauda uzaicinājumu...",
+  "acceptInvitation": "Apstiprināt uzaicinājumu",
+  "invitedAsResident": "Jūs esat uzaicināts kā iedzīvotājs",
+  "gdprConsent": "Es piekrītu personas datu apstrādei",
+  "acceptingInvitation": "Apstiprina...",
+  "acceptAccess": "Apstiprināt piekļuvi",
+  "newPasswordLabel": "Jaunā parole",
+  "registrationInProgress": "Notiek reģistrācija...",
+  "andAcceptAccessWithoutCreatingNewPassword": "un apstiprināt piekļuvi, neveidojot jaunu paroli",
+  "loginInstead": "Vai vienkārši",
+  "loginAndAcceptAccess": "ienāciet un apstipriniet piekļuvi",
+  "accountCreated": "Konts veiksmīgi izveidots",
+  "userAdded": "Lietotājs veiksmīgi pievienots",
+  "user": "Lietotājs",
+  "successSaveInfo": "Informācija saglabāta",
+  "errorSaveInfo": "Kļūda, saglabājot informāciju",
+  "successAddTenant": "Īrnieks veiksmīgi pievienots",
+  "errorAddTenant": "Kļūda, pievienojot īrnieku",
+  "noNewNotifications": "Nav jaunu paziņojumu",
+  "allEventsViewed": "Visi notikumi apskatīti",
+  "loading": "Ielāde...",
+  "apartments": "Dzīvokļi",
+  "saveNew": "Saglabāt jauno paroli",
+  "saving": "Saglabā...",
+  "remembered": "Atcerējāties paroli?",
+  "gdprNotice": "VDAR: Nosūtiet uzaicinājumu tikai tad, ja ir tiesisks pamats un datu subjekts ir informēts."
+}
 },
  
   "ui": {

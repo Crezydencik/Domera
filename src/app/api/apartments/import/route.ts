@@ -1,7 +1,246 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as XLSX from 'xlsx';
 import { db } from '@/firebase/config';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, doc, setDoc } from 'firebase/firestore';
+
+type ParsedReading = {
+  label: string;
+  value: number;
+  month: number;
+  year: number;
+};
+
+const normalizeHeader = (value: string): string =>
+  value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const getCellStringByHeader = (row: Record<string, unknown>, headerCandidates: string[]): string => {
+  for (const header of headerCandidates) {
+    const raw = row[header];
+    if (raw !== undefined && raw !== null && String(raw).trim() !== '') {
+      return String(raw).trim();
+    }
+  }
+
+  const normalizedCandidates = new Set(headerCandidates.map(normalizeHeader));
+  for (const key of Object.keys(row)) {
+    if (normalizedCandidates.has(normalizeHeader(key))) {
+      const raw = row[key];
+      if (raw !== undefined && raw !== null && String(raw).trim() !== '') {
+        return String(raw).trim();
+      }
+    }
+  }
+
+  return '';
+};
+
+const parseReadingPeriod = (label: string): { month: number; year: number } | null => {
+  const normalized = label.trim();
+
+  const monthYearMatch = normalized.match(/(\d{1,2})[.\-/](\d{4})/);
+  if (monthYearMatch) {
+    const month = Number(monthYearMatch[1]);
+    const year = Number(monthYearMatch[2]);
+    if (month >= 1 && month <= 12) {
+      return { month, year };
+    }
+  }
+
+  const yearMonthMatch = normalized.match(/(\d{4})[.\-/](\d{1,2})/);
+  if (yearMonthMatch) {
+    const year = Number(yearMonthMatch[1]);
+    const month = Number(yearMonthMatch[2]);
+    if (month >= 1 && month <= 12) {
+      return { month, year };
+    }
+  }
+
+  return null;
+};
+
+const parsePeriodFromDateCell = (raw: unknown): { month: number; year: number } | null => {
+  if (raw === undefined || raw === null || String(raw).trim() === '') return null;
+
+  if (typeof raw === 'number' && Number.isFinite(raw)) {
+    // Excel serial date -> JS Date (Excel epoch)
+    const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+    const date = new Date(excelEpoch.getTime() + raw * 24 * 60 * 60 * 1000);
+    if (!Number.isNaN(date.getTime())) {
+      return { month: date.getUTCMonth() + 1, year: date.getUTCFullYear() };
+    }
+  }
+
+  const text = String(raw).trim();
+
+  // ISO/full date (e.g. 2026-02-25, 2026/02/25, 25.02.2026)
+  const fullDate = text.match(/^(\d{4})[.\-/](\d{1,2})[.\-/](\d{1,2})$|^(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{4})$/);
+  if (fullDate) {
+    const y = fullDate[1] ? Number(fullDate[1]) : Number(fullDate[6]);
+    const m = fullDate[2] ? Number(fullDate[2]) : Number(fullDate[5]);
+    if (m >= 1 && m <= 12) return { month: m, year: y };
+  }
+
+  const byText = parseReadingPeriod(text);
+  if (byText) return byText;
+
+  // dd.mm (without year) -> use current year
+  const dayMonth = text.match(/^(\d{1,2})[.\-/](\d{1,2})$/);
+  if (dayMonth) {
+    const month = Number(dayMonth[2]);
+    if (month >= 1 && month <= 12) {
+      return { month, year: new Date().getFullYear() };
+    }
+  }
+
+  return null;
+};
+
+const extractReadings = (row: Record<string, unknown>, prefix: 'Kartsais' | 'Aukstais'): ParsedReading[] => {
+  const entries = Object.entries(row);
+  const out: ParsedReading[] = [];
+  const isDateHeader = (header: string): boolean => {
+    const n = normalizeHeader(header);
+    return n.startsWith('data') || n.includes('date');
+  };
+
+  for (let i = 0; i < entries.length; i++) {
+    const [colName, value] = entries[i];
+    if (
+      typeof colName !== 'string' ||
+      !colName.includes(prefix) ||
+      colName.includes('NR') ||
+      value === undefined ||
+      value === null ||
+      String(value).trim() === ''
+    ) {
+      continue;
+    }
+
+    const numValue = Number.parseFloat(String(value).replace(',', '.'));
+    if (!Number.isFinite(numValue)) continue;
+
+    // 1) Try to parse month/year from the header itself
+    let period = parseReadingPeriod(colName);
+    let label = colName.trim();
+
+    // 2) If header doesn't contain period, prefer nearest valid date LEFT, then RIGHT
+    if (!period) {
+      for (let j = i - 1; j >= 0; j--) {
+        const [dateColName, dateValue] = entries[j];
+        if (!isDateHeader(dateColName)) continue;
+        const parsed = parsePeriodFromDateCell(dateValue);
+        if (parsed) {
+          period = parsed;
+          label = String(dateValue ?? dateColName).trim() || colName.trim();
+          break;
+        }
+      }
+
+      if (!period) {
+        for (let j = i + 1; j < entries.length; j++) {
+          const [dateColName, dateValue] = entries[j];
+          if (!isDateHeader(dateColName)) continue;
+          const parsed = parsePeriodFromDateCell(dateValue);
+          if (parsed) {
+            period = parsed;
+            label = String(dateValue ?? dateColName).trim() || colName.trim();
+            break;
+          }
+        }
+      }
+    }
+
+    if (!period) continue;
+
+    out.push({
+      label,
+      value: numValue,
+      month: period.month,
+      year: period.year,
+    });
+  }
+
+  return out.sort((a, b) => a.year - b.year || a.month - b.month);
+};
+
+const buildSubmittedAtFromPeriod = (year: number, month: number): Date => {
+  const now = new Date();
+  const currentDay = now.getDate();
+  const daysInTargetMonth = new Date(year, month, 0).getDate();
+  const safeDay = Math.min(currentDay, daysInTargetMonth);
+  // Use midday to avoid timezone edge-case shifts around midnight.
+  return new Date(year, month - 1, safeDay, 12, 0, 0, 0);
+};
+
+const findDueDateFromRow = (row: Record<string, unknown>, type: 'hot' | 'cold'): string => {
+  const keys = Object.keys(row);
+  const meterToken = type === 'hot' ? 'kartsais' : 'aukstais';
+
+  const dueDateKey = keys.find((key) => {
+    const k = normalizeHeader(key);
+    return (
+      k.includes(meterToken) &&
+      (
+        (k.includes('derig') && k.includes('lidz')) ||
+        k.includes('check due') ||
+        k.includes('checkduedate') ||
+        k.includes('expiry') ||
+        k.includes('valid until')
+      )
+    );
+  });
+
+  if (!dueDateKey) return '';
+  const raw = row[dueDateKey];
+  return raw === undefined || raw === null ? '' : String(raw).trim();
+};
+
+const buildWaterReadingGroup = ({
+  apartmentId,
+  buildingId,
+  meterId,
+  serialNumber,
+  checkDueDate,
+  readings,
+}: {
+  apartmentId: string;
+  buildingId: string;
+  meterId: string;
+  serialNumber: string;
+  checkDueDate?: string;
+  readings: ParsedReading[];
+}) => {
+  const history = readings.map((reading, index) => {
+    const previousValue = index > 0 ? readings[index - 1].value : 0;
+    const consumption = index > 0 ? Math.max(0, reading.value - previousValue) : 0;
+    const submittedAt = buildSubmittedAtFromPeriod(reading.year, reading.month);
+
+    return {
+      id: doc(collection(db, 'apartments')).id,
+      apartmentId,
+      buildingId,
+      meterId,
+      previousValue,
+      currentValue: reading.value,
+      consumption,
+      month: reading.month,
+      year: reading.year,
+      submittedAt,
+    };
+  });
+
+  return {
+    meterId,
+    serialNumber,
+    checkDueDate: checkDueDate || '',
+    history,
+  };
+};
 
 export async function POST(request: NextRequest) {
   try {
@@ -29,7 +268,7 @@ export async function POST(request: NextRequest) {
     const workbook = XLSX.read(buffer, { type: 'array' });
     const sheetName = workbook.SheetNames[0];
     const sheet = workbook.Sheets[sheetName];
-    const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' }) as Record<string, any>[];
+    const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' }) as Record<string, unknown>[];
 
     console.log(`Processing ${rows.length} apartments from Excel`);
 
@@ -61,16 +300,58 @@ export async function POST(request: NextRequest) {
     for (let i = 0; i < rows.length; i++) {
       try {
         const row = rows[i];
+        const parseNum = (v: unknown): number | undefined => {
+          const n = Number.parseFloat(String(v ?? '').replace(',', '.'));
+          return Number.isFinite(n) ? n : undefined;
+        };
+        const buildFallbackReading = (params: {
+          apartmentId: string;
+          buildingId: string;
+          meterId: string;
+          previousValue: number;
+          currentValue: number;
+        }) => {
+          const now = new Date();
+          const month = now.getMonth() + 1;
+          const year = now.getFullYear();
+          const consumption = Math.max(0, params.currentValue - params.previousValue);
+          return {
+            id: doc(collection(db, 'apartments')).id,
+            apartmentId: params.apartmentId,
+            buildingId: params.buildingId,
+            meterId: params.meterId,
+            previousValue: params.previousValue,
+            currentValue: params.currentValue,
+            consumption,
+            month,
+            year,
+            submittedAt: buildSubmittedAtFromPeriod(year, month),
+          };
+        };
+
+        const apartmentNumber = getCellStringByHeader(row, [
+          'DZ',
+          'Dz',
+          'Dz number',
+          'Dz Number',
+          'dz number',
+          'Apartment number',
+          'Apartment Number',
+        ]);
 
         // Skip empty rows
-        if (!row['DZ'] && !row['Domājamā daļa']) {
+        if (!apartmentNumber) {
           continue;
         }
-
-        const apartmentNumber = (row['DZ'] || row['Domājamā daļa']).toString();
+        const hotWaterMeterNumber = row['Kartsais NR'] !== undefined && row['Kartsais NR'] !== null
+          ? String(row['Kartsais NR']).trim()
+          : '';
+        const coldWaterMeterNumber = row['Aukstais NR'] !== undefined && row['Aukstais NR'] !== null
+          ? String(row['Aukstais NR']).trim()
+          : '';
 
         // Collect all basic data
-        const apartmentData: Record<string, any> = {
+        const apartmentData: Record<string, unknown> = {
           buildingId,
           number: apartmentNumber,
           companyIds: [companyId],
@@ -99,88 +380,114 @@ export async function POST(request: NextRequest) {
             } else if (field === 'DZ t') {
               apartmentData.apartmentType = row[field].toString();
             } else if (field === 'Apkure') {
-              apartmentData.heatingArea = parseFloat(row[field]);
+              apartmentData.heatingArea = parseFloat(String(row[field]));
             } else if (field === 'Apsaimn') {
-              apartmentData.managementArea = parseFloat(row[field]);
+              apartmentData.managementArea = parseFloat(String(row[field]));
             } else if (field === 'Dekl iedz') {
-              apartmentData.declaredResidents = parseInt(row[field]);
-            } else if (field === 'Kartsais NR') {
-              apartmentData.hotWaterMeterNumber = row[field].toString();
-            } else if (field === 'Aukstais NR') {
-              apartmentData.coldWaterMeterNumber = row[field].toString();
+              apartmentData.declaredResidents = parseInt(String(row[field]));
             }
           }
         });
 
-        // Create apartment document
-        const apartmentRef = await addDoc(collection(db, 'apartments'), apartmentData);
+        const apartmentRef = doc(collection(db, 'apartments'));
         console.log(`✓ Created apartment: ${apartmentNumber} (${apartmentRef.id})`);
 
+        const waterReadings: Record<string, unknown> = {};
+        const hotWaterCheckDueDate = findDueDateFromRow(row, 'hot');
+        const coldWaterCheckDueDate = findDueDateFromRow(row, 'cold');
+
         // Create hot water meter if serial number exists
-        if (apartmentData.hotWaterMeterNumber) {
-          const hotWaterMeterRef = await addDoc(collection(db, 'meters'), {
+        if (hotWaterMeterNumber) {
+          const hotWaterMeterRef = doc(collection(db, 'meters'));
+          const hotWaterReadings = extractReadings(row, 'Kartsais');
+          const hotGroup = buildWaterReadingGroup({
+            apartmentId: apartmentRef.id,
+            buildingId,
+            meterId: hotWaterMeterRef.id,
+            serialNumber: hotWaterMeterNumber,
+            checkDueDate: hotWaterCheckDueDate,
+            readings: hotWaterReadings,
+          });
+
+          // If no date-based history exists, fallback to direct columns
+          if (hotGroup.history.length === 0) {
+            const hotCurrent = parseNum(row['Kartsais_1']);
+            const hotPrevious = parseNum(row['Kartsais']);
+            if (hotCurrent !== undefined) {
+              const fallbackReading = buildFallbackReading({
+                apartmentId: apartmentRef.id,
+                buildingId,
+                meterId: hotWaterMeterRef.id,
+                previousValue: hotPrevious ?? 0,
+                currentValue: hotCurrent,
+              });
+              hotGroup.history = [fallbackReading];
+            }
+          }
+
+          await setDoc(hotWaterMeterRef, {
+            id: hotWaterMeterRef.id,
             apartmentId: apartmentRef.id,
             type: 'water',
-            name: 'Горячая вода',
-            serialNumber: apartmentData.hotWaterMeterNumber,
+            name: 'hwm',
+            serialNumber: hotWaterMeterNumber,
+            checkDueDate: hotWaterCheckDueDate || '',
+            history: hotGroup.history,
             createdAt: new Date(),
           });
 
-          console.log(`  ✓ Hot water meter: ${apartmentData.hotWaterMeterNumber}`);
-
-          // Add hot water readings from all columns that contain "Kartsais" but not "NR"
-          for (const [colName, value] of Object.entries(row)) {
-            if (typeof colName === 'string' && (colName.includes('Kartsais') && !colName.includes('NR')) && value) {
-              const numValue = parseFloat(String(value));
-              if (!isNaN(numValue)) {
-                await addDoc(collection(db, 'meterReadings'), {
-                  apartmentId: apartmentRef.id,
-                  meterId: hotWaterMeterRef.id,
-                  type: 'water',
-                  meterType: 'Горячая вода',
-                  value: numValue,
-                  dateLabel: colName.trim(), // Save original column name as date label
-                  submittedAt: new Date(),
-                  buildingId,
-                  companyId,
-                });
-              }
-            }
-          }
+          console.log(`  ✓ Hot water meter: ${hotWaterMeterNumber}`);
+          waterReadings.hotmeterwater = hotGroup;
         }
 
         // Create cold water meter if serial number exists
-        if (apartmentData.coldWaterMeterNumber) {
-          const coldWaterMeterRef = await addDoc(collection(db, 'meters'), {
+        if (coldWaterMeterNumber) {
+          const coldWaterMeterRef = doc(collection(db, 'meters'));
+          const coldWaterReadings = extractReadings(row, 'Aukstais');
+          const coldGroup = buildWaterReadingGroup({
+            apartmentId: apartmentRef.id,
+            buildingId,
+            meterId: coldWaterMeterRef.id,
+            serialNumber: coldWaterMeterNumber,
+            checkDueDate: coldWaterCheckDueDate,
+            readings: coldWaterReadings,
+          });
+
+          // If no date-based history exists, fallback to direct columns
+          if (coldGroup.history.length === 0) {
+            const coldCurrent = parseNum(row['Aukstais_1']);
+            const coldPrevious = parseNum(row['Aukstais']);
+            if (coldCurrent !== undefined) {
+              const fallbackReading = buildFallbackReading({
+                apartmentId: apartmentRef.id,
+                buildingId,
+                meterId: coldWaterMeterRef.id,
+                previousValue: coldPrevious ?? 0,
+                currentValue: coldCurrent,
+              });
+              coldGroup.history = [fallbackReading];
+            }
+          }
+
+          await setDoc(coldWaterMeterRef, {
+            id: coldWaterMeterRef.id,
             apartmentId: apartmentRef.id,
             type: 'water',
-            name: 'Холодная вода',
-            serialNumber: apartmentData.coldWaterMeterNumber,
+            name: 'cwm',
+            serialNumber: coldWaterMeterNumber,
+            checkDueDate: coldWaterCheckDueDate || '',
+            history: coldGroup.history,
             createdAt: new Date(),
           });
 
-          console.log(`  ✓ Cold water meter: ${apartmentData.coldWaterMeterNumber}`);
-
-          // Add cold water readings from all columns that contain "Aukstais" but not "NR"
-          for (const [colName, value] of Object.entries(row)) {
-            if (typeof colName === 'string' && (colName.includes('Aukstais') && !colName.includes('NR')) && value) {
-              const numValue = parseFloat(String(value));
-              if (!isNaN(numValue)) {
-                await addDoc(collection(db, 'meterReadings'), {
-                  apartmentId: apartmentRef.id,
-                  meterId: coldWaterMeterRef.id,
-                  type: 'water',
-                  meterType: 'Холодная вода',
-                  value: numValue,
-                  dateLabel: colName.trim(), // Save original column name as date label
-                  submittedAt: new Date(),
-                  buildingId,
-                  companyId,
-                });
-              }
-            }
-          }
+          console.log(`  ✓ Cold water meter: ${coldWaterMeterNumber}`);
+          waterReadings.coldmeterwater = coldGroup;
         }
+
+        await setDoc(apartmentRef, {
+          ...apartmentData,
+          waterReadings,
+        });
 
         results.imported++;
         results.createdApartments.push(

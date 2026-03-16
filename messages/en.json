@@ -331,10 +331,38 @@
     },
     "invitation": {
       "invalidToken": "Invalid invitation token",
-      "acceptingInvitation": "Accepting invitation...",
-      "invitationAccepted": "Invitation accepted! Redirecting...",
-      "invitationError": "Error accepting invitation. Please try again."
-    }
+      "invitationError": "Error processing invitation",
+      "gdprConsentRequired": "Data processing consent is required",
+      "passwordTooShort": "Password is too short",
+      "passwordsDoNotMatch": "Passwords do not match",
+      "emailInUse": "This email is already in use",
+      "validatingInvitation": "Validating invitation...",
+      "acceptInvitation": "Accept invitation",
+      "invitedAsResident": "You have been invited as a resident",
+      "gdprConsent": "I agree to the processing of my personal data",
+      "acceptingInvitation": "Accepting...",
+      "acceptAccess": "Confirm access",
+      "newPasswordLabel": "New password",
+      "registrationInProgress": "Registration in progress...",
+      "andAcceptAccessWithoutCreatingNewPassword": "and confirm access without creating a new password",
+      "loginInstead": "Or just",
+      "loginAndAcceptAccess": "log in and confirm access",
+      "accountCreated": "Account successfully created",
+      "userAdded": "User successfully added",
+      "user": "User",
+      "successSaveInfo": "Information saved",
+      "errorSaveInfo": "Error saving information",
+      "successAddTenant": "Tenant successfully added",
+      "errorAddTenant": "Error adding tenant",
+      "noNewNotifications": "No new notifications",
+      "allEventsViewed": "All events viewed",
+      "loading": "Loading...",
+      "apartments": "Apartments",
+      "saveNew": "Save new password",
+      "saving": "Saving...",
+      "remembered": "Remembered your password?",
+      "gdprNotice": "GDPR: Send the invitation only if you have a legal basis and have informed the data subject."
+      }
   }, 
 
     "ui": {

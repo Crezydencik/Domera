@@ -47,6 +47,8 @@ const getResendConfig = () => {
   return { apiKey, from };
 };
 
+const EMAIL_LOGO_URL = 'https://firebasestorage.googleapis.com/v0/b/domera-eb224.firebasestorage.app/o/System%2FDomera_loga.png?alt=media&token=53ccefaa-c38f-490b-9138-010da531327e';
+
 export async function POST(request: NextRequest) {
   try {
     const payload = (await request.json()) as SendInvitationPayload;
@@ -97,6 +99,7 @@ export async function POST(request: NextRequest) {
     }
 
     const loginLink = `${origin}/login?redirect=${encodeURIComponent(invitationResult.invitationLink)}`;
+    const loginPageLink = `${origin}/login`;
 
     const resendConfig = getResendConfig();
     const resend = new Resend(resendConfig.apiKey);
@@ -112,9 +115,7 @@ export async function POST(request: NextRequest) {
           'Sveicināti!',
           '',
           'Jūsu esošajam kontam ir piešķirta piekļuve dzīvoklim Domera.',
-          '1) Ieiet kontā:',
-          loginLink,
-          '2) Pēc ieiešanas apstipriniet piekļuvi, izmantojot ielūguma saiti:',
+          'Apstipriniet piekļuvi, izmantojot ielūguma saiti:',
           invitationResult.invitationLink,
           '',
           'Ja negaidījāt šo vēstuli, vienkārši ignorējiet to.',
@@ -139,52 +140,43 @@ export async function POST(request: NextRequest) {
 
     const html = existingAccountDetected
       ? `
-      <div style="margin:0;padding:0;background:#0f172a;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#0f172a;padding:28px 12px;font-family:Inter,Segoe UI,Roboto,Arial,sans-serif;">
+      <div style="margin:0;padding:0;background:#f3f4f6;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f3f4f6;padding:28px 12px;font-family:Inter,Segoe UI,Roboto,Arial,sans-serif;">
           <tr>
             <td align="center">
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:620px;background:#111827;border:1px solid #1f2937;border-radius:14px;overflow:hidden;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:640px;background:#ffffff;border:1px solid #e5e7eb;border-radius:16px;overflow:hidden;">
                 <tr>
-                  <td style="padding:20px 24px;border-bottom:1px solid #1f2937;">
-                    <p style="margin:0;color:#93c5fd;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;">Domera</p>
-                    <h1 style="margin:8px 0 0;color:#f8fafc;font-size:22px;line-height:1.3;">Piekļuve dzīvoklim piešķirta</h1>
+                  <td style="padding:28px 28px 18px;text-align:center;">
+                    <img src="${EMAIL_LOGO_URL}" alt="Domera Logo" width="270" height="80" style="display:block;margin:0 auto 14px;" />
+                    <h1 style="margin:12px 0 0;color:#111827;font-size:30px;line-height:1.25;font-weight:800;">Piekļuve dzīvoklim piešķirta</h1>
                   </td>
                 </tr>
 
                 <tr>
-                  <td style="padding:24px;">
-                    <p style="margin:0 0 14px;color:#e5e7eb;font-size:15px;line-height:1.6;">
+                  <td style="padding:8px 28px 24px;text-align:center;">
+                    <p style="margin:0 0 18px;color:#374151;font-size:17px;line-height:1.6;">
                       Jūsu esošajam kontam ir piešķirta piekļuve Domera.
                     </p>
-                    <p style="margin:0 0 8px;color:#cbd5e1;font-size:14px;line-height:1.6;">1. solis: ieiet kontā</p>
-                    <p style="margin:0 0 18px;">
-                      <a href="${loginLink}" style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;padding:11px 18px;border-radius:10px;">
-                        Ieiet Domera
-                      </a>
-                    </p>
 
-                    <p style="margin:0 0 8px;color:#cbd5e1;font-size:14px;line-height:1.6;">2. solis: apstipriniet piekļuvi dzīvoklim</p>
+                    <p style="margin:0 0 10px;color:#4b5563;font-size:16px;line-height:1.6;">Apstipriniet piekļuvi dzīvoklim</p>
                     <p style="margin:0 0 22px;">
-                      <a href="${invitationResult.invitationLink}" style="display:inline-block;background:#4f46e5;color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;padding:11px 18px;border-radius:10px;">
+                      <a href="${invitationResult.invitationLink}" style="display:inline-block;background:#4f46e5;color:#ffffff;text-decoration:none;font-weight:700;font-size:20px;padding:14px 26px;border-radius:12px;">
                         Apstiprināt piekļuvi
                       </a>
                     </p>
 
-                    <p style="margin:0 0 8px;color:#94a3b8;font-size:12px;">Ja pogas nedarbojas, atveriet saites manuāli:</p>
-                    <p style="margin:0 0 8px;word-break:break-all;"><a href="${loginLink}" style="color:#60a5fa;font-size:12px;line-height:1.5;text-decoration:underline;">${loginLink}</a></p>
-                    <p style="margin:0 0 20px;word-break:break-all;"><a href="${invitationResult.invitationLink}" style="color:#60a5fa;font-size:12px;line-height:1.5;text-decoration:underline;">${invitationResult.invitationLink}</a></p>
+                    <p style="margin:0 0 10px;color:#6b7280;font-size:14px;line-height:1.6;">Ja pogas nedarbojas, atveriet saites manuāli:</p>
+                    <p style="margin:0 0 20px;word-break:break-all;text-align:center;"><a href="${invitationResult.invitationLink}" style="color:#2563eb;font-size:14px;line-height:1.5;text-decoration:underline;">${invitationResult.invitationLink}</a></p>
 
-                    <div style="margin:0 0 6px;padding:12px 14px;border-radius:10px;background:#0b1220;border:1px solid #1e293b;">
-                      <p style="margin:0;color:#cbd5e1;font-size:12px;line-height:1.5;">
-                        Ja negaidījāt šo vēstuli, vienkārši ignorējiet to.
-                      </p>
-                    </div>
+                    <p style="margin:0;padding:12px 14px;border-radius:10px;background:#f9fafb;border:1px solid #e5e7eb;color:#4b5563;font-size:14px;line-height:1.5;">
+                      Ja negaidījāt šo vēstuli, vienkārši ignorējiet to.
+                    </p>
                   </td>
                 </tr>
 
                 <tr>
-                  <td style="padding:14px 24px;border-top:1px solid #1f2937;">
-                    <p style="margin:0;color:#64748b;font-size:11px;line-height:1.5;">
+                  <td style="padding:16px 28px;border-top:1px solid #e5e7eb;">
+                    <p style="margin:0;color:#9ca3af;font-size:12px;line-height:1.5;">
                       Šī ir automātiska vēstule no Domera. Lūdzu, neatbildiet uz to.
                     </p>
                   </td>
@@ -196,52 +188,50 @@ export async function POST(request: NextRequest) {
       </div>
     `
       : `
-      <div style="margin:0;padding:0;background:#0f172a;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#0f172a;padding:28px 12px;font-family:Inter,Segoe UI,Roboto,Arial,sans-serif;">
+      <div style="margin:0;padding:0;background:#f3f4f6;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f3f4f6;padding:28px 12px;font-family:Inter,Segoe UI,Roboto,Arial,sans-serif;">
           <tr>
             <td align="center">
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:620px;background:#111827;border:1px solid #1f2937;border-radius:14px;overflow:hidden;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:640px;background:#ffffff;border:1px solid #e5e7eb;border-radius:16px;overflow:hidden;">
                 <tr>
-                  <td style="padding:20px 24px;border-bottom:1px solid #1f2937;">
-                    <p style="margin:0;color:#93c5fd;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;">Domera</p>
-                    <h1 style="margin:8px 0 0;color:#f8fafc;font-size:22px;line-height:1.3;">Ielūgums uz Domera</h1>
+                  <td style="padding:28px 28px 18px;text-align:center;">
+                    <img src="${EMAIL_LOGO_URL}" alt="Domera Logo" width="270" height="80" style="display:block;margin:0 auto 14px;" />
+                    <h1 style="margin:12px 0 0;color:#111827;font-size:30px;line-height:1.25;font-weight:800;">Ielūgums uz Domera</h1>
                   </td>
                 </tr>
 
                 <tr>
-                  <td style="padding:24px;">
-                    <p style="margin:0 0 14px;color:#e5e7eb;font-size:15px;line-height:1.6;">
+                  <td style="padding:8px 28px 24px;text-align:center;">
+                    <p style="margin:0 0 18px;color:#374151;font-size:17px;line-height:1.6;">
                       Sveicināti! Jūs esat uzaicināts uz Domera kā dzīvokļa iedzīvotājs.
                     </p>
-                    <p style="margin:0 0 20px;color:#cbd5e1;font-size:14px;line-height:1.6;">
+                    <p style="margin:0 0 20px;color:#4b5563;font-size:16px;line-height:1.6;">
                       Nospiediet pogu zemāk, lai pieņemtu ielūgumu un pabeigtu reģistrāciju.
                     </p>
 
                     <p style="margin:0 0 22px;">
                       <a
                         href="${invitationResult.invitationLink}"
-                        style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;padding:11px 18px;border-radius:10px;"
+                        style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;font-weight:700;font-size:20px;padding:14px 26px;border-radius:12px;"
                       >
                         Pieņemt ielūgumu
                       </a>
                     </p>
 
-                    <p style="margin:0 0 8px;color:#94a3b8;font-size:12px;">Ja poga nedarbojas, atveriet saiti manuāli:</p>
-                    <p style="margin:0 0 20px;word-break:break-all;">
-                      <a href="${invitationResult.invitationLink}" style="color:#60a5fa;font-size:12px;line-height:1.5;text-decoration:underline;">${invitationResult.invitationLink}</a>
+                    <p style="margin:0 0 10px;color:#6b7280;font-size:14px;line-height:1.6;">Ja poga nedarbojas, atveriet saiti manuāli:</p>
+                    <p style="margin:0 0 20px;word-break:break-all;text-align:center;">
+                      <a href="${invitationResult.invitationLink}" style="color:#2563eb;font-size:14px;line-height:1.5;text-decoration:underline;">${invitationResult.invitationLink}</a>
                     </p>
 
-                    <div style="margin:0 0 6px;padding:12px 14px;border-radius:10px;background:#0b1220;border:1px solid #1e293b;">
-                      <p style="margin:0;color:#cbd5e1;font-size:12px;line-height:1.5;">
-                        Ja negaidījāt šo vēstuli, vienkārši ignorējiet to.
-                      </p>
-                    </div>
+                    <p style="margin:0;padding:12px 14px;border-radius:10px;background:#f9fafb;border:1px solid #e5e7eb;color:#4b5563;font-size:14px;line-height:1.5;">
+                      Ja negaidījāt šo vēstuli, vienkārši ignorējiet to.
+                    </p>
                   </td>
                 </tr>
 
                 <tr>
-                  <td style="padding:14px 24px;border-top:1px solid #1f2937;">
-                    <p style="margin:0;color:#64748b;font-size:11px;line-height:1.5;">
+                  <td style="padding:16px 28px;border-top:1px solid #e5e7eb;">
+                    <p style="margin:0;color:#9ca3af;font-size:12px;line-height:1.5;">
                       Šī ir automātiska vēstule no Domera. Lūdzu, neatbildiet uz to.
                     </p>
                   </td>

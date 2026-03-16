@@ -10,7 +10,7 @@ import {
 } from '@/modules/invitations/services/invitationsService';
 import { getUserByEmail } from '@/modules/auth/services/authService';
 import { useAuth } from '@/shared/hooks/useAuth';
-import { useTranslations } from 'use-intl';
+import { useTranslations } from 'next-intl';
 
 export default function AcceptInvitationPage() {
   const router = useRouter();

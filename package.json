@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "analyze:excel": "tsx scripts/analyzeExcelStructure.ts",
-    "import:apartments": "tsx scripts/importApartmentsFromExcel.ts"
+    "import:apartments": "tsx scripts/importApartmentsFromExcel.ts",
+    "migrate:waterReadings": "tsx scripts/migrateWaterReadings.ts"
   },
   "dependencies": {
     "firebase": "^12.9.0",

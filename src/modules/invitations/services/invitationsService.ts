@@ -1,7 +1,7 @@
 // ...existing code...
 import { Invitation, User, InvitationStatus, InvitationGdprMeta, TenantPermission } from '@/shared/types';
 import { FIRESTORE_COLLECTIONS, INVITATION_STATUSES, INVITATION_TOKEN_EXPIRY_HOURS } from '@/shared/constants';
-import { createDocument, updateDocument, queryDocuments } from '@/firebase/services/firestoreService';
+import { createDocument, updateDocument, queryDocuments, getDocument } from '@/firebase/services/firestoreService';
 import { generateToken } from '@/shared/lib/utils';
 import { registerUser } from '@/modules/auth/services/authService';
 import { assignResidentToApartment } from '@/modules/apartments/services/apartmentsService';
@@ -10,6 +10,24 @@ import { validateEmail } from '@/shared/validation';
 import { createNotification } from '@/modules/notifications/services/notificationsService';
 
 const normalizeEmail = (email: string): string => email.trim().toLowerCase();
+
+const syncApartmentOwnerEmailIfNeeded = async (
+  apartmentId: string,
+  invitationEmail: string
+): Promise<void> => {
+  const normalizedInvitationEmail = normalizeEmail(invitationEmail);
+  const apartment = await getDocument(FIRESTORE_COLLECTIONS.APARTMENTS, apartmentId);
+  const currentOwnerEmailRaw = (apartment as { ownerEmail?: unknown } | null)?.ownerEmail;
+  const currentOwnerEmail = typeof currentOwnerEmailRaw === 'string'
+    ? normalizeEmail(currentOwnerEmailRaw)
+    : '';
+
+  if (currentOwnerEmail !== normalizedInvitationEmail) {
+    await updateDocument(FIRESTORE_COLLECTIONS.APARTMENTS, apartmentId, {
+      ownerEmail: normalizedInvitationEmail,
+    });
+  }
+};
 
 export interface CreateInvitationOptions {
   invitedByUid?: string;
@@ -52,6 +70,8 @@ export const createInvitation = async (
     if (!options.legalBasisConfirmed) {
       throw new Error('Не подтверждено правовое основание обработки персональных данных');
     }
+
+    await syncApartmentOwnerEmailIfNeeded(apartmentId, normalizedEmail);
 
     // Генерируем уникальный токен
     const token = generateToken();
@@ -202,6 +222,9 @@ export const acceptInvitation = async (
     // Assign resident to apartment
     await assignResidentToApartment(invitation.apartmentId, user.uid);
 
+    // Sync primary owner email with accepted invitation email
+    await syncApartmentOwnerEmailIfNeeded(invitation.apartmentId, invitation.email);
+
     // Create notification about joining apartment
     try {
       await createNotification(
@@ -278,6 +301,9 @@ export const acceptInvitationForAuthenticatedUser = async (
     });
 
     await assignResidentToApartment(invitation.apartmentId, user.uid);
+
+    // Sync primary owner email with accepted invitation email
+    await syncApartmentOwnerEmailIfNeeded(invitation.apartmentId, invitation.email);
 
     // Create notification about joining apartment
     try {
