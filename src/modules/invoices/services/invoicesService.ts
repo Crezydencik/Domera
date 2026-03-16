@@ -14,12 +14,12 @@ import {
   getDocument,
   updateDocument,
   deleteDocument,
+  queryDocuments,
 } from '@/firebase/services/firestoreService';
-import { uploadFile, deleteFile } from '@/firebase/services/storageService';
+import { uploadInvoicePDF, deleteInvoicePDF } from '@/firebase/services/storageService';
 import { FIRESTORE_COLLECTIONS } from '@/shared/constants';
 import { Invoice } from '@/shared/types';
-import { query, where, collection, getDocs, orderBy, limit } from 'firebase/firestore';
-import { db } from '@/firebase/config';
+import { where } from 'firebase/firestore';
 
 /**
  * Create new invoice
@@ -63,7 +63,7 @@ export const getInvoicesByApartment = async (apartmentId: string): Promise<Invoi
     const invoices = await queryDocuments(FIRESTORE_COLLECTIONS.INVOICES, [
       where('apartmentId', '==', apartmentId),
     ]);
-    return invoices as Invoice[];
+    return invoices as unknown as Invoice[];
   } catch (error) {
     console.error('Error getting invoices by apartment:', error);
     throw error;
@@ -78,7 +78,7 @@ export const getInvoicesByCompany = async (companyId: string): Promise<Invoice[]
     const invoices = await queryDocuments(FIRESTORE_COLLECTIONS.INVOICES, [
       where('companyId', '==', companyId),
     ]);
-    return invoices as Invoice[];
+    return invoices as unknown as Invoice[];
   } catch (error) {
     console.error('Error getting invoices by company:', error);
     throw error;
@@ -95,7 +95,7 @@ export const getInvoicesByBuilding = async (buildingId: string): Promise<Invoice
     const invoices = await queryDocuments(FIRESTORE_COLLECTIONS.INVOICES, [
       where('buildingId', '==', buildingId),
     ]);
-    return invoices as Invoice[];
+    return invoices as unknown as Invoice[];
   } catch (error) {
     console.error('Error getting invoices by building:', error);
     throw error;
@@ -153,22 +153,20 @@ export const uploadInvoiceWithPDF = async (
   file: File
 ): Promise<Invoice> => {
   try {
-    // Upload PDF first
-    const pdfUrl = await uploadInvoicePDF(
-      invoiceData.companyId,
-      invoiceData.apartmentId,
-      invoiceData.month,
-      invoiceData.year,
-      file
-    );
-
-    // Create invoice record with PDF URL
+    // Create invoice record first to get an ID
     const invoice = await createInvoice({
       ...invoiceData,
-      pdfUrl,
+      pdfUrl: '',
+      createdAt: new Date(),
     });
 
-    return invoice;
+    // Upload PDF using invoice ID as path
+    const pdfUrl = await uploadInvoicePDF(invoice.id, file);
+
+    // Update invoice record with PDF URL
+    await updateDocument(FIRESTORE_COLLECTIONS.INVOICES, invoice.id, { pdfUrl });
+
+    return { ...invoice, pdfUrl };
   } catch (error) {
     console.error('Error uploading invoice with PDF:', error);
     throw error;
@@ -181,12 +179,7 @@ export const uploadInvoiceWithPDF = async (
 export const deleteInvoiceWithPDF = async (invoice: Invoice): Promise<void> => {
   try {
     // Delete PDF from storage
-    await deleteInvoicePDF(
-      invoice.companyId,
-      invoice.apartmentId,
-      invoice.month,
-      invoice.year
-    );
+    await deleteInvoicePDF(invoice.id);
 
     // Delete invoice record
     await deleteInvoice(invoice.id);

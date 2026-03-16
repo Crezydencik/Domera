@@ -12,8 +12,6 @@ import {
   getDocument,
   updateDocument,
   queryDocuments,
-  setDocument,
-  documentExists,
 } from '@/firebase/services/firestoreService';
 import { getApartmentsByCompany } from '@/modules/apartments/services/apartmentsService';
 import { DEFAULT_WATER_METER_TEMPLATES, FIRESTORE_COLLECTIONS } from '@/shared/constants';
@@ -157,19 +155,52 @@ export const getMetersByApartment = async (apartmentId: string): Promise<Meter[]
 export const updateMeter = async (
   meterId: string,
   data: Partial<Omit<Meter, 'id'>>,
-  options?: { force?: boolean }
+  options?: { force?: boolean; apartmentId?: string }
 ): Promise<void> => {
   try {
-    // Fetch existing document (if any) to enforce business rules
-    const existing = await getDocument(FIRESTORE_COLLECTIONS.METERS, meterId);
+    let apartmentId = options?.apartmentId;
+    if (!apartmentId) {
+      // Legacy fallback: try to resolve apartment from historical meters collection doc
+      const legacyMeterDoc = await getDocument(FIRESTORE_COLLECTIONS.METERS, meterId);
+      if (legacyMeterDoc && typeof legacyMeterDoc['apartmentId'] === 'string') {
+        apartmentId = String(legacyMeterDoc['apartmentId']);
+      }
+    }
+
+    if (!apartmentId) {
+      throw new Error('Не удалось определить квартиру для обновления счётчика');
+    }
+
+    const apartment = (await getDocument(FIRESTORE_COLLECTIONS.APARTMENTS, apartmentId)) as Apartment | null;
+    if (!apartment) {
+      throw new Error('Квартира не найдена');
+    }
+
+    const wr = (apartment.waterReadings ?? {}) as Record<string, unknown>;
+    const currentCold = wr['coldmeterwater'] as Record<string, unknown> | undefined;
+    const currentHot = wr['hotmeterwater'] as Record<string, unknown> | undefined;
+
+    let namedKey: 'coldmeterwater' | 'hotmeterwater' | undefined;
+    if (currentCold?.['meterId'] === meterId) namedKey = 'coldmeterwater';
+    if (currentHot?.['meterId'] === meterId) namedKey = 'hotmeterwater';
+
+    if (!namedKey) {
+      const nameHint = String(data.name ?? '').toLowerCase();
+      const isHot = nameHint === 'hwm' || /hwm|hot|гвс|гор/i.test(meterId);
+      namedKey = isHot ? 'hotmeterwater' : 'coldmeterwater';
+    }
+
+    const existingGroup = (wr[namedKey] as Record<string, unknown> | undefined) ?? {};
+    const existingSerial = typeof existingGroup['serialNumber'] === 'string' ? String(existingGroup['serialNumber']) : '';
+    const existingCheckDueDate = existingGroup['checkDueDate'];
 
     // Date change: allow updating the checkDueDate value.
     // Previous strict protection (blocking changes until the stored date) removed to allow easier corrections from the UI.
     // Serial change protection remains below.
 
     // 2) Serial change protection (unless forced) — only allowed within 1 month before checkDueDate
-    if (!options?.force && existing && data.serialNumber && existing['serialNumber'] && data.serialNumber !== existing['serialNumber']) {
-      const existingDateRaw = existing['checkDueDate'];
+    if (!options?.force && data.serialNumber && existingSerial && data.serialNumber !== existingSerial) {
+      const existingDateRaw = existingCheckDueDate;
       const oneMonthMs = 30 * 24 * 60 * 60 * 1000;
       if (!existingDateRaw) {
         throw new Error('Изменение номера счётчика запрещено');
@@ -185,13 +216,23 @@ export const updateMeter = async (
       }
     }
 
-    // Persist document
-    const exists = await documentExists(FIRESTORE_COLLECTIONS.METERS, meterId);
-    if (exists) {
-      await updateDocument(FIRESTORE_COLLECTIONS.METERS, meterId, data);
-    } else {
-      await setDocument(FIRESTORE_COLLECTIONS.METERS, meterId, { id: meterId, ...(data as Record<string, unknown>) });
+    const nextGroup: Record<string, unknown> = {
+      ...existingGroup,
+      meterId: typeof existingGroup['meterId'] === 'string' && existingGroup['meterId']
+        ? String(existingGroup['meterId'])
+        : meterId,
+    };
+
+    if (typeof data.serialNumber === 'string' && data.serialNumber.trim()) {
+      nextGroup['serialNumber'] = data.serialNumber.trim();
     }
+    if (typeof data.checkDueDate === 'string' && data.checkDueDate.trim()) {
+      nextGroup['checkDueDate'] = data.checkDueDate.trim();
+    }
+
+    await updateDocument(FIRESTORE_COLLECTIONS.APARTMENTS, apartmentId, {
+      [`waterReadings.${namedKey}`]: nextGroup,
+    });
   } catch (error) {
     console.error('Error updating meter:', error);
     throw error;
@@ -205,7 +246,7 @@ export const updateMeter = async (
 export const setMeterCheckDate = async (
   meterId: string,
   date: string | Date,
-  options?: { force?: boolean }
+  options?: { force?: boolean; apartmentId?: string }
 ): Promise<void> => {
   if (!meterId || !date) {
     throw new Error('meterId и date обязательны');

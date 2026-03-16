@@ -6,6 +6,7 @@ import Loading from '../../../shared/components/ui/loading';
 import Header from '../../../shared/components/layout/heder';
 import { useEffect, useState } from 'react';
 import { countDocuments, getDocument } from '@/firebase/services/firestoreService';
+import { where } from 'firebase/firestore';
 
 export default function ResidentDashboard() {
   const t = useTranslations('dashboard.resident');
@@ -33,12 +34,10 @@ export default function ResidentDashboard() {
         }
         const [buildings, apartmentsCount] = await Promise.all([
           countDocuments('buildings', [
-            // @ts-expect-error
-            window.firebaseWhere('companyId', '==', apartment.companyId)
+            where('companyId', '==', apartment.companyId)
           ]),
           countDocuments('apartments', [
-            // @ts-expect-error
-            window.firebaseWhere('companyIds', 'array-contains', apartment.companyId)
+            where('companyIds', 'array-contains', apartment.companyId)
           ]),
         ]);
         setStats({ buildings, apartments: apartmentsCount });
@@ -65,7 +64,7 @@ export default function ResidentDashboard() {
       <Header
         userName={name}
         userEmail={user?.email}
-        userAvatarUrl={user?.avatarUrl}
+        // userAvatarUrl={user?.avatarUrl}
         onLogout={handleLogout}
         pageTitle={t('welcome', { name })}
       />

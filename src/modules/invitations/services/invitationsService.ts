@@ -398,3 +398,18 @@ export const revokePendingInvitationsForApartment = async (
 };
 
 export type { Invitation };
+
+/**
+ * Get all invitations for a company
+ */
+export const getInvitationsByCompany = async (companyId: string): Promise<Invitation[]> => {
+  try {
+    const docs = await queryDocuments(FIRESTORE_COLLECTIONS.INVITATIONS, [
+      { field: 'companyId', operator: '==', value: companyId },
+    ]);
+    return docs as unknown as Invitation[];
+  } catch (error) {
+    console.error('Error getting invitations by company:', error);
+    throw error;
+  }
+};

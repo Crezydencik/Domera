@@ -2,7 +2,8 @@
 
 
 import { useAuth } from '@/shared/hooks/useAuth';
-import { useEffect, useState } from 'react';
+import type { User } from '@/shared/types';
+import { useEffect, useState, useRef } from 'react';
 import { getApartment } from '@/modules/apartments/services/apartmentsService';
 import { getBuilding } from '@/modules/invoices/services/buildings/services/buildingsService';
 import { updateUserProfile } from '@/modules/auth/services/authService';
@@ -17,8 +18,8 @@ import { NotificationItem, NotificationsDropdown } from '../../../shared/compone
 export default function ProfilePage() {
   const { user, refreshUser } = useAuth();
   // --- Header helpers ---
-  const getUserName = (user: any) => user?.displayName || user?.email || '';
-  const getUserAvatar = (user: any) => user?.avatarUrl;
+  const getUserName = (u: User | null) => u?.displayName || u?.email || '';
+  // const getUserAvatar = (u: User | null) => u?.avatarUrl;
   const handleLogout = () => { window.location.reload(); };
   const t = useTranslations('dashboard.profile');
   const th = useTranslations();
@@ -32,16 +33,9 @@ export default function ProfilePage() {
     { label: t('tabs.notifications'), key: 'notifications' },
   ];
   const [activeTab, setActiveTab] = useState('profile');
-  const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState({
-    email: user?.email || '',
-    displayName: user?.displayName || '',
-    phone: user?.phone || '',
-    address: user?.address || '',
-  });
-  const [editField, setEditField] = useState<null | 'displayName' | 'phone'>(null);
+  const [editField, setEditField] = useState<null | 'displayName' | 'phone' | 'address'>(null);
   const [profileSaving, setProfileSaving] = useState(false);
-
+  
   // --- Notification and privacy state ---
   const [notif, setNotif] = useState({
     email: user?.notifications?.email ?? true,
@@ -49,13 +43,16 @@ export default function ProfilePage() {
     paymentReminder: user?.notifications?.paymentReminder ?? true,
     general: user?.notifications?.general ?? true,
   });
-  const [privacyConsent, setPrivacyConsent] = useState(user?.privacyConsent ?? false);
   const [notifSaving, setNotifSaving] = useState(false);
-  const [privacySaving, setPrivacySaving] = useState(false);
-  const [deleteModal, setDeleteModal] = useState(false);
-  const [deleteLoading, setDeleteLoading] = useState(false);
   const [notifSaved, setNotifSaved] = useState(false);
-  const [privacySaved, setPrivacySaved] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const notificationsAnchorRef = useRef<HTMLDivElement>(null);
+  const [formData, setFormData] = useState({
+    email: user?.email || '',
+    displayName: user?.displayName || '',
+    phone: user?.phone || '',
+    address: user?.address || '',
+  });
 
   // Сохранять настройки уведомлений
   const handleNotifChange = async (key: keyof typeof notif, value: boolean) => {
@@ -84,39 +81,11 @@ export default function ProfilePage() {
       });
     }
     setProfileNotifications(notifs);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  // Сохранять согласие на обработку данных
-  const handlePrivacyConsent = async (value: boolean) => {
-    setPrivacyConsent(value);
-    setPrivacySaving(true);
-    setPrivacySaved(false);
-    try {
-      await updateUserProfile(user.uid, { privacyConsent: value });
-      setPrivacySaved(true);
-      showCustomToast({ type: 'success', title: t('privacySaved') });
-    } finally {
-      setPrivacySaving(false);
-      setTimeout(() => setPrivacySaved(false), 1200);
-    }
-  };
-
-  // Удаление аккаунта (отправка запроса в УК)
-  const handleDeleteAccount = async () => {
-    setDeleteLoading(true);
-    try {
-      // Здесь можно реализовать Firestore-запрос или email-уведомление УК
-      // Например, создать документ в коллекции 'deleteRequests'
-      // await createDocument('deleteRequests', { uid: user.uid, email: user.email, requestedAt: new Date() });
-      alert(t('deleteRequestSent')); // Временно показываем алерт
-      setDeleteModal(false);
-    } finally {
-      setDeleteLoading(false);
-    }
-  };
-
   // Информация о квартире и доме для жильца
-  const [apartmentInfo, setApartmentInfo] = useState<{
+  const [_apartmentInfo, setApartmentInfo] = useState<{
     number?: string;
     buildingAddress?: string;
     companyName?: string;
@@ -138,13 +107,7 @@ export default function ProfilePage() {
           }
         } else if (!ignore) {
           setApartmentInfo(null);
-               {/* Уведомления профиля */}
-               {profileNotifications.length > 0 && (
-                 <div className="mb-6">
-                   <NotificationsDropdown notifications={profileNotifications} open={true} onClose={() => {}} />
-                 </div>
-               )}
-        }
+         }
       } else if (!ignore) {
         setApartmentInfo(null);
       }
@@ -160,7 +123,7 @@ export default function ProfilePage() {
       <Header
         userName={getUserName(user)}
         userEmail={user?.email}
-        userAvatarUrl={getUserAvatar(user)}
+        // userAvatarUrl={getUserAvatar(user)}
         onLogout={handleLogout}
         pageTitle={th('dashboard.sidebar.profile')}
       />
@@ -168,7 +131,7 @@ export default function ProfilePage() {
         {/* Tabs */}
         <div className="bg-white rounded-t-xl px-6 pt-4 border border-b-0 border-neutral-200">
           <nav className="flex gap-2 sm:gap-6 text-sm font-medium">
-            {tabs.map((tab, i) => (
+            {tabs.map((tab) => (
                  <button
                    key={tab.key}
                    className={`pt-2 pb-3 px-1 sm:px-2 border-b-2 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 ${activeTab === tab.key ? 'border-black text-black font-bold' : 'border-transparent text-neutral-500 hover:text-black hover:border-gray-400'}`}
@@ -181,6 +144,23 @@ export default function ProfilePage() {
             ))}
           </nav>
         </div>
+        {/* Notifications */}
+        {profileNotifications.length > 0 && (
+          <div ref={notificationsAnchorRef} className="relative mb-6">
+            <button 
+              onClick={() => setNotificationsOpen(!notificationsOpen)}
+              className="mb-2 px-4 py-2 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+            >
+              {profileNotifications.length} notification{profileNotifications.length !== 1 ? 's' : ''}
+            </button>
+            <NotificationsDropdown 
+              notifications={profileNotifications} 
+              open={notificationsOpen} 
+              onClose={() => setNotificationsOpen(false)}
+              anchorRef={notificationsAnchorRef}
+            />
+          </div>
+        )}
         {/* Card */}
         <div className="bg-white rounded-b-xl border border-t-0 border-neutral-200 p-0">
           {activeTab === 'profile' && (
@@ -397,11 +377,11 @@ export default function ProfilePage() {
                         <span className="text-neutral-700">{t('notification.lang')}</span>
                         <select
                           className="border rounded px-2 py-1 text-black bg-white"
-                          value={user?.notifications?.lang || 'ru'}
+                          value={user?.preferredLang || 'ru'}
                           onChange={async (e) => {
                             setNotifSaving(true);
                             setNotifSaved(false);
-                            await updateUserProfile(user.uid, { notifications: { ...notif, lang: e.target.value } });
+                            await updateUserProfile(user.uid, { preferredLang: e.target.value as 'lv' | 'ru' });
                             setNotifSaved(true);
                             setNotifSaving(false);
                           }}

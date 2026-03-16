@@ -4,6 +4,13 @@ import React, { useState } from 'react';
 import { toast } from 'react-toastify';
 import type { Building } from '@/shared/types';
 
+interface ImportResults {
+  imported: number;
+  errors: string[];
+  skippedDuplicates: string[];
+  createdApartments: string[];
+}
+
 interface ImportApartmentsModalProps {
   buildings: Building[];
   isOpen: boolean;
@@ -21,9 +28,22 @@ export const ImportApartmentsModal: React.FC<ImportApartmentsModalProps> = ({
   const [file, setFile] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [progress, setProgress] = useState<string>('');
+  const [importResults, setImportResults] = useState<ImportResults | null>(null);
 
   const selectedBuilding = buildings.find(b => b.id === selectedBuildingId);
   const companyId = selectedBuilding?.companyId;
+
+  const resetState = () => {
+    setFile(null);
+    setSelectedBuildingId('');
+    setProgress('');
+    setImportResults(null);
+  };
+
+  const handleClose = () => {
+    resetState();
+    onClose();
+  };
 
   const handleImport = async () => {
     if (!file || !selectedBuildingId || !companyId) {
@@ -54,11 +74,12 @@ export const ImportApartmentsModal: React.FC<ImportApartmentsModalProps> = ({
       }
 
       setProgress('✓ Импорт завершен!');
+      setImportResults(data.results);
       
       toast.success(
         `Успешно импортировано ${data.results.imported} квартир${
-          data.results.errors.length > 0 
-            ? ` (Ошибок: ${data.results.errors.length})`
+          data.results.errors.length > 0 || data.results.skippedDuplicates.length > 0
+            ? ` (Ошибок: ${data.results.errors.length}, дублей: ${data.results.skippedDuplicates.length})`
             : ''
         }`
       );
@@ -70,13 +91,11 @@ export const ImportApartmentsModal: React.FC<ImportApartmentsModalProps> = ({
         });
       }
 
-      setTimeout(() => {
-        onClose();
-        setFile(null);
-        setSelectedBuildingId('');
-        setProgress('');
-        onImportSuccess?.();
-      }, 1500);
+      if (data.results.skippedDuplicates.length > 0) {
+        console.warn('Duplicate apartments skipped:', data.results.skippedDuplicates);
+      }
+
+      onImportSuccess?.();
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Ошибка импорта';
       setProgress(`Ошибка: ${errorMsg}`);
@@ -95,12 +114,16 @@ export const ImportApartmentsModal: React.FC<ImportApartmentsModalProps> = ({
         <div className="flex items-start justify-between gap-4 mb-6">
           <div>
             <h3 className="text-2xl font-bold text-gray-900">
-              Импорт квартир
+              {importResults ? 'Результат импорта' : 'Импорт квартир'}
             </h3>
-            <p className="text-gray-600 text-sm mt-1">Загрузите Excel файл с данными квартир и счётчиков</p>
+            <p className="text-gray-600 text-sm mt-1">
+              {importResults
+                ? 'Проверьте импортированные квартиры и нажмите OK'
+                : 'Загрузите Excel файл с данными квартир и счётчиков'}
+            </p>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="text-gray-400 hover:text-gray-600 transition"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -111,6 +134,65 @@ export const ImportApartmentsModal: React.FC<ImportApartmentsModalProps> = ({
 
         {/* Form */}
         <div className="space-y-4">
+          {importResults ? (
+            <>
+              <div className="rounded-lg bg-green-50 border border-green-200 p-4">
+                <p className="text-sm font-semibold text-green-900">
+                  Импортировано: {importResults.imported}
+                </p>
+                <p className="text-sm text-green-800 mt-1">
+                  Пропущено дублей: {importResults.skippedDuplicates.length}
+                </p>
+                <p className="text-sm text-green-800 mt-1">
+                  Ошибок: {importResults.errors.length}
+                </p>
+              </div>
+
+              <div>
+                <p className="mb-2 text-sm font-semibold text-gray-800">Импортированные квартиры</p>
+                <div className="max-h-56 overflow-y-auto rounded-lg border border-gray-200 bg-gray-50 p-3">
+                  {importResults.createdApartments.length > 0 ? (
+                    <ul className="space-y-2 text-sm text-gray-700">
+                      {importResults.createdApartments.map((item) => (
+                        <li key={item} className="rounded-md bg-white px-3 py-2 shadow-sm">
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-gray-500">Новые квартиры не были импортированы.</p>
+                  )}
+                </div>
+              </div>
+
+              {importResults.skippedDuplicates.length > 0 && (
+                <div>
+                  <p className="mb-2 text-sm font-semibold text-amber-800">Пропущенные дубли</p>
+                  <div className="max-h-36 overflow-y-auto rounded-lg border border-amber-200 bg-amber-50 p-3">
+                    <ul className="space-y-2 text-sm text-amber-900">
+                      {importResults.skippedDuplicates.map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
+
+              {importResults.errors.length > 0 && (
+                <div>
+                  <p className="mb-2 text-sm font-semibold text-red-800">Ошибки</p>
+                  <div className="max-h-36 overflow-y-auto rounded-lg border border-red-200 bg-red-50 p-3">
+                    <ul className="space-y-2 text-sm text-red-900">
+                      {importResults.errors.map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <>
           {/* Building selector */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -173,24 +255,37 @@ export const ImportApartmentsModal: React.FC<ImportApartmentsModalProps> = ({
               <li>• Показания счётчиков (в виде колонок Kartsais и Aukstais)</li>
             </ul>
           </div> */}
+            </>
+          )}
         </div>
 
         {/* Buttons */}
         <div className="flex gap-3 mt-6">
-          <button
-            onClick={onClose}
-            disabled={isLoading}
-            className="flex-1 px-4 py-2 rounded-lg border-2 border-gray-300 text-gray-700 font-semibold bg-white hover:bg-gray-50 transition disabled:opacity-50"
-          >
-            Отмена
-          </button>
-          <button
-            onClick={handleImport}
-            disabled={!file || !selectedBuildingId || isLoading}
-            className="flex-1 px-4 py-2 rounded-lg bg-blue-500 text-white font-semibold hover:bg-blue-600 transition disabled:opacity-50"
-          >
-            {isLoading ? 'Импорт...' : 'Импортировать'}
-          </button>
+          {importResults ? (
+            <button
+              onClick={handleClose}
+              className="w-full px-4 py-2 rounded-lg bg-blue-500 text-white font-semibold hover:bg-blue-600 transition"
+            >
+              OK
+            </button>
+          ) : (
+            <>
+              <button
+                onClick={handleClose}
+                disabled={isLoading}
+                className="flex-1 px-4 py-2 rounded-lg border-2 border-gray-300 text-gray-700 font-semibold bg-white hover:bg-gray-50 transition disabled:opacity-50"
+              >
+                Отмена
+              </button>
+              <button
+                onClick={handleImport}
+                disabled={!file || !selectedBuildingId || isLoading}
+                className="flex-1 px-4 py-2 rounded-lg bg-blue-500 text-white font-semibold hover:bg-blue-600 transition disabled:opacity-50"
+              >
+                {isLoading ? 'Импорт...' : 'Импортировать'}
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>

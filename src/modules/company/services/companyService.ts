@@ -11,10 +11,7 @@ import {
   createDocument,
   getDocument,
   updateDocument,
-  deleteDocument,
 } from '@/firebase/services/firestoreService';
-import { query, where, collection, getDocs } from 'firebase/firestore';
-import { db } from '@/firebase/config';
 import { FIRESTORE_COLLECTIONS } from '@/shared/constants';
 import { Company } from '@/shared/types';
 
@@ -28,7 +25,7 @@ export const createCompany = async (
   extra?: { address?: string; phone?: string; email?: string }
 ): Promise<Company> => {
   try {
-    const companyData: any = {
+    const companyData: Omit<Company, 'id'> = {
       name,
       userId,
       buildings: [], // [{ id, name }]

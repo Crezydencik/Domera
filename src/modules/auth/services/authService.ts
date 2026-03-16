@@ -4,7 +4,7 @@
  * High-level authentication operations combining Firebase Auth + Firestore
  */
 
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
 import {
   loginUser as firebaseLogin,
   logoutUser as firebaseLogout,
@@ -12,25 +12,23 @@ import {
   updateUserPassword as firebaseUpdateUserPassword,
 } from '@/firebase/services/authService';
 import {
-  createDocument,
   setDocument,
   getDocumentsByCompany,
   getDocument,
   updateDocument,
-  queryDocuments,
 } from '@/firebase/services/firestoreService';
 import { auth, db } from '@/firebase/config';
-import { FIRESTORE_COLLECTIONS, USER_ROLES } from '@/shared/constants';
-import { User, AuthCredentials, RegistrationData, PasswordReset } from '@/shared/types';
+import { FIRESTORE_COLLECTIONS } from '@/shared/constants';
+import { User, AuthCredentials, RegistrationData } from '@/shared/types';
 import { validateEmail, validatePassword } from '@/shared/validation';
-import { addDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 
 /**
  * Register new user with email and password
  */
 export const registerUser = async (
   registrationData: RegistrationData,
-  role: 'ManagementCompany' | 'Resident',
+  role: 'ManagementCompany' | 'Resident' | 'Accountant',
   companyId: string,
   apartmentId?: string
 ): Promise<User> => {
@@ -55,15 +53,16 @@ export const registerUser = async (
     const userId = userCredential.user.uid;
     const newUser: User = {
       uid: userId,
+      name: '',
       email: registrationData.email,
-      role: role as any,
+      role: role as User['role'],
       companyId,
       apartmentId,
       createdAt: new Date(),
     };
 
     // Build user data object - exclude undefined fields
-    const userData: any = {
+    const userData: Record<string, unknown> = {
       uid: userId,
       email: registrationData.email,
       role,
@@ -96,8 +95,8 @@ export const login = async (credentials: AuthCredentials): Promise<User | null> 
     }
 
     // Firebase login
-    const authResult = await firebaseLogin(credentials.email, credentials.password);
-    
+    await firebaseLogin(credentials.email, credentials.password);
+
     // Wait a moment for auth state to update
     await new Promise(resolve => setTimeout(resolve, 100));
 

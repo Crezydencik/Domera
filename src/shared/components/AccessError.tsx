@@ -11,7 +11,15 @@ interface AccessErrorProps {
 export function AccessError({ type = 'loginRequired', showActions = true }: AccessErrorProps) {
   const t = useTranslations('');
 
-  const errorConfig = {
+  type ErrorConfig = {
+    icon: string;
+    title: string;
+    description: string;
+    primaryAction: { label: string; href: string };
+    secondaryAction?: { label: string; href: string };
+  };
+
+  const errorConfig: Record<string, ErrorConfig> = {
     loginRequired: {
       icon: '🔐',
       title: t('home.loginRequired') || 'Требуется авторизация',
@@ -24,6 +32,7 @@ export function AccessError({ type = 'loginRequired', showActions = true }: Acce
       title: t('home.noAccess') || 'Нет доступа',
       description: t('home.noAccessDescription') || 'У вас нет прав для доступа к этому ресурсу. Пожалуйста, свяжитесь с администратором.',
       primaryAction: { label: t('home.backButton') || 'Вернуться', href: '/' },
+      secondaryAction: undefined,
     },
   };
 
@@ -62,9 +71,9 @@ export function AccessError({ type = 'loginRequired', showActions = true }: Acce
         <div className="mt-12 pt-8 border-t border-slate-200">
           <p className="text-slate-500 text-sm">
             {t('home.needHelp') || 'Нужна помощь?'}{' '}
-            <a href="/" className="text-blue-600 hover:text-blue-700 font-semibold">
+            <Link href="/" className="text-blue-600 hover:text-blue-700 font-semibold">
               {t('home.contactSupport') || 'Свяжитесь с поддержкой'}
-            </a>
+            </Link>
           </p>
         </div>
       </div>

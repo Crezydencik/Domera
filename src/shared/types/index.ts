@@ -73,15 +73,23 @@ export interface Building {
   // Новые поля для периода сдачи показаний (строки-даты)
   waterSubmissionOpenDate?: string;
   waterSubmissionCloseDate?: string;
+  waterSubmissionIsMonthly?: boolean;
   // legacy fields (kept for backward compatibility)
   waterMeterTemplates?: string[];
   waterSubmissionOpenDay?: number;
   waterSubmissionCloseDay?: number;
+  // Показания счётчиков дома (аналогично квартире)
+  waterReadings?: WaterReadings;
 }
       
 export interface TenantAccess {
   userId: string;
+  name?: string;
+  firstName?: string;
+  lastName?: string;
   email: string;
+  rentDateFrom?: string;
+  rentDateTo?: string;
   permissions: TenantPermission[];
   invitedAt: Date;
   acceptedAt?: Date;
@@ -130,6 +138,9 @@ export interface Apartment {
   declaredResidents?: number;        // Dekl iedz (объявленные жители)
   hotWaterMeterNumber?: string;      // Kartsais NR
   coldWaterMeterNumber?: string;     // Aukstais NR
+  // Agreement file links (legacy + normalized naming)
+  ResidencyAgreementLinks?: string[];
+  residencyAgreementLinks?: string[];
 }
 
 export type MeterType = 'water' | 'electricity' | 'heat';
@@ -208,6 +219,21 @@ export interface Invitation {
   permissions?: TenantPermission[];
 }
 
+export type CompanyInvitationStatus = 'pending' | 'accepted' | 'revoked';
+
+export interface CompanyInvitation {
+  id: string;
+  email: string;
+  companyId: string;
+  buildingId: string;
+  buildingName?: string;
+  role: 'Accountant' | 'ManagementCompany';
+  status: CompanyInvitationStatus;
+  invitedByUid?: string;
+  createdAt: Date;
+  acceptedAt?: Date;
+}
+
 /**
  * Notification types
  */
@@ -274,3 +300,47 @@ export interface AuthContextType {
 }
 
 // apartments-specific types were consolidated into this file
+
+/**
+ * Project types
+ */
+export type ProjectStatus = 'planned' | 'in-progress' | 'completed';
+
+export interface Project {
+  id: string;
+  companyId: string;
+  title: string;
+  description?: string;
+  status: ProjectStatus;
+  buildingId?: string;
+  createdAt: Date;
+  updatedAt?: Date;
+}
+
+/**
+ * Company types
+ */
+export interface Company {
+  id: string;
+  name: string;
+  userId: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  buildings?: { id: string; name: string }[];
+  createdAt: Date;
+}
+
+/**
+ * News types
+ */
+export interface NewsItem {
+  id: string;
+  companyId: string;
+  title: string;
+  content: string;
+  buildingId?: string;
+  createdAt: Date;
+  updatedAt?: Date;
+  authorId?: string;
+}

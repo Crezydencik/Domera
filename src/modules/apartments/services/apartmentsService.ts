@@ -12,7 +12,7 @@ export const addOrInviteTenantToApartment = async (
   let user = await getUserByEmail(email);
   if (!user) {
     // Создаём гостевой аккаунт (Resident, без пароля)
-    user = await registerUser({ email, password: Math.random().toString(36).slice(-8) }, 'Resident', '', undefined);
+    user = await registerUser({ email, password: Math.random().toString(36).slice(-8), token: '' }, 'Resident', '', undefined);
     // Можно отправить приглашение на email здесь (реализуйте отправку письма отдельно)
   }
 
@@ -36,7 +36,7 @@ export const addOrInviteTenantToApartment = async (
     tenants: [...tenants, newTenant],
   });
 };
-import type { TenantAccess, Apartment, MeterReading } from '@/shared/types';
+import type { TenantAccess, Apartment, MeterReading, WaterReadings } from '@/shared/types';
 
 export const addTenantToApartment = async (
   apartmentId: string,
@@ -458,7 +458,7 @@ const mapFirestoreDocsToApartments = (docs: Record<string, unknown>[]): Apartmen
       number: number as string,
       residentId: residentId as string | undefined,
       tenants: tenants as TenantAccess[] | undefined,
-      waterReadings: waterReadings as MeterReading[] | undefined,
+      waterReadings: waterReadings as WaterReadings | undefined,
       companyName: companyName as string | undefined,
     };
   });

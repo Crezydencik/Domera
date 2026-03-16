@@ -1,6 +1,6 @@
 import * as XLSX from 'xlsx';
 import { initializeApp, cert } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -455,6 +455,11 @@ async function importApartmentsFromExcel(filePath: string, buildingId: string) {
           waterReadings: waterReadingsData,
         });
         
+        // Add apartment ID to the building's apartmentIds array
+        await db.collection('buildings').doc(buildingId).update({
+          apartmentIds: FieldValue.arrayUnion(apartmentRef.id),
+        });
+
         console.log(`✓ Apartment ${apt.apartmentNumber} created with ID: ${apartmentRef.id}`);
         console.log(`  ✓ Reading data imported\n`);
       } catch (error) {

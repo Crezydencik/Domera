@@ -7,8 +7,8 @@ import * as XLSX from "xlsx";
 import { getApartmentsByCompany } from "@/modules/apartments/services/apartmentsService";
 import { getBuildingsByCompany } from "@/modules/invoices/services/buildings/services/buildingsService";
 import { getMeterReadingsByCompany, getMetersByApartment, deleteMeterReading } from "@/modules/meters/services/metersService";
-import { updateMeter } from "@/modules/meters/services/metersService";
 import { ConfirmationDialog } from "@/shared/components/ui/ConfirmationDialog";
+import { MeterDetailsModal } from "./components/MeterDetailsModal";
 import { toast } from "react-toastify";
 import type { Apartment, Building, Meter, MeterReading, WaterMeterData, WaterReadings } from "@/shared/types";
 import Header from "../../../shared/components/layout/heder";
@@ -46,60 +46,38 @@ const getMeterDisplayName = (meter?: Meter | null): string => {
   if (code === 'cwm') return 'cwm';
   return name;
 };
+const getApartmentMeterSerial = (apartment: Apartment, meter?: Meter | null): string => {
+  if (!meter) return '';
+
+  if (meter.name?.toLowerCase() === 'cwm') {
+    return apartment.waterReadings?.coldmeterwater?.serialNumber
+      || apartment.coldWaterMeterNumber
+      || meter.serialNumber
+      || '';
+  }
+
+  return apartment.waterReadings?.hotmeterwater?.serialNumber
+    || apartment.hotWaterMeterNumber
+    || meter.serialNumber
+    || '';
+};
 
 
 export default function MeterReadingsManagerPage() {
     // Состояния для модального окна редактирования счетчиков
     const [editModalOpen, setEditModalOpen] = useState(false);
+    const [openHistoryIds, setOpenHistoryIds] = useState<Set<string>>(new Set());
+    const toggleHistory = (id: string) => setOpenHistoryIds(prev => { const next = new Set(prev); if (next.has(id)) { next.delete(id); } else { next.add(id); } return next; });
     const [editApartmentId, setEditApartmentId] = useState<string|null>(null);
     const [editMeters, setEditMeters] = useState<Meter[]>([]);
     const [editSerials, setEditSerials] = useState<Record<string, string>>({});
     const [editChecks, setEditChecks] = useState<Record<string, string>>({});
-      // Открыть модалку по id квартиры и подставить значения
-      const openApartmentById = (apartmentId: string) => {
-        const apartment = apartmentById[apartmentId];
-        if (!apartment) return;
-        setEditApartmentId(apartmentId);
-        const allMeters = metersByApartmentId[apartmentId] || [];
-        // Deduplicate: keep one meter per type (cwm/hwm), prefer the one in waterReadings
-        const dedupedMeters: Meter[] = [];
-        const seen = new Set<string>();
-        for (const m of allMeters) {
-          const isCold = m.name?.toLowerCase() === 'cwm';
-          const typeKey = isCold ? 'cwm' : 'hwm';
-          const wr = isCold ? apartment?.waterReadings?.coldmeterwater : apartment?.waterReadings?.hotmeterwater;
-          if (seen.has(typeKey)) {
-            // Already have a meter of this type; only replace if this one matches waterReadings
-            if (wr?.meterId === m.id) {
-              dedupedMeters.splice(dedupedMeters.findIndex(x => (x.name?.toLowerCase() === 'cwm') === isCold), 1, m);
-            }
-          } else {
-            seen.add(typeKey);
-            dedupedMeters.push(m);
-          }
-        }
-        setEditMeters(dedupedMeters);
-        setEditSerials(Object.fromEntries(dedupedMeters.map(m => {
-          const isCold = m.name?.toLowerCase() === 'cwm';
-          const wr = isCold ? apartment?.waterReadings?.coldmeterwater : apartment?.waterReadings?.hotmeterwater;
-          const match = wr?.meterId === m.id ? wr : undefined;
-          const fallback = isCold ? apartment.coldWaterMeterNumber : apartment.hotWaterMeterNumber;
-          return [m.id, match?.serialNumber || fallback || ''];
-        })));
-        setEditChecks(Object.fromEntries(dedupedMeters.map(m => {
-          const isCold = m.name?.toLowerCase() === 'cwm';
-          const wr = isCold ? apartment?.waterReadings?.coldmeterwater : apartment?.waterReadings?.hotmeterwater;
-          const match = wr?.meterId === m.id ? wr : undefined;
-          return [m.id, match?.checkDueDate ? (typeof match.checkDueDate === 'string' ? match.checkDueDate : '') : ''];
-        })));
-        setEditModalOpen(true);
-      };
     // Открыть модалку для квартиры
     const openEditModal = (apartmentId: string) => {
       setEditApartmentId(apartmentId);
       const apartment = apartmentById[apartmentId];
       const allMeters = metersByApartmentId[apartmentId] || [];
-      // Deduplicate: keep one meter per type (cwm/hwm), prefer the one in waterReadings
+      // Deduplicate: keep one meter p  er type (cwm/hwm), prefer the one in waterReadings
       const dedupedMeters: Meter[] = [];
       const seen = new Set<string>();
       for (const m of allMeters) {
@@ -182,8 +160,9 @@ export default function MeterReadingsManagerPage() {
           })));
         }
         setEditModalOpen(false);
-      } catch (e: any) {
-        toast.error(e?.message || e?.toString() || 'Ошибка при сохранении!');
+      } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : 'Ошибка при сохранении!';
+        toast.error(message);
       }
     };
   const { user, loading } = useAuth();
@@ -221,27 +200,21 @@ export default function MeterReadingsManagerPage() {
     }
   }, [selectedBuildingId, buildings]);
 
-  // --- Состояния для ручного выбора дат периода сдачи показаний (перенесено из рендера) ---
-  const [manualPeriod, setManualPeriod] = useState<{from: string, to: string} | null>(null);
-  useEffect(() => {
-    setManualPeriod(null);
-  }, [selectedBuildingId, readings.length]);
-
   // Состояния для редактирования периода сдачи показаний ---
   const [editOpenDate, setEditOpenDate] = useState<string>('');
   const [editCloseDate, setEditCloseDate] = useState<string>('');
   const [isSaving, setIsSaving] = useState<boolean>(false);
-  const [isMonthly, setIsMonthly] = useState<boolean>(true);
+  const [editSubmitEveryMonth, setEditSubmitEveryMonth] = useState<boolean>(false);
   // Синхронизировать с выбранным домом
   useEffect(() => {
     if (!selectedBuildingId) {
-        setEditOpenDate(''); setEditCloseDate('');
+        setEditOpenDate(''); setEditCloseDate(''); setEditSubmitEveryMonth(false);
       return;
     }
     const selectedBuilding = buildings.find(b => b.id === selectedBuildingId);
     setEditOpenDate(selectedBuilding?.waterSubmissionOpenDate || '');
     setEditCloseDate(selectedBuilding?.waterSubmissionCloseDate || '');
-      setIsMonthly(selectedBuilding?.waterSubmissionIsMonthly !== false);
+    setEditSubmitEveryMonth(Boolean(selectedBuilding?.waterSubmissionIsMonthly));
   }, [selectedBuildingId, buildings]);
 
   useEffect(() => {
@@ -445,18 +418,23 @@ export default function MeterReadingsManagerPage() {
       setDeletingReadingId(null);
     }
   };
-     const router = useRouter();
-  	const handleLogout = async () => {
+
+  const router = useRouter();
+  const handleLogout = async () => {
 		await logout();
 		await fetch('/api/auth/clear-cookies', { method: 'POST' });
 		router.push('/login');
 		router.refresh();
 	  };
+
+  const visibleApartments = apartments.filter(
+    (apartment) => !selectedBuildingId || apartment.buildingId === selectedBuildingId
+  );
   
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-white flex items-center justify-center">
+      <div className="min-h-screen bg-linear-to-br from-white via-gray-50 to-white flex items-center justify-center">
         <div className="text-center">
           <div className="w-12 h-12 border-3 border-blue-500 border-t-blue-300 rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-gray-700 font-medium">{t('loading')}</p>
@@ -469,7 +447,7 @@ export default function MeterReadingsManagerPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-white text-gray-900">
+    <div className="min-h-screen bg-linear-to-br from-white via-gray-50 to-white text-gray-900">
       <Header userName={user.name || user.email || t('user')} userEmail={user.email} onLogout={handleLogout} pageTitle={t('waterReadings')} />
 
       <main className="max-w-7xl mx-auto px-4 py-10">
@@ -494,6 +472,16 @@ export default function MeterReadingsManagerPage() {
           <div className="flex flex-row gap-3 items-center">
             <button
               type="button"
+              onClick={() => router.push(`/meter-readings/building${selectedBuildingId ? `?buildingId=${selectedBuildingId}` : ''}`)}
+              className="inline-flex items-center gap-2 rounded-lg border border-cyan-300 px-4 py-2.5 text-sm font-medium text-cyan-700 bg-cyan-50 hover:bg-cyan-100 transition shadow-md"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 2C12 2 7 9 7 13a5 5 0 0010 0c0-4-5-11-5-11z" />
+              </svg>
+              Nodot ūdens rādījumus
+            </button>
+            <button
+              type="button"
               onClick={handleExportCsv}
               disabled={exportRows.length === 0}
               className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 transition shadow-md disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-white"
@@ -505,7 +493,7 @@ export default function MeterReadingsManagerPage() {
               type="button"
               onClick={handleExportXlsx}
               disabled={exportRows.length === 0}
-              className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg hover:from-blue-600 hover:to-blue-700 hover:shadow-xl transition disabled:cursor-not-allowed disabled:opacity-40"
+              className="inline-flex items-center gap-2 rounded-lg bg-linear-to-r from-blue-500 to-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg hover:from-blue-600 hover:to-blue-700 hover:shadow-xl transition disabled:cursor-not-allowed disabled:opacity-40"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
               XLSX
@@ -515,20 +503,6 @@ export default function MeterReadingsManagerPage() {
 
         {/* Основная часть: период сдачи показаний */}
         {(() => {
-          // Собираем все показания по квартирам выбранного дома (или по всем квартирам, если фильтр не выбран)
-          const filteredApartments = apartments.filter(apartment => !selectedBuildingId || apartment.buildingId === selectedBuildingId);
-          const allReadings = readings.filter(r => filteredApartments.some(a => a.id === r.apartmentId));
-          let minDateAll = null, maxDateAll = null;
-          if (allReadings.length > 0) {
-            const allTimestamps = allReadings
-              .map(r => toTimestampMs(r.submittedAt))
-              .filter(ts => !!ts)
-              .sort((a, b) => a - b);
-            if (allTimestamps.length > 0) {
-              minDateAll = new Date(allTimestamps[0]);
-              maxDateAll = new Date(allTimestamps[allTimestamps.length - 1]);
-            }
-          }
           // Получаем выбранный дом
           const selectedBuilding = selectedBuildingId ? buildings.find(b => b.id === selectedBuildingId) : null;
           // Сохранение изменений
@@ -541,19 +515,18 @@ export default function MeterReadingsManagerPage() {
             setIsSaving(true);
             try {
               // Вычисляем день месяца из даты закрытия
-              let closeDay: number | undefined = undefined;
-              if (editCloseDate) {
-                const d = new Date(editCloseDate);
-                if (!isNaN(d.getTime())) closeDay = d.getDate();
-              }
-              const update: any = {
+              const update: Record<string, string | undefined> = {
                 waterSubmissionOpenDate: editOpenDate || undefined,
                 waterSubmissionCloseDate: editCloseDate || undefined,
               };
+              const updateWithMonthly = {
+                ...update,
+                waterSubmissionIsMonthly: editSubmitEveryMonth,
+              } as Record<string, string | boolean | undefined>;
               // Удаляем все undefined поля
-              Object.keys(update).forEach(key => update[key] === undefined && delete update[key]);
+              Object.keys(updateWithMonthly).forEach(key => updateWithMonthly[key] === undefined && delete updateWithMonthly[key]);
               const mod = await import('@/modules/invoices/services/buildings/services/buildingsService');
-              await mod.updateBuilding(selectedBuilding.id, update);
+              await mod.updateBuilding(selectedBuilding.id, updateWithMonthly);
               toast.success('Период сдачи показаний успешно сохранён!');
               // Обновить данные о домах после сохранения
               const bData = await getBuildingsByCompany(user.companyId);
@@ -566,68 +539,79 @@ export default function MeterReadingsManagerPage() {
             }
           };
 
-          // Вычисляем отображаемые даты
-          let displayFrom = minDateAll, displayTo = maxDateAll;
-          if (manualPeriod && manualPeriod.from && manualPeriod.to) {
-            displayFrom = new Date(manualPeriod.from);
-            displayTo = new Date(manualPeriod.to);
-          }
-
           return (
             <div className="mb-12">
-              <div className="rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 to-white shadow-md p-6 lg:p-8">
-                <div className="flex items-start gap-4 mb-6">
-                  <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-blue-100">
-                    <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h18M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              <details className="group rounded-2xl border border-blue-100 bg-linear-to-br from-blue-50 to-white shadow-md">
+                <summary className="list-none cursor-pointer px-6 py-5 lg:px-8 lg:py-6">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-start gap-4">
+                      <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-blue-100">
+                        <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h18M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-bold text-gray-900">{t('submissionPeriodForBuilding')}</h3>
+                        <p className="text-sm text-gray-600 mt-1">
+                          {editOpenDate && editCloseDate
+                            ? `${new Date(editOpenDate).toLocaleDateString('ru-RU')} — ${new Date(editCloseDate).toLocaleDateString('ru-RU')}`
+                            : 'Даты не установлены'
+                          }
+                        </p>
+                      </div>
+                    </div>
+                    <svg className="h-5 w-5 text-gray-600 transition-transform group-open:rotate-180 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
                     </svg>
                   </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-gray-900">{t('submissionPeriodForBuilding')}</h3>
-                    <p className="text-sm text-gray-600 mt-1">
-                      {editOpenDate && editCloseDate
-                        ? `${new Date(editOpenDate).toLocaleDateString('ru-RU')} — ${new Date(editCloseDate).toLocaleDateString('ru-RU')}`
-                        : 'Даты не установлены'
-                      }
-                    </p>
+                </summary>
+
+                <div className="border-t border-blue-100 px-6 pb-6 lg:px-8 lg:pb-8">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 mt-6">
+                    <label className="block">
+                      <span className="text-sm font-semibold text-gray-700 mb-2 block">{t('openDate')}</span>
+                      <input
+                        type="date"
+                        className="w-full px-4 py-2.5 border border-gray-200 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition shadow-sm"
+                        value={editOpenDate}
+                        onChange={e => setEditOpenDate(e.target.value)}
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="text-sm font-semibold text-gray-700 mb-2 block">{t('closeDate')}</span>
+                      <input
+                        type="date"
+                        className="w-full px-4 py-2.5 border border-gray-200 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition shadow-sm"
+                        value={editCloseDate}
+                        onChange={e => setEditCloseDate(e.target.value)}
+                      />
+                    </label>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <label className="inline-flex items-center gap-2 text-sm text-gray-700 mr-2">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-400"
+                        checked={editSubmitEveryMonth}
+                        onChange={(e) => setEditSubmitEveryMonth(e.target.checked)}
+                      />
+                      Подавать каждый месяц
+                    </label>
+                    <button
+                      className="px-6 py-2.5 rounded-lg bg-linear-to-r from-blue-500 to-blue-600 text-white font-semibold hover:from-blue-600 hover:to-blue-700 transition shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={handleSaveDays}
+                      type="button"
+                      disabled={isSaving || !editOpenDate || !editCloseDate || !selectedBuildingId}
+                    >
+                      {isSaving ? 'Сохранение...' : t('save')}
+                    </button>
+                    {!selectedBuildingId && (
+                      <p className="text-xs text-red-600 self-center">{t('selectBuildingToSave')}</p>
+                    )}
                   </div>
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                  <label className="block">
-                    <span className="text-sm font-semibold text-gray-700 mb-2 block">{t('openDate')}</span>
-                    <input
-                      type="date"
-                      className="w-full px-4 py-2.5 border border-gray-200 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition shadow-sm"
-                      value={editOpenDate}
-                      onChange={e => setEditOpenDate(e.target.value)}
-                    />
-                  </label>
-                  <label className="block">
-                    <span className="text-sm font-semibold text-gray-700 mb-2 block">{t('closeDate')}</span>
-                    <input
-                      type="date"
-                      className="w-full px-4 py-2.5 border border-gray-200 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition shadow-sm"
-                      value={editCloseDate}
-                      onChange={e => setEditCloseDate(e.target.value)}
-                    />
-                  </label>
-                </div>
-
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <button
-                    className="px-6 py-2.5 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold hover:from-blue-600 hover:to-blue-700 transition shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                    onClick={handleSaveDays}
-                    type="button"
-                    disabled={isSaving || !editOpenDate || !editCloseDate || !selectedBuildingId}
-                  >
-                    {isSaving ? 'Сохранение...' : t('save')}
-                  </button>
-                  {!selectedBuildingId && (
-                    <p className="text-xs text-red-600 self-center">{t('selectBuildingToSave')}</p>
-                  )}
-                </div>
-              </div>
+              </details>
             </div>
           );
         })()}
@@ -649,173 +633,189 @@ export default function MeterReadingsManagerPage() {
             </svg>
             <p className="text-gray-600 text-lg font-medium">{t('noApartmentsFound')}</p>
           </div>
+        ) : visibleApartments.length === 0 ? (
+          <div className="rounded-xl border border-gray-200 bg-gray-50 p-12 text-center shadow-sm">
+            <p className="text-gray-600 text-lg font-medium">Нет квартир для выбранного дома</p>
+          </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-            {apartments
-              .filter(apartment => !selectedBuildingId || apartment.buildingId === selectedBuildingId)
-              .map((apartment) => {
+          <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-240 text-sm">
+                <thead className="bg-gray-50 border-b border-gray-200 text-gray-600">
+                  <tr>
+                    <th className="px-4 py-3 text-left font-semibold">Квартира</th>
+                    <th className="px-4 py-3 text-left font-semibold">Дом</th>
+                    <th className="px-4 py-3 text-left font-semibold">Счётчики</th>
+                    <th className="px-4 py-3 text-right font-semibold">Действия</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+            {visibleApartments.map((apartment) => {
                 const buildingName = buildingNameById[apartment.buildingId] ?? t('notSpecified');
                 const meters = metersByApartmentId[apartment.id] || [];
-                const apartmentReadings = readings.filter(r => r.apartmentId === apartment.id);
+                const apartmentReadings = readingsByApartmentId[apartment.id] || [];
+                const dedupedMeters = meters.reduce<Meter[]>((acc, meter) => {
+                  const normalizedName = meter.name?.toLowerCase() === 'hwm' ? 'hwm' : meter.name?.toLowerCase() === 'cwm' ? 'cwm' : meter.id;
+                  if (!acc.some((item) => (item.name?.toLowerCase() || item.id) === normalizedName)) {
+                    acc.push(meter);
+                  }
+                  return acc;
+                }, []);
+                const grouped = apartmentReadings.reduce((acc, reading) => {
+                  const key = `${reading.year}-${String(reading.month).padStart(2, '0')}`;
+                  if (!acc[key]) acc[key] = [];
+                  acc[key].push(reading);
+                  return acc;
+                }, {} as Record<string, MeterReading[]>);
+                const sortedKeys = Object.keys(grouped).sort((a, b) => {
+                  const [ya, ma] = a.split('-').map(Number);
+                  const [yb, mb] = b.split('-').map(Number);
+                  return yb - ya || mb - ma;
+                });
                 return (
-                  <div key={apartment.id} className="rounded-2xl border border-gray-200 bg-gradient-to-br from-white to-gray-50 p-6 shadow-md hover:shadow-lg hover:border-blue-300 transition-all duration-300 group">
-                    {/*Заголовок с номером квартиры*/}
-                    <div className="flex items-start justify-between gap-4 mb-6 pb-4 border-b border-gray-200">
-                      <div className="flex-1 min-w-0">
-                        <div className="text-3xl font-bold text-gray-900 mb-1">{apartment.number}</div>
-                        <p className="text-sm text-gray-600">{t('building')}: <span className="text-gray-800 font-medium">{buildingName}</span></p>
-                      </div>
-                      <button
-                        className="flex items-center justify-center w-10 h-10 rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-200 transition shadow-sm group-hover:shadow-md"
-                        title="Edit meters"
-                        onClick={() => openEditModal(apartment.id)}
-                      >
-                        <svg width="20" height="20" fill="none" viewBox="0 0 24 24">
-                          <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                          <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15H9v-3L18.5 2.5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      </button>
-                    </div>
-
-                    {/* Модальное окно редактирования счетчиков */}
-                    {editModalOpen && editApartmentId === apartment.id && (
-                      <div
-                        className="fixed inset-0 z-50 flex items-center justify-center bg-black/10"
-                        onClick={e => {
-                          if (e.target === e.currentTarget) setEditModalOpen(false);
-                                    }}
+                  <>
+                    <tr key={`${apartment.id}-main`} className="align-top bg-white transition hover:bg-blue-50/20">
+                      <td className="px-4 py-4">
+                        <div className="text-lg font-bold text-gray-900">#{apartment.number}</div>
+                      </td>
+                      <td className="px-4 py-4 text-gray-900">{buildingName}</td>
+                      <td className="px-4 py-4 w-full">
+                        {dedupedMeters.length > 0 ? (
+                          <div>
+                            <div className="flex flex-col items-start gap-2">
+                              {dedupedMeters.map((meter) => {
+                                const isCold = meter.name?.toLowerCase() === 'cwm';
+                                return (
+                                  <div
+                                    key={meter.id}
+                                    className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold ${
+                                      isCold
+                                        ? 'border-blue-200 bg-blue-50 text-blue-700'
+                                        : 'border-rose-200 bg-rose-50 text-rose-700'
+                                    }`}
                                   >
-                                    <div className="relative bg-white rounded-2xl shadow-xl p-8 w-full max-w-md max-h-[90vh] overflow-y-auto border border-gray-200">
-                                      <button
-                                        className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition"
-                                        type="button"
-                                        onClick={() => setEditModalOpen(false)}
-                                      >
-                                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                          <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                                        </svg>
-                                      </button>
-                                      <h3 className="text-2xl font-bold text-gray-900 mb-6 pr-8">Данные счетчиков</h3>
-                                      {editMeters.length === 0 ? (
-                                        <p className="text-gray-600 text-center py-8">Счетчики не найдены</p>
-                                      ) : (
-                                        <form onSubmit={e => { e.preventDefault(); handleSaveMeters(); }} className="space-y-6">
-                                          {editMeters.map(meter => (
-                                            <div key={meter.id} className="pb-6 border-b border-gray-200 last:border-b-0">
-                                              <h4 className="text-sm font-bold text-gray-700 mb-4 px-3 py-2 bg-gray-100 rounded-lg">
-                                                {meter.name && meter.name.toLowerCase() === 'hwm' ? 'Горячая вода (ГВС)' : 'Холодная вода (ХВС)'}
-                                              </h4>
-                                              <div className="space-y-4">
-                                                <label className="block">
-                                                  <span className="text-sm font-semibold text-gray-700 mb-2 block">Номер счетчика</span>
-                                                  <input
-                                                    type="text"
-                                                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg bg-gray-50 text-gray-900 focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition placeholder-gray-400"
-                                                    placeholder="Введите номер"
-                                                    value={editSerials[meter.id] || ''}
-                                                    onChange={e => setEditSerials(prev => ({ ...prev, [meter.id]: e.target.value }))}
-                                                  />
-                                                </label>
-                                                <label className="block">
-                                                  <span className="text-sm font-semibold text-gray-700 mb-2 block">Дата проверки</span>
-                                                  <input
-                                                    type="date"
-                                                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg bg-gray-50 text-gray-900 focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition"
-                                                    value={editChecks[meter.id] || ''}
-                                                    onChange={e => setEditChecks(prev => ({ ...prev, [meter.id]: e.target.value }))}
-                                                  />
-                                                </label>
-                                              </div>
-                                            </div>
-                                          ))}
-                                          <div className="flex gap-3 pt-4">
-                                            <button
-                                              type="button"
-                                              className="flex-1 px-4 py-2.5 rounded-lg bg-gray-100 text-gray-900 font-semibold hover:bg-gray-200 transition"
-                                              onClick={() => setEditModalOpen(false)}
-                                            >
-                                              Отмена
-                                            </button>
-                                            <button
-                                              type="submit"
-                                              className="flex-1 px-4 py-2.5 rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold hover:from-blue-600 hover:to-blue-700 transition shadow-md"
-                                            >
-                                              Сохранить
-                                            </button>
-                                          </div>
-                                        </form>
-                                      )}
-                                    </div>
+                                    <span className={`inline-flex h-2.5 w-2.5 rounded-full ${isCold ? 'bg-blue-500' : 'bg-rose-500'}`} />
+                                    <span>{getMeterDisplayName(meter)}</span>
+                                    <span className="text-gray-400">•</span>
+                                    <span className="font-medium text-gray-900">{getApartmentMeterSerial(apartment, meter) || 'без номера'}</span>
                                   </div>
-                                )}
-
-                    {/* Показание по месяцам */}
-                    <div className="mt-6 space-y-3">
-                      {(() => {
-                        if (apartmentReadings.length === 0) {
-                          return (
-                            <div className="text-center py-8 text-gray-500">
-                              <p className="text-sm">Нет показаний</p>
+                                );
+                              })}
                             </div>
-                          );
-                            }
-                            // Группировка по месяцам/годам
-                            const grouped = apartmentReadings.reduce((acc, reading) => {
-                              const key = `${reading.year}-${String(reading.month).padStart(2, '0')}`;
-                              if (!acc[key]) acc[key] = [];
-                              acc[key].push(reading);
-                              return acc;
-                            }, {} as Record<string, MeterReading[]>);
-                            // Сортировка месяцев по убыванию (сначала свежие)
-                            const sortedKeys = Object.keys(grouped).sort((a, b) => {
-                              const [ya, ma] = a.split('-').map(Number);
-                              const [yb, mb] = b.split('-').map(Number);
-                              return yb - ya || mb - ma;
-                            });
-                            return sortedKeys.map(key => {
-                              const [year, month] = key.split('-').map(Number);
-                              const label = `${year}. gads ${String(month).padStart(2, '0')}`;
-                              const readingsInMonth = grouped[key];
-                              return (
-                                <details key={key} className="group border border-gray-200 rounded-lg overflow-hidden hover:border-blue-300 transition">
-                                  <summary className="flex items-center justify-between px-4 py-3 bg-gray-50 cursor-pointer hover:bg-gray-100 transition font-semibold text-gray-900">
-                                    <span>{label}</span>
-                                    <svg className="w-5 h-5 text-gray-600 group-open:rotate-180 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                                    </svg>
-                                  </summary>
-                                  <div className="bg-white p-4 space-y-3 border-t border-gray-200">
-                                    {readingsInMonth.map(reading => (
-                                      <div key={reading.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                                        <div className="flex-1 min-w-0">
-                                          <p className="text-sm text-gray-600">
-                                            <span className="font-semibold text-gray-900">{meterById[reading.meterId] ? getMeterDisplayName(meterById[reading.meterId]) : reading.meterId}</span>
-                                          </p>
-                                          <p className="text-xs text-gray-500 mt-1">{formatDateTime(reading.submittedAt)}</p>
+                          </div>
+                        ) : (
+                          <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-500">
+                            Счётчики не найдены
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="flex justify-end gap-2">
+                          <button
+                            className={`inline-flex h-10 w-10 items-center justify-center rounded-lg border transition ${
+                              openHistoryIds.has(apartment.id)
+                                ? 'border-slate-400 bg-slate-100 text-slate-700 hover:bg-slate-200'
+                                : 'border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100'
+                            }`}
+                            title="История показаний"
+                            onClick={() => toggleHistory(apartment.id)}
+                          >
+                            <svg width="20" height="20" fill="none" viewBox="0 0 24 24">
+                              <path d="M9 17v-6m3 6V7m3 10v-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                              <path d="M3 8.828A2 2 0 0 1 4.414 8.414L11.586 1.242A2 2 0 0 1 13 1.828V3h3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V9H4a2 2 0 0 1-1.172-.414" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          </button>
+                          <button
+                            className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-blue-200 bg-blue-50 text-blue-600 transition hover:bg-blue-100"
+                            title="Edit meters"
+                            onClick={() => openEditModal(apartment.id)}
+                          >
+                            <svg width="20" height="20" fill="none" viewBox="0 0 24 24">
+                              <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                              <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15H9v-3L18.5 2.5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+
+                    {openHistoryIds.has(apartment.id) && (
+                    <tr key={`${apartment.id}-history`} className="bg-slate-50/60">
+                      <td colSpan={4} className="px-6 pb-6 pt-4">
+                        {apartmentReadings.length === 0 ? (
+                          <div className="rounded-xl border border-dashed border-slate-200 bg-white px-5 py-4 text-sm text-slate-500">
+                            Нет показаний
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                                {sortedKeys.map((key) => {
+                                  const [year, month] = key.split('-').map(Number);
+                                  const label = `${year}. gads ${String(month).padStart(2, '0')}`;
+                                  const readingsInMonth = grouped[key];
+
+                                  return (
+                                    <details key={key} className="group/month overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                                      <summary className="flex cursor-pointer list-none items-center justify-between px-5 py-4 font-bold text-slate-900 transition hover:bg-slate-50">
+                                        <div className="flex items-center gap-3">
+                                          <span className="inline-flex h-8 min-w-8 items-center justify-center rounded-xl bg-slate-100 px-2 text-xs font-bold text-slate-600">
+                                            {String(month).padStart(2, '0')}
+                                          </span>
+                                          <span>{label}</span>
                                         </div>
-                                        <div className="flex items-center gap-4 text-sm">
-                                          <div className="text-center">
-                                            <p className="text-xs text-gray-500">Предыдущее</p>
-                                            <p className="font-semibold text-gray-900">{reading.previousValue}</p>
-                                          </div>
-                                          <div className="text-center">
-                                            <p className="text-xs text-gray-500">Текущее</p>
-                                            <p className="font-semibold text-gray-900">{reading.currentValue}</p>
-                                          </div>
-                                        </div>
+                                        <svg className="h-4 w-4 text-slate-500 transition-transform group-open/month:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                      </summary>
+                                      <div className="border-t border-slate-100 bg-white p-4">
+                                        <table className="w-full text-xs text-slate-700">
+                                          <thead>
+                                            <tr className="border-b border-slate-100 text-slate-500">
+                                              <th className="px-2 py-2 text-left font-semibold">Счётчик</th>
+                                              <th className="px-2 py-2 text-left font-semibold">Дата</th>
+                                              <th className="px-2 py-2 text-right font-semibold">Предыдущее</th>
+                                              <th className="px-2 py-2 text-right font-semibold">Текущее</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                            {readingsInMonth.map((reading) => (
+                                              <tr key={reading.id} className="border-b border-slate-50 last:border-b-0">
+                                                <td className="px-2 py-2 font-semibold text-slate-900">
+                                                  {meterById[reading.meterId] ? getMeterDisplayName(meterById[reading.meterId]) : reading.meterId}
+                                                </td>
+                                                <td className="px-2 py-2">{formatDateTime(reading.submittedAt)}</td>
+                                                <td className="px-2 py-2 text-right">{reading.previousValue}</td>
+                                                <td className="px-2 py-2 text-right font-bold text-slate-900">{reading.currentValue}</td>
+                                              </tr>
+                                            ))}
+                                          </tbody>
+                                        </table>
                                       </div>
-                                    ))}
-                                  </div>
-                                </details>
-                              );
-                            });
-                          })()}
-                      </div>
-                    </div>
-                  );
+                                    </details>
+                                  );
+                                })}
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                    )}
+                  </>
+                );
               })}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
+        <MeterDetailsModal
+          isOpen={editModalOpen}
+          meters={editMeters}
+          serials={editSerials}
+          checks={editChecks}
+          onChangeSerial={(meterId, value) => setEditSerials((prev) => ({ ...prev, [meterId]: value }))}
+          onChangeCheck={(meterId, value) => setEditChecks((prev) => ({ ...prev, [meterId]: value }))}
+          onClose={() => setEditModalOpen(false)}
+          onSave={handleSaveMeters}
+        />
         <ConfirmationDialog
           isOpen={Boolean(deleteTarget)}
           title={t('deleteReading')}

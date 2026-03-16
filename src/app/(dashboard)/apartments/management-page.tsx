@@ -10,6 +10,7 @@ import { db } from '@/firebase/config';
 import { useAuth } from '@/shared/hooks/useAuth';
 import { useTranslations } from 'next-intl';
 import Header from '@/shared/components/layout/heder';
+import { ConfirmationDialog } from '@/shared/components/ui/ConfirmationDialog';
 import type { Apartment, Building, Invitation, InvitationGdprMeta } from '@/shared/types';
 type SelectedInvitation = Invitation & { sentAt?: Date };
 type SelectedApartment = Apartment & { invitations?: SelectedInvitation[] };
@@ -55,6 +56,8 @@ export default function ApartmentsManagementPage() {
   const [selectedApartment, setSelectedApartment] = useState<SelectedApartment | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [apartmentPendingDelete, setApartmentPendingDelete] = useState<Apartment | null>(null);
+  const [isDeletingApartment, setIsDeletingApartment] = useState(false);
   // metersByApartmentId removed — not used in current list layout
   // kept import/getMetersByApartment for potential future use
 
@@ -190,18 +193,30 @@ export default function ApartmentsManagementPage() {
     }
   };
 
-  const handleDeleteApartment = async (apartmentId: string) => {
-    if (!window.confirm('Вы уверены, что хотите удалить эту квартиру?')) {
+  const requestDeleteApartment = (apartment: Apartment) => {
+    setApartmentPendingDelete(apartment);
+  };
+
+  const handleDeleteApartment = async () => {
+    if (!apartmentPendingDelete) {
       return;
     }
 
     try {
-      await deleteApartment(apartmentId);
-      setApartments((prev) => prev.filter((apartment) => apartment.id !== apartmentId));
+      setIsDeletingApartment(true);
+      await deleteApartment(apartmentPendingDelete.id);
+      setApartments((prev) => prev.filter((apartment) => apartment.id !== apartmentPendingDelete.id));
+      if (selectedApartment?.id === apartmentPendingDelete.id) {
+        setSelectedApartment(null);
+        setIsModalOpen(false);
+      }
+      setApartmentPendingDelete(null);
       toast.success('Квартира успешно удалена!');
     } catch (error) {
       console.error('Error deleting apartment:', error);
       toast.error('Ошибка при удалении квартиры.');
+    } finally {
+      setIsDeletingApartment(false);
     }
   };
 
@@ -1051,7 +1066,7 @@ export default function ApartmentsManagementPage() {
                               </button>
                             )}
                             <button
-                              onClick={() => handleDeleteApartment(apartment.id)}
+                              onClick={() => requestDeleteApartment(apartment)}
                               className="p-2 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 transition"
                               title="Удалить квартиру"
                             >
@@ -1115,7 +1130,7 @@ export default function ApartmentsManagementPage() {
                 residentEmail={residentEmail}
                 residentJoinedAt={residentJoinedAt}
                 onClose={handleCloseModal}
-                onDelete={() => handleDeleteApartment(selectedApartment.id)}
+                onDelete={() => requestDeleteApartment(selectedApartment)}
                 onUnassignResident={handleUnassignResident}
                 onCancelInvitation={pendingInvitation ? () => handleCancelInvitation(pendingInvitation.id) : undefined}
                 deleting={false}
@@ -1134,6 +1149,27 @@ export default function ApartmentsManagementPage() {
           isOpen={isImportModalOpen}
           onClose={() => setIsImportModalOpen(false)}
           onImportSuccess={fetchData}
+        />
+
+        <ConfirmationDialog
+          isOpen={Boolean(apartmentPendingDelete)}
+          title="Удалить квартиру?"
+          description="Это действие нельзя отменить. Квартира будет удалена из списка и связанных данных дома."
+          details={apartmentPendingDelete ? [
+            `Квартира: #${apartmentPendingDelete.number}`,
+            `Дом: ${buildings.find((building) => building.id === apartmentPendingDelete.buildingId)?.name || 'Неизвестный дом'}`,
+            `Email владельца: ${apartmentPendingDelete.ownerEmail || 'не указан'}`,
+          ] : []}
+          confirmLabel="Удалить"
+          cancelLabel="Отмена"
+          confirmVariant="danger"
+          loading={isDeletingApartment}
+          onConfirm={handleDeleteApartment}
+          onCancel={() => {
+            if (!isDeletingApartment) {
+              setApartmentPendingDelete(null);
+            }
+          }}
         />
          
       </main>

@@ -43,6 +43,9 @@ export function ApartmentCard({
     toNumber(apartment.managementArea) ??
     toNumber(apartment.heatingArea);
   const declaredResidents = toNumber(apartment.declaredResidents);
+  const hasResidencyAgreement =
+    (Array.isArray(apartment.ResidencyAgreementLinks) && apartment.ResidencyAgreementLinks.length > 0) ||
+    (Array.isArray(apartment.residencyAgreementLinks) && apartment.residencyAgreementLinks.length > 0);
 
   return (
     <div className="rounded-xl border-2 border-gray-100 bg-white overflow-hidden hover:border-blue-300 hover:shadow-lg transition">
@@ -137,8 +140,8 @@ export function ApartmentCard({
           )}
         </div>
 
-        {/* Дополнительная информация */}
-        {apartment.ResidencyAgreementLinks && (
+        Дополнительная информация
+        {hasResidencyAgreement && (
           <div className="mb-3 text-xs text-gray-600 bg-blue-50 p-2 rounded border border-blue-100">
             📄 Договор загружен
           </div>

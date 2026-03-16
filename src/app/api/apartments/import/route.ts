@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as XLSX from 'xlsx';
 import { db } from '@/firebase/config';
-import { collection, doc, setDoc } from 'firebase/firestore';
+import { collection, doc, setDoc, updateDoc, arrayUnion, getDocs, query, where } from 'firebase/firestore';
 
 type ParsedReading = {
   label: string;
@@ -17,6 +17,12 @@ const normalizeHeader = (value: string): string =>
     .toLowerCase()
     .replace(/\s+/g, ' ')
     .trim();
+
+const normalizeApartmentNumber = (value: string): string =>
+  value
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLowerCase();
 
 const getCellStringByHeader = (row: Record<string, unknown>, headerCandidates: string[]): string => {
   for (const header of headerCandidates) {
@@ -272,9 +278,23 @@ export async function POST(request: NextRequest) {
 
     console.log(`Processing ${rows.length} apartments from Excel`);
 
+    const existingApartmentsSnapshot = await getDocs(
+      query(collection(db, 'apartments'), where('buildingId', '==', buildingId))
+    );
+
+    const existingApartmentNumbers = new Set(
+      existingApartmentsSnapshot.docs
+        .map((apartmentDoc) => apartmentDoc.data().number)
+        .filter((number): number is string => typeof number === 'string' && number.trim() !== '')
+        .map(normalizeApartmentNumber)
+    );
+
+    const importedApartmentNumbers = new Set<string>();
+
     const results = {
       imported: 0,
       errors: [] as string[],
+      skippedDuplicates: [] as string[],
       createdApartments: [] as string[],
     };
 
@@ -343,6 +363,15 @@ export async function POST(request: NextRequest) {
         if (!apartmentNumber) {
           continue;
         }
+
+        const normalizedApartmentNumber = normalizeApartmentNumber(apartmentNumber);
+
+        if (existingApartmentNumbers.has(normalizedApartmentNumber) || importedApartmentNumbers.has(normalizedApartmentNumber)) {
+          results.skippedDuplicates.push(`Квартира ${apartmentNumber} уже существует в выбранном доме`);
+          console.warn(`Duplicate apartment skipped: ${apartmentNumber} for building ${buildingId}`);
+          continue;
+        }
+
         const hotWaterMeterNumber = row['Kartsais NR'] !== undefined && row['Kartsais NR'] !== null
           ? String(row['Kartsais NR']).trim()
           : '';
@@ -488,6 +517,14 @@ export async function POST(request: NextRequest) {
           ...apartmentData,
           waterReadings,
         });
+
+        // Add apartment ID to the building's apartmentIds array
+        await updateDoc(doc(db, 'buildings', buildingId), {
+          apartmentIds: arrayUnion(apartmentRef.id),
+        });
+
+        importedApartmentNumbers.add(normalizedApartmentNumber);
+        existingApartmentNumbers.add(normalizedApartmentNumber);
 
         results.imported++;
         results.createdApartments.push(

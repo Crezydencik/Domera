@@ -252,7 +252,7 @@ export default function MeterReadingsPage() {
       // ensure stored meter name uses English codes: 'hwm' (hot water meter) or 'cwm' (cold water meter)
       const meter = meterById[meterId];
       const nameCode = meter && isHotMeter(meter) ? 'hwm' : 'cwm';
-      const options = { force: Boolean(forceSaveByMeterId[meterId]) };
+      const options = { force: Boolean(forceSaveByMeterId[meterId]), apartmentId };
       await updateMeter(meterId, { serialNumber: pending, name: nameCode }, options);
       // update local state so UI reflects saved serial immediately
       setMetersByApartmentId((prev) => {
@@ -295,7 +295,7 @@ export default function MeterReadingsPage() {
         // save as ISO date string and ensure meter name code is stored in English
         const meter = meterById[meterId];
         const nameCode = meter && isHotMeter(meter) ? 'hwm' : 'cwm';
-        const options = { force: Boolean(forceSaveByMeterId[meterId]) };
+        const options = { force: Boolean(forceSaveByMeterId[meterId]), apartmentId };
         await updateMeter(meterId, { checkDueDate: pending, name: nameCode }, options);
         setMetersByApartmentId((prev) => {
           const next = { ...prev };
@@ -834,7 +834,7 @@ export default function MeterReadingsPage() {
           const pendingSerial = meterSerialInputByMeterId[meter.id];
           if (pendingSerial && !meter.serialNumber) {
             try {
-              const options = { force: Boolean(forceSaveByMeterId[meter.id]) };
+              const options = { force: Boolean(forceSaveByMeterId[meter.id]), apartmentId: apartment.id };
               await updateMeter(meter.id, { serialNumber: pendingSerial }, options);
             } catch (err) {
               console.warn('Failed to persist meter serial:', err);

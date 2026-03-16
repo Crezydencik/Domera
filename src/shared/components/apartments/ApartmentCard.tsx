@@ -1,7 +1,6 @@
 import React from 'react';
 
-import type { Apartment, Building } from '../../types';
-import type { ApartmentAccountStatus, ApartmentInvitationMeta } from '../../types/apartments';
+import type { Apartment, ApartmentAccountStatus, ApartmentInvitationMeta, Building } from '../../types'
 
 interface ApartmentCardProps {
   apartment: Apartment;

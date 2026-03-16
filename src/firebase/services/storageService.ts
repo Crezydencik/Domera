@@ -8,10 +8,9 @@
 import {
   ref,
   uploadBytes,
-  downloadURL,
+  getDownloadURL,
   deleteObject,
   getBytes,
-  Storage,
 } from 'firebase/storage';
 import { storage } from '../config';
 
@@ -22,7 +21,7 @@ export const uploadFile = async (file: File, path: string): Promise<string> => {
   try {
     const storageRef = ref(storage, path);
     await uploadBytes(storageRef, file);
-    const url = await downloadURL(storageRef);
+    const url = await getDownloadURL(storageRef);
     return url;
   } catch (error) {
     console.error('Error uploading file:', error);
@@ -50,7 +49,7 @@ export const downloadFile = async (path: string): Promise<Blob> => {
 export const getFileURL = async (path: string): Promise<string> => {
   try {
     const storageRef = ref(storage, path);
-    const url = await downloadURL(storageRef);
+    const url = await getDownloadURL(storageRef);
     return url;
   } catch (error) {
     console.error('Error getting file URL:', error);
@@ -94,5 +93,3 @@ export const deleteInvoicePDF = async (invoiceId: string): Promise<void> => {
 export const getInvoicePDFUrl = async (invoiceId: string): Promise<string> => {
   return getFileURL(`invoices/${invoiceId}.pdf`);
 };
-
-export type { Storage };

@@ -4,15 +4,23 @@ import { useState } from 'react';
 import { toast } from 'react-toastify';
 import { getAuth, fetchSignInMethodsForEmail } from 'firebase/auth';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { registerUser } from '@/modules/auth/services/authService';
 import AuthLayout from '@/shared/components/layout/AuthLayout';
 
 export default function RegisterPage() {
+  const searchParams = useSearchParams();
+  const invitedRoleParam = searchParams.get('inviteRole');
+  const invitedCompanyId = searchParams.get('companyId');
+  const invitedEmailParam = searchParams.get('email');
+  const invitedInvitationId = searchParams.get('invitationId');
+  const isInvitedRole = invitedRoleParam === 'Accountant' || invitedRoleParam === 'ManagementCompany';
+  const isCompanyInvite = Boolean(isInvitedRole && invitedCompanyId && invitedEmailParam);
+
   const [role, setRole] = useState<'resident' | 'uk'>('resident');
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
-    email: '',
+    email: invitedEmailParam ?? '',
     password: '',
     confirmPassword: '',
     companyName: '',
@@ -118,6 +126,40 @@ export default function RegisterPage() {
           setLoading(false);
           return; // Блокируем переход на второй этап
         }
+
+        if (isCompanyInvite && invitedCompanyId && isInvitedRole) {
+          const user = await registerUser(
+            {
+              email: formData.email,
+              password: formData.password,
+              token: '',
+            },
+            invitedRoleParam as 'Accountant' | 'ManagementCompany',
+            invitedCompanyId
+          );
+
+          if (!user || !user.uid) {
+            toast.error('Ошибка регистрации');
+            setLoading(false);
+            return;
+          }
+
+          if (invitedInvitationId) {
+            await fetch('/api/company-invitations/accept', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ invitationId: invitedInvitationId }),
+            });
+          }
+
+          toast.success('Регистрация по приглашению успешна!');
+          setTimeout(() => {
+            router.push('/dashboard');
+          }, 500);
+          setLoading(false);
+          return;
+        }
+
         setStep(2);
       } catch {
               setEmailExists(true);
@@ -222,8 +264,12 @@ export default function RegisterPage() {
                   placeholder="example@mail.com"
                   className="w-full px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:border-indigo-500 transition"
                   autoComplete="email"
+                  readOnly={isCompanyInvite}
                   required
                 />
+                {isCompanyInvite && (
+                  <p className="text-xs text-indigo-600 mt-1">Email зафиксирован приглашением</p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Пароль</label>
@@ -253,6 +299,7 @@ export default function RegisterPage() {
                 />
               </div>
                         {/* Выбор роли */}
+          {!isCompanyInvite && (
           <div className="flex justify-center gap-3 mb-2 mt-4">
             <button
               type="button"
@@ -267,6 +314,7 @@ export default function RegisterPage() {
                 ${role==='uk' ? 'bg-indigo-600 text-white border-indigo-600 shadow' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'}`}
             >УК</button>
           </div>
+          )}
               <div className="flex gap-3 mt-6">
                 <button
                   type="button"
