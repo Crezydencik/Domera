@@ -205,11 +205,12 @@ export interface InvitationGdprMeta {
 
 export interface Invitation {
   id: string;
-  // companyId: string; // Удалено, используем только companyIds
+  companyId?: string;
   apartmentId: string;
   email: string;
   status: InvitationStatus;
-  token: string;
+  token?: string;
+  tokenHash?: string;
   createdAt: Date;
   expiresAt?: Date;
   invitedByUid?: string;

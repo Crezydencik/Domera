@@ -22,6 +22,7 @@ import { FIRESTORE_COLLECTIONS } from '@/shared/constants';
 import { User, AuthCredentials, RegistrationData } from '@/shared/types';
 import { validateEmail, validatePassword } from '@/shared/validation';
 import { collection, query, where, getDocs } from 'firebase/firestore';
+import { toSafeErrorDetails } from '@/shared/lib/safeLog';
 
 /**
  * Register new user with email and password
@@ -80,7 +81,7 @@ export const registerUser = async (
 
     return newUser;
   } catch (error) {
-    console.error('Registration error:', error);
+    console.error('Registration error:', toSafeErrorDetails(error));
     throw error;
   }
 }
@@ -111,7 +112,7 @@ export const login = async (credentials: AuthCredentials): Promise<User | null> 
     
     // If user doesn't exist in Firestore, create a default entry
     if (!user) {
-      console.log('Creating user document in Firestore for:', userId);
+      console.log('Creating user document in Firestore');
       const newUserData = {
         uid: userId,
         email: credentials.email,
@@ -132,7 +133,7 @@ export const login = async (credentials: AuthCredentials): Promise<User | null> 
           updatedAt: new Date(newUserData.updatedAt ?? Date.now()),
         } as User;
       } catch (firestoreError) {
-        console.error('Error creating user in Firestore:', firestoreError);
+        console.error('Error creating user in Firestore:', toSafeErrorDetails(firestoreError));
         // User was authenticated in Firebase but failed to create Firestore doc
         // This is not critical for login, so we can proceed
         user = {
@@ -149,7 +150,7 @@ export const login = async (credentials: AuthCredentials): Promise<User | null> 
     
     return user;
   } catch (error) {
-    console.error('Login error:', error);
+    console.error('Login error:', toSafeErrorDetails(error));
     throw error;
   }
 };
@@ -161,7 +162,7 @@ export const logout = async (): Promise<void> => {
   try {
     await firebaseLogout();
   } catch (error) {
-    console.error('Logout error:', error);
+    console.error('Logout error:', toSafeErrorDetails(error));
     throw error;
   }
 };
@@ -176,7 +177,7 @@ export const getCurrentUser = async (): Promise<User | null> => {
 
     return await getUserById(userId);
   } catch (error) {
-    console.error('Error getting current user:', error);
+    console.error('Error getting current user:', toSafeErrorDetails(error));
     return null;
   }
 };
@@ -196,7 +197,7 @@ export const getUserById = async (userId: string | null): Promise<User | null> =
       createdAt: new Date(userDoc.createdAt),
     } as User;
   } catch (error) {
-    console.error('Error getting user:', error);
+    console.error('Error getting user:', toSafeErrorDetails(error));
     return null;
   }
 };
@@ -220,7 +221,7 @@ export const getUserByEmail = async (email: string): Promise<User | null> => {
       createdAt: new Date(userDoc.data().createdAt),
     } as User;
   } catch (error) {
-    console.error('Error getting user by email:', error);
+    console.error('Error getting user by email:', toSafeErrorDetails(error));
     return null;
   }
 };
@@ -238,7 +239,7 @@ export const changePassword = async (newPassword: string): Promise<void> => {
 
     await firebaseUpdateUserPassword(newPassword);
   } catch (error) {
-    console.error('Error changing password:', error);
+    console.error('Error changing password:', toSafeErrorDetails(error));
     throw error;
   }
 };
@@ -265,7 +266,7 @@ export const sendPasswordResetEmail = async (email: string): Promise<void> => {
       throw new Error(data?.error ?? 'Ошибка отправки письма для смены пароля');
     }
   } catch (error) {
-    console.error('Error sending password reset:', error);
+    console.error('Error sending password reset:', toSafeErrorDetails(error));
     throw error;
   }
 };
@@ -285,7 +286,7 @@ export const getUsersByCompany = async (companyId: string): Promise<User[]> => {
       createdAt: new Date(doc.createdAt),
     })) as User[];
   } catch (error) {
-    console.error('Error getting users by company:', error);
+    console.error('Error getting users by company:', toSafeErrorDetails(error));
     return [];
   }
 };
@@ -303,7 +304,7 @@ export const updateUserProfile = async (
       ...(updates.createdAt && { createdAt: updates.createdAt.toISOString() }),
     });
   } catch (error) {
-    console.error('Error updating user profile:', error);
+    console.error('Error updating user profile:', toSafeErrorDetails(error));
     throw error;
   }
 };

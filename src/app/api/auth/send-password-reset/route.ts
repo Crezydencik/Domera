@@ -4,6 +4,9 @@ import { getFirebaseAdminAuth } from '@/firebase/admin';
 import { getUserByEmail } from '@/modules/auth/services/authService';
 import resetPasswordLV from '@/emails/resetPassword.lv';
 import resetPasswordRU from '@/emails/resetPassword.ru';
+import { buildRateLimitKey, consumeRateLimit } from '@/shared/lib/rateLimit';
+import { writeAuditEvent } from '@/shared/lib/auditLog';
+import { toSafeErrorDetails } from '@/shared/lib/safeLog';
 
 interface SendPasswordResetPayload {
   email: string;
@@ -67,7 +70,32 @@ export async function POST(request: NextRequest) {
     const payload = (await request.json()) as SendPasswordResetPayload;
     const email = payload?.email?.trim().toLowerCase();
 
+    const rlKey = buildRateLimitKey(request, 'auth:password-reset', email ?? 'anon');
+    const rl = consumeRateLimit(rlKey, 6, 60_000);
+    if (!rl.allowed) {
+      const retryAfter = Math.max(1, Math.ceil((rl.resetAt - Date.now()) / 1000));
+      await writeAuditEvent({
+        request,
+        action: 'auth.password_reset_send',
+        status: 'rate_limited',
+        targetEmail: email,
+        reason: 'too_many_requests',
+      });
+
+      return NextResponse.json(
+        { error: 'Too many requests' },
+        { status: 429, headers: { 'Retry-After': String(retryAfter) } }
+      );
+    }
+
     if (!email || !isValidEmail(email)) {
+      await writeAuditEvent({
+        request,
+        action: 'auth.password_reset_send',
+        status: 'denied',
+        targetEmail: email,
+        reason: 'invalid_email',
+      });
       return NextResponse.json({ error: 'Ievadiet korektu e-pastu' }, { status: 400 });
     }
 
@@ -99,10 +127,25 @@ export async function POST(request: NextRequest) {
       throw new Error(`Resend error: ${resendError.message}`);
     }
 
+    await writeAuditEvent({
+      request,
+      action: 'auth.password_reset_send',
+      status: 'success',
+      targetEmail: email,
+      metadata: { lang },
+    });
+
     return NextResponse.json({ success: true, message: 'Vēstule nosūtīta' });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Kļūda, nosūtot paroles atiestatīšanas vēstuli';
-    console.error('SEND_PASSWORD_RESET API error:', message);
+    console.error('SEND_PASSWORD_RESET API error:', toSafeErrorDetails(error));
+
+    await writeAuditEvent({
+      request,
+      action: 'auth.password_reset_send',
+      status: 'error',
+      reason: message,
+    });
 
     return NextResponse.json({ error: message }, { status: 500 });
   }

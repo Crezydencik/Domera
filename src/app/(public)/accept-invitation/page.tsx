@@ -3,12 +3,6 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import {
-  acceptInvitation,
-  acceptInvitationForAuthenticatedUser,
-  getInvitationByToken,
-} from '@/modules/invitations/services/invitationsService';
-import { getUserByEmail } from '@/modules/auth/services/authService';
 import { useAuth } from '@/shared/hooks/useAuth';
 import { useTranslations } from 'next-intl';
 
@@ -42,9 +36,20 @@ export default function AcceptInvitationPage() {
       }
 
       try {
-        // Получить и проверить приглашение
-        const invitation = await getInvitationByToken(token);
-        console.log('[AcceptInvitationPage] invitation:', invitation);
+        const resolveResponse = await fetch(
+          `/api/invitations/resolve?token=${encodeURIComponent(token)}`,
+          { method: 'GET' }
+        );
+
+        const resolveData = await resolveResponse.json().catch(() => ({}));
+
+        if (!resolveResponse.ok || !resolveData?.invitation) {
+          setError(resolveData?.error || t('invitation.invalidToken'));
+          setLoading(false);
+          return;
+        }
+
+        const invitation = resolveData.invitation as { email: string };
 
         if (!invitation) {
           setError(t('invitation.invalidToken'));
@@ -78,9 +83,7 @@ export default function AcceptInvitationPage() {
         }
 
         // Если не авторизован - проверяем есть ли пользователь с таким email
-        const existingUser = await getUserByEmail(invitation.email);
-        
-        if (existingUser) {
+        if (resolveData?.existingAccountDetected) {
           // Пользователь существует - редирект на login
           router.push(`/login?redirect=${encodeURIComponent(`/accept-invitation?token=${token}`)}`);
         } else {
@@ -114,7 +117,17 @@ export default function AcceptInvitationPage() {
 
     setSubmitting(true);
     try {
-      await acceptInvitationForAuthenticatedUser(token, user.uid, true);
+      const response = await fetch('/api/invitations/accept', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, gdprConsent: true }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data?.error || t('invitation.invitationError'));
+      }
+
       router.push('/dashboard');
       router.refresh();
     } catch (err: unknown) {
@@ -146,7 +159,17 @@ export default function AcceptInvitationPage() {
     setSubmitting(true);
 
     try {
-      await acceptInvitation(token, formData.password, true);
+      const response = await fetch('/api/invitations/accept', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, password: formData.password, gdprConsent: true }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data?.error || t('invitation.invitationError'));
+      }
+
       router.push('/dashboard');
       router.refresh();
     } catch (err: unknown) {

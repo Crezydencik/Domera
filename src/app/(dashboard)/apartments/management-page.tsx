@@ -17,6 +17,7 @@ type SelectedApartment = Apartment & { invitations?: SelectedInvitation[] };
 import { ApartmentModal } from '@/shared/components/apartments/ApartmentModal';
 import { ImportApartmentsModal } from '@/shared/components/apartments/ImportApartmentsModal';
 import { toast } from 'react-toastify';
+import { toSafeErrorDetails } from '@/shared/lib/safeLog';
 
 export default function ApartmentsManagementPage() {
   const { user } = useAuth();
@@ -28,7 +29,7 @@ export default function ApartmentsManagementPage() {
       await logout();
       router.push('/login');
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error('Logout error:', toSafeErrorDetails(error));
       toast.error('Ошибка при выходе');
     }
   };
@@ -68,8 +69,6 @@ export default function ApartmentsManagementPage() {
         getApartmentsFromDatabase(),
         getBuildingsFromDatabase(),
       ]);
-      console.log('Fetched apartments:', apartmentData); // Лог для проверки данных квартир
-      console.log('Fetched buildings:', buildingData); // Лог для проверки данных зданий
       setApartments(
         apartmentData.map(ap => ({
           ...ap,
@@ -77,7 +76,6 @@ export default function ApartmentsManagementPage() {
         })) 
       );
       // (meters loading removed — not needed in this view)
-      console.log('buildingData:', buildingData);
       setBuildings(
         buildingData.map((building) => ({
           ...building,
@@ -86,7 +84,7 @@ export default function ApartmentsManagementPage() {
         }))
       );
     } catch (error) {
-      console.error('Error fetching data:', error);
+      console.error('Error fetching data:', toSafeErrorDetails(error));
     } finally {
       setLoading(false);
     }
@@ -162,7 +160,6 @@ export default function ApartmentsManagementPage() {
         // Получаем актуальные данные здания
         const buildingSnap = await getDoc(buildingDocRef);
         const buildingData = buildingSnap.exists() ? buildingSnap.data() : {};
-        console.log('[handleAddApartment] buildingData:', buildingData);
         // apartmentIds всегда массив строк
         let currentApartmentIds = [];
         if (Array.isArray(buildingData.apartmentIds)) {
@@ -172,13 +169,11 @@ export default function ApartmentsManagementPage() {
           console.warn('[handleAddApartment] apartmentIds был объектом, а не массивом! Удалите поле вручную в консоли Firestore и повторите добавление.');
         }
         const updatedApartmentIds = [...new Set([...currentApartmentIds, docRef.id])];
-        console.log('Обновляем apartmentIds:', updatedApartmentIds, Array.isArray(updatedApartmentIds));
         await updateDoc(buildingDocRef, {
           apartmentIds: updatedApartmentIds,
         });
-        console.log('[handleAddApartment] Квартира добавлена в apartmentIds:', docRef.id);
       } catch (e) {
-        console.error('[handleAddApartment] Ошибка при обновлении apartmentIds в доме:', e);
+        console.error('[handleAddApartment] Ошибка при обновлении apartmentIds в доме:', toSafeErrorDetails(e));
       }
 
       setNewApartment({ number: '', buildingId: '' });
@@ -188,7 +183,7 @@ export default function ApartmentsManagementPage() {
       // Обновляем данные после добавления квартиры
       await fetchData();
     } catch (error) {
-      console.error('Error adding apartment:', error);
+      console.error('Error adding apartment:', toSafeErrorDetails(error));
       toast.error('Ошибка при добавлении квартиры.');
     }
   };
@@ -213,7 +208,7 @@ export default function ApartmentsManagementPage() {
       setApartmentPendingDelete(null);
       toast.success('Квартира успешно удалена!');
     } catch (error) {
-      console.error('Error deleting apartment:', error);
+      console.error('Error deleting apartment:', toSafeErrorDetails(error));
       toast.error('Ошибка при удалении квартиры.');
     } finally {
       setIsDeletingApartment(false);
@@ -233,7 +228,7 @@ export default function ApartmentsManagementPage() {
       setApartments((prev) => prev.map((ap) => (ap.id === apartmentId ? { ...ap, residentId: undefined, tenants: [] } : ap)));
       toast.success('Жилец удалён из квартиры');
     } catch (error) {
-      console.error('Error unassigning resident:', error);
+      console.error('Error unassigning resident:', toSafeErrorDetails(error));
       toast.error('Ошибка при удалении жильца');
     }
   };
@@ -316,12 +311,10 @@ export default function ApartmentsManagementPage() {
             ? { ...apartment, residentId: undefined, tenants: [] }
             : apartment
         );
-        console.log('Updated apartments after unassign:', updatedApartments); // Лог для проверки обновления состояния
         return updatedApartments;
       });
-      console.log('Resident unassigned succes sfully from apartment:', selectedApartment.id);
     } catch (error) {
-      console.error('Error unassigning resident:', error);
+      console.error('Error unassigning resident:', toSafeErrorDetails(error));
     }
   };
 
@@ -336,7 +329,7 @@ export default function ApartmentsManagementPage() {
       setIsModalOpen(false);
       toast.success('Приглашение успешно отменено');
     } catch (error) {
-      console.error('Error canceling invitation:', error);
+      console.error('Error canceling invitation:', toSafeErrorDetails(error));
       toast.error('Ошибка при отмене приглашения');
     }
   };
@@ -463,7 +456,7 @@ export default function ApartmentsManagementPage() {
           setInvitedApartmentIds((prev) => Array.from(new Set([...prev, target.apartmentId])));
         } catch (error) {
           failCount += 1;
-          console.error(`Ошибка отправки приглашения для квартиры #${target.apartmentNumber}:`, error);
+          console.error(`Ошибка отправки приглашения для квартиры #${target.apartmentNumber}:`, toSafeErrorDetails(error));
         }
       }
 
@@ -503,7 +496,7 @@ export default function ApartmentsManagementPage() {
       toast.success('Приглашение отменено');
       await fetchData();
     } catch (error) {
-      console.error('Error cancel invitation from bulk modal:', error);
+      console.error('Error cancel invitation from bulk modal:', toSafeErrorDetails(error));
       toast.error('Ошибка при отмене приглашения');
     }
   };
@@ -756,7 +749,7 @@ export default function ApartmentsManagementPage() {
                       setGlobalInviteApartmentId(undefined);
                       await fetchData();
                     } catch (err) {
-                      console.error('Invite error', err);
+                      console.error('Invite error', toSafeErrorDetails(err));
                       toast.error('Ошибка при отправке приглашения');
                     }
                   }}

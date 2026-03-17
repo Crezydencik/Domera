@@ -9,7 +9,9 @@
     "lint": "eslint",
     "analyze:excel": "tsx scripts/analyzeExcelStructure.ts",
     "import:apartments": "tsx scripts/importApartmentsFromExcel.ts",
-    "migrate:waterReadings": "tsx scripts/migrateWaterReadings.ts"
+    "migrate:waterReadings": "tsx scripts/migrateWaterReadings.ts",
+    "migrate:invitationTokens": "tsx scripts/migrateInvitationTokens.ts",
+    "cleanup:invitations": "tsx scripts/cleanupExpiredInvitations.ts"
   },
   "dependencies": {
     "firebase": "^12.9.0",

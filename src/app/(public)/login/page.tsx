@@ -10,6 +10,7 @@ import { login } from '@/modules/auth/services/authService';
 import { useAuth } from '@/shared/hooks/useAuth';
 import AuthLayout from '@/shared/components/layout/AuthLayout';
 import { useTranslations } from 'next-intl';
+import { toSafeErrorDetails } from '@/shared/lib/safeLog';
 
 export default function LoginPage() {
   
@@ -59,19 +60,11 @@ export default function LoginPage() {
 
       const user = await login({ email, password });
       if (user) {
-        // Successfully logged in
-        console.log('Login successful for user:', user.email);
         // Wait for auth persistence to save cookies
         await new Promise(resolve => setTimeout(resolve, 500));
-        console.log('Redirecting to dashboard');
       }
     } catch (err: any) {
-      console.error('Login error:', err);
-      console.error('Error details:', {
-        message: err.message,
-        code: err.code,
-        fullError: err
-      });
+      console.error('Login failed:', toSafeErrorDetails(err));
       const errorMessage = err.message || t('loginError');
       // Handle Firebase auth errors
       if (err.code === 'auth/user-not-found') {
@@ -142,9 +135,9 @@ export default function LoginPage() {
         </form>
         {/* Divider */}
         <div className="flex items-center my-6">
-          <div className="flex-grow h-px bg-gray-200" />
+          <div className="grow h-px bg-gray-200" />
           <span className="mx-4 text-gray-400 text-sm">{t('or')}</span>
-          <div className="flex-grow h-px bg-gray-200" />
+          <div className="grow h-px bg-gray-200" />
         </div>
         {/* Social Buttons (заглушки) */}
         {/* Register Link */}

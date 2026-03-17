@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { createInvitation } from '@/modules/invitations/services/invitationsService';
 import { getFirebaseAdminAuth } from '@/firebase/admin';
+import { requireRequestAuth, toAuthErrorResponse } from '@/shared/lib/serverAuth';
+import { writeAuditEvent } from '@/shared/lib/auditLog';
+import { buildRateLimitKey, consumeRateLimit } from '@/shared/lib/rateLimit';
 
 interface SendInvitationPayload {
   apartmentId: string;
@@ -51,11 +54,40 @@ const EMAIL_LOGO_URL = 'https://firebasestorage.googleapis.com/v0/b/domera-eb224
 
 export async function POST(request: NextRequest) {
   try {
-    const payload = (await request.json()) as SendInvitationPayload;
-    console.log('SEND_INVITATION payload:', payload);
+    const auth = await requireRequestAuth(request, {
+      allowedRoles: ['ManagementCompany', 'Accountant'],
+    });
 
+    const payload = (await request.json()) as SendInvitationPayload;
+
+    const rl = consumeRateLimit(buildRateLimitKey(request, 'invitation:send', auth.uid), 10, 60_000);
+    if (!rl.allowed) {
+      const retryAfter = Math.max(1, Math.ceil((rl.resetAt - Date.now()) / 1000));
+      await writeAuditEvent({
+        request,
+        action: 'invitation.send',
+        status: 'rate_limited',
+        actorUid: auth.uid,
+        actorRole: auth.role,
+        reason: 'too_many_requests',
+      });
+
+      return NextResponse.json(
+        { error: 'Too many requests' },
+        { status: 429, headers: { 'Retry-After': String(retryAfter) } }
+      );
+    }
 
     if (!payload.apartmentId || !payload.email) {
+      await writeAuditEvent({
+        request,
+        action: 'invitation.send',
+        status: 'denied',
+        actorUid: auth.uid,
+        actorRole: auth.role,
+        reason: 'missing_required_fields',
+      });
+
       return NextResponse.json(
         { error: 'Nepieciešams apartmentId un email' },
         { status: 400 }
@@ -66,11 +98,47 @@ export async function POST(request: NextRequest) {
     const { getApartment } = await import('@/modules/apartments/services/apartmentsService');
     const apartment = await getApartment(payload.apartmentId);
     if (!apartment) {
+      await writeAuditEvent({
+        request,
+        action: 'invitation.send',
+        status: 'denied',
+        actorUid: auth.uid,
+        actorRole: auth.role,
+        apartmentId: payload.apartmentId,
+        reason: 'apartment_not_found',
+      });
+
       return NextResponse.json({ error: 'Dzīvoklis nav atrasts' }, { status: 404 });
     }
     const companyId = Array.isArray(apartment.companyIds) && apartment.companyIds.length > 0 ? apartment.companyIds[0] : undefined;
     if (!companyId) {
+      await writeAuditEvent({
+        request,
+        action: 'invitation.send',
+        status: 'denied',
+        actorUid: auth.uid,
+        actorRole: auth.role,
+        apartmentId: payload.apartmentId,
+        reason: 'company_id_missing',
+      });
+
       return NextResponse.json({ error: 'Dzīvoklim nav companyId' }, { status: 400 });
+    }
+
+    if (auth.companyId && auth.companyId !== companyId) {
+      await writeAuditEvent({
+        request,
+        action: 'invitation.send',
+        status: 'denied',
+        actorUid: auth.uid,
+        actorRole: auth.role,
+        companyId,
+        apartmentId: payload.apartmentId,
+        targetEmail: payload.email,
+        reason: 'tenant_mismatch',
+      });
+
+      return NextResponse.json({ error: 'Piekļuve šim uzņēmumam liegta' }, { status: 403 });
     }
 
     const origin = request.nextUrl.origin;
@@ -80,7 +148,7 @@ export async function POST(request: NextRequest) {
       payload.apartmentId,
       payload.email,
       {
-        invitedByUid: payload.invitedByUid,
+        invitedByUid: auth.uid,
         legalBasisConfirmed: payload.legalBasisConfirmed,
         privacyNoticeVersion: 'v1',
         baseUrl: origin,
@@ -97,9 +165,6 @@ export async function POST(request: NextRequest) {
     } catch {
       existingAccountDetected = false;
     }
-
-    const loginLink = `${origin}/login?redirect=${encodeURIComponent(invitationResult.invitationLink)}`;
-    const loginPageLink = `${origin}/login`;
 
     const resendConfig = getResendConfig();
     const resend = new Resend(resendConfig.apiKey);
@@ -255,17 +320,49 @@ export async function POST(request: NextRequest) {
       throw new Error(`Resend error: ${resendError.message}`);
     }
 
+    await writeAuditEvent({
+      request,
+      action: 'invitation.send',
+      status: 'success',
+      actorUid: auth.uid,
+      actorRole: auth.role,
+      companyId,
+      apartmentId: payload.apartmentId,
+      invitationId: invitationResult.invitation.id,
+      targetEmail: payload.email,
+      metadata: {
+        existingAccountDetected,
+      },
+    });
+
     return NextResponse.json({
       success: true,
       message: 'Ielūgums nosūtīts uz e-pastu',
       invitationId: invitationResult.invitation.id,
-      token: invitationResult.invitation.token,
       invitationLink: invitationResult.invitationLink,
       existingAccountDetected,
     });
   } catch (error: unknown) {
+    if (error instanceof Error && error.name === 'ApiAuthError') {
+      await writeAuditEvent({
+        request,
+        action: 'invitation.send',
+        status: 'denied',
+        reason: error.message,
+      });
+
+      return toAuthErrorResponse(error);
+    }
+
     const message = error instanceof Error ? error.message : 'Kļūda, nosūtot ielūgumu';
     console.error('SEND_INVITATION API error:', message);
+
+    await writeAuditEvent({
+      request,
+      action: 'invitation.send',
+      status: 'error',
+      reason: message,
+    });
 
     return NextResponse.json({ error: message }, { status: 500 });
   }

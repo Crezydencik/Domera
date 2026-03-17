@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { App, cert, getApps, initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
+import { getFirestore } from 'firebase-admin/firestore';
 
 const getServiceAccount = () => {
   const rawJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
@@ -34,3 +35,4 @@ const getFirebaseAdminApp = (): App => {
 };
 
 export const getFirebaseAdminAuth = () => getAuth(getFirebaseAdminApp());
+export const getFirebaseAdminDb = () => getFirestore(getFirebaseAdminApp());

@@ -8,8 +8,7 @@ import { assignResidentToApartment } from '@/modules/apartments/services/apartme
 import { getUserById } from '@/modules/auth/services/authService';
 import { validateEmail } from '@/shared/validation';
 import { createNotification } from '@/modules/notifications/services/notificationsService';
-
-const normalizeEmail = (email: string): string => email.trim().toLowerCase();
+import { hashInvitationToken, normalizeEmail } from '@/shared/lib/invitationToken';
 
 const syncApartmentOwnerEmailIfNeeded = async (
   apartmentId: string,
@@ -75,15 +74,17 @@ export const createInvitation = async (
 
     // Генерируем уникальный токен
     const token = generateToken();
+    const tokenHash = await hashInvitationToken(token);
     const now = new Date();
     const expiresAt = new Date(now.getTime() + INVITATION_TOKEN_EXPIRY_HOURS * 60 * 60 * 1000);
     const retentionUntil = new Date(expiresAt.getTime() + 30 * 24 * 60 * 60 * 1000);
 
     const invitationData: Omit<Invitation, 'id'> = {
+      companyId,
       apartmentId,
       email: normalizedEmail,
       status: INVITATION_STATUSES.PENDING,
-      token,
+      tokenHash,
       createdAt: now,
       expiresAt,
       ...(options.invitedByUid ? { invitedByUid: options.invitedByUid } : {}),
@@ -129,27 +130,28 @@ export const createInvitation = async (
  */
 export const getInvitationByToken = async (token: string): Promise<Invitation | null> => {
   if (!token || typeof token !== 'string') {
-    console.warn('[getInvitationByToken] Invalid token:', token);
+    console.warn('[getInvitationByToken] Invalid token');
     return null;
   }
   try {
-    console.log('[getInvitationByToken] token:', token);
+    const tokenHash = await hashInvitationToken(token);
+
     const results = await queryDocuments(FIRESTORE_COLLECTIONS.INVITATIONS, [
-      { field: 'token', operator: '==', value: token },
+      { field: 'tokenHash', operator: '==', value: tokenHash },
     ]);
-    console.log('[getInvitationByToken] queryDocuments results:', results);
 
     if (results.length === 0) {
-      console.warn('[getInvitationByToken] No invitation found for token:', token);
+      console.warn('[getInvitationByToken] No invitation found for token');
       return null;
     }
 
     const invitation = results.length > 0 ? {
       id: results[0].id as string,
+      companyId: results[0].companyId as string,
       apartmentId: results[0].apartmentId as string,
       email: results[0].email as string,
       status: results[0].status as InvitationStatus,
-      token: results[0].token as string,
+      tokenHash: results[0].tokenHash as string | undefined,
       createdAt: results[0].createdAt as Date,
       expiresAt: results[0].expiresAt as Date,
       invitedByUid: results[0].invitedByUid as string,
@@ -158,13 +160,10 @@ export const getInvitationByToken = async (token: string): Promise<Invitation | 
       gdpr: results[0].gdpr as InvitationGdprMeta,
       permissions: results[0].permissions as TenantPermission[],
     } : null;
-    console.log('[getInvitationByToken] Found invitation:', invitation);
-
     // Check if invitation has expired
     if (invitation && invitation.expiresAt) {
       const now = new Date();
       const expiresAtDate = new Date(invitation.expiresAt);
-      console.log('[getInvitationByToken] expiresAt:', expiresAtDate, 'now:', now);
       if (expiresAtDate < now) {
         console.warn('[getInvitationByToken] Invitation expired:', invitation.id);
         return null; // Invitation expired
@@ -195,6 +194,10 @@ export const acceptInvitation = async (
 
     if (!invitation) {
       throw new Error('Invalid or expired invitation');
+    }
+
+    if (invitation.status !== INVITATION_STATUSES.PENDING) {
+      throw new Error('Invitation already used or not active');
     }
 
     // Create user with Resident role
@@ -268,7 +271,10 @@ export const acceptInvitationForAuthenticatedUser = async (
     if (!invitation) {
       throw new Error('Приглашение недействительно или истекло');
     }
-    // Разрешаем повторное принятие приглашения, даже если оно уже принято
+
+    if (invitation.status !== INVITATION_STATUSES.PENDING) {
+      throw new Error('Приглашение уже использовано или недоступно');
+    }
 
     const user = await getUserById(authenticatedUserId);
     if (!user) {
@@ -345,10 +351,11 @@ export const getInvitationByEmail = async (email: string): Promise<Invitation | 
     ]);
     return results.length > 0 ? {
       id: results[0].id as string,
+      companyId: results[0].companyId as string,
       apartmentId: results[0].apartmentId as string,
       email: results[0].email as string,
       status: results[0].status as InvitationStatus,
-      token: results[0].token as string,
+      tokenHash: results[0].tokenHash as string | undefined,
       createdAt: results[0].createdAt as Date,
       expiresAt: results[0].expiresAt as Date,
       invitedByUid: results[0].invitedByUid as string,

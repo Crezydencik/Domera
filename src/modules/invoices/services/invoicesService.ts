@@ -25,6 +25,19 @@ import { where } from 'firebase/firestore';
  * Create new invoice
  */
 export const createInvoice = async (data: Omit<Invoice, 'id'>): Promise<Invoice> => {
+  if (typeof window !== 'undefined') {
+    const response = await fetch('/api/invoices', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error((json as { error?: string }).error ?? 'Не удалось создать счёт');
+    }
+    return (json as { invoice: Invoice }).invoice;
+  }
+
   try {
     const id = await createDocument(FIRESTORE_COLLECTIONS.INVOICES, {
       ...data,
@@ -109,6 +122,19 @@ export const updateInvoiceStatus = async (
   invoiceId: string,
   status: 'pending' | 'paid' | 'overdue'
 ): Promise<void> => {
+  if (typeof window !== 'undefined') {
+    const response = await fetch(`/api/invoices/${encodeURIComponent(invoiceId)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    });
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error((json as { error?: string }).error ?? 'Не удалось обновить статус счёта');
+    }
+    return;
+  }
+
   try {
     await updateDocument(FIRESTORE_COLLECTIONS.INVOICES, invoiceId, { status });
   } catch (error) {
@@ -124,6 +150,19 @@ export const updateInvoice = async (
   invoiceId: string,
   data: Partial<Omit<Invoice, 'id'>>
 ): Promise<void> => {
+  if (typeof window !== 'undefined') {
+    const response = await fetch(`/api/invoices/${encodeURIComponent(invoiceId)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error((json as { error?: string }).error ?? 'Не удалось обновить счёт');
+    }
+    return;
+  }
+
   try {
     await updateDocument(FIRESTORE_COLLECTIONS.INVOICES, invoiceId, data);
   } catch (error) {
@@ -136,6 +175,17 @@ export const updateInvoice = async (
  * Delete invoice
  */
 export const deleteInvoice = async (invoiceId: string): Promise<void> => {
+  if (typeof window !== 'undefined') {
+    const response = await fetch(`/api/invoices/${encodeURIComponent(invoiceId)}`, {
+      method: 'DELETE',
+    });
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error((json as { error?: string }).error ?? 'Не удалось удалить счёт');
+    }
+    return;
+  }
+
   try {
     await deleteDocument(FIRESTORE_COLLECTIONS.INVOICES, invoiceId);
   } catch (error) {

@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { createDocument } from '@/firebase/services/firestoreService';
 import { FIRESTORE_COLLECTIONS } from '@/shared/constants';
+import { requireRequestAuth, toAuthErrorResponse } from '@/shared/lib/serverAuth';
+import { writeAuditEvent } from '@/shared/lib/auditLog';
+import { buildRateLimitKey, consumeRateLimit } from '@/shared/lib/rateLimit';
 
 interface SendCompanyInvitationPayload {
   email: string;
@@ -25,13 +28,59 @@ const getResendConfig = () => {
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireRequestAuth(request, {
+      allowedRoles: ['ManagementCompany', 'Accountant'],
+    });
+
     const payload = (await request.json()) as SendCompanyInvitationPayload;
 
+    const rl = consumeRateLimit(buildRateLimitKey(request, 'company-invitation:send', auth.uid), 10, 60_000);
+    if (!rl.allowed) {
+      const retryAfter = Math.max(1, Math.ceil((rl.resetAt - Date.now()) / 1000));
+      await writeAuditEvent({
+        request,
+        action: 'company_invitation.send',
+        status: 'rate_limited',
+        actorUid: auth.uid,
+        actorRole: auth.role,
+        reason: 'too_many_requests',
+      });
+
+      return NextResponse.json(
+        { error: 'Too many requests' },
+        { status: 429, headers: { 'Retry-After': String(retryAfter) } }
+      );
+    }
+
     if (!payload.email || !payload.companyId || !payload.role || !payload.buildingId) {
+      await writeAuditEvent({
+        request,
+        action: 'company_invitation.send',
+        status: 'denied',
+        actorUid: auth.uid,
+        actorRole: auth.role,
+        reason: 'missing_required_fields',
+      });
+
       return NextResponse.json(
         { error: 'Nepieciešams email, companyId, buildingId un role' },
         { status: 400 }
       );
+    }
+
+    if (auth.companyId && auth.companyId !== payload.companyId) {
+      await writeAuditEvent({
+        request,
+        action: 'company_invitation.send',
+        status: 'denied',
+        actorUid: auth.uid,
+        actorRole: auth.role,
+        companyId: payload.companyId,
+        targetEmail: payload.email,
+        reason: 'tenant_mismatch',
+      });
+
+      return NextResponse.json({ error: 'Access denied for company' }, { status: 403 });
     }
 
     const normalizedEmail = payload.email.trim().toLowerCase();
@@ -44,7 +93,7 @@ export async function POST(request: NextRequest) {
       buildingName: payload.buildingName ?? '',
       role: payload.role,
       status: 'pending',
-      invitedByUid: payload.invitedByUid ?? '',
+      invitedByUid: auth.uid,
       createdAt: new Date(),
     });
 
@@ -113,9 +162,42 @@ export async function POST(request: NextRequest) {
       html,
     });
 
-    return NextResponse.json({ success: true, registerLink, invitationId });
+    await writeAuditEvent({
+      request,
+      action: 'company_invitation.send',
+      status: 'success',
+      actorUid: auth.uid,
+      actorRole: auth.role,
+      companyId: payload.companyId,
+      invitationId,
+      targetEmail: normalizedEmail,
+      metadata: {
+        role: payload.role,
+        buildingId: payload.buildingId,
+      },
+    });
+
+    return NextResponse.json({ success: true, invitationId });
   } catch (error) {
+    if (error instanceof Error && error.name === 'ApiAuthError') {
+      await writeAuditEvent({
+        request,
+        action: 'company_invitation.send',
+        status: 'denied',
+        reason: error.message,
+      });
+
+      return toAuthErrorResponse(error);
+    }
+
     console.error('Error sending company invitation:', error);
+    await writeAuditEvent({
+      request,
+      action: 'company_invitation.send',
+      status: 'error',
+      reason: error instanceof Error ? error.message : 'unknown_error',
+    });
+
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Ошибка отправки приглашения' },
       { status: 500 }

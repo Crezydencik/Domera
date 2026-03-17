@@ -284,6 +284,19 @@ export const deleteMeter = async (meterId: string): Promise<void> => {
 export const submitMeterReading = async (
   data: Omit<MeterReading, 'id'>
 ): Promise<MeterReading> => {
+  if (typeof window !== 'undefined') {
+    const response = await fetch('/api/meter-readings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error((json as { error?: string }).error ?? 'Не удалось отправить показание');
+    }
+    return (json as { reading: MeterReading }).reading;
+  }
+
   try {
     if (!data.apartmentId || typeof data.apartmentId !== 'string') {
       throw new Error('Apartment ID must be a string');
@@ -532,6 +545,19 @@ export const updateMeterReading = async (
   readingId: string,
   data: Partial<Omit<MeterReading, 'id'>>
 ): Promise<void> => {
+  if (typeof window !== 'undefined') {
+    const response = await fetch(`/api/meter-readings/${encodeURIComponent(readingId)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ apartmentId, data }),
+    });
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error((json as { error?: string }).error ?? 'Не удалось обновить показание');
+    }
+    return;
+  }
+
   try {
     // Get apartment to find which meter this reading belongs to
     const apartment = (await getDocument(FIRESTORE_COLLECTIONS.APARTMENTS, apartmentId)) as Apartment | null;
@@ -579,6 +605,20 @@ export const deleteMeterReading = async (
   apartmentId: string,
   readingId: string
 ): Promise<void> => {
+  if (typeof window !== 'undefined') {
+    const response = await fetch(
+      `/api/meter-readings/${encodeURIComponent(readingId)}?apartmentId=${encodeURIComponent(apartmentId)}`,
+      {
+        method: 'DELETE',
+      }
+    );
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error((json as { error?: string }).error ?? 'Не удалось удалить показание');
+    }
+    return;
+  }
+
   try {
     // Get apartment to find which meter this reading belongs to
     const apartment = (await getDocument(FIRESTORE_COLLECTIONS.APARTMENTS, apartmentId)) as Apartment | null;

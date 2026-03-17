@@ -17,7 +17,7 @@ const Header: React.FC<HeaderProps> = ({ userName = '',  userAvatarUrl = '', use
     });
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
-  const [pendingInvitation, setPendingInvitation] = useState<null | { id: string; apartmentId: string; token: string }>(null);
+  const [pendingInvitation, setPendingInvitation] = useState<null | { id: string; apartmentId: string; token?: string }>(null);
   const [langDropdownOpen, setLangDropdownOpen] = useState(false);
   const LANGUAGES = [
     { code: 'lv', label: 'LV' },
@@ -41,7 +41,9 @@ const Header: React.FC<HeaderProps> = ({ userName = '',  userAvatarUrl = '', use
         type: 'invite',
         title: 'Вам пришло приглашение!',
         message: 'Вас пригласили присоединиться к квартире.',
-        link: `/accept-invitation?token=${pendingInvitation.token}`,
+        link: pendingInvitation.token
+          ? `/accept-invitation?token=${pendingInvitation.token}`
+          : '/login',
         linkLabel: 'Принять приглашение'
       });
     }

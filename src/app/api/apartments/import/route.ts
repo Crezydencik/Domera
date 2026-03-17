@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import * as XLSX from 'xlsx';
 import { db } from '@/firebase/config';
 import { collection, doc, setDoc, updateDoc, arrayUnion, getDocs, query, where } from 'firebase/firestore';
+import { requireRequestAuth, toAuthErrorResponse } from '@/shared/lib/serverAuth';
+import { writeAuditEvent } from '@/shared/lib/auditLog';
 
 type ParsedReading = {
   label: string;
@@ -250,12 +252,25 @@ const buildWaterReadingGroup = ({
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireRequestAuth(request, {
+      allowedRoles: ['ManagementCompany', 'Accountant'],
+    });
+
     const formData = await request.formData();
     const file = formData.get('file') as File;
     const buildingId = formData.get('buildingId') as string;
     const companyId = formData.get('companyId') as string;
 
     if (!file) {
+      await writeAuditEvent({
+        request,
+        action: 'apartments.import',
+        status: 'denied',
+        actorUid: auth.uid,
+        actorRole: auth.role,
+        reason: 'file_missing',
+      });
+
       return NextResponse.json(
         { error: 'File is required' },
         { status: 400 }
@@ -263,10 +278,33 @@ export async function POST(request: NextRequest) {
     }
 
     if (!buildingId || !companyId) {
+      await writeAuditEvent({
+        request,
+        action: 'apartments.import',
+        status: 'denied',
+        actorUid: auth.uid,
+        actorRole: auth.role,
+        reason: 'missing_building_or_company_id',
+      });
+
       return NextResponse.json(
         { error: 'Building ID and Company ID are required' },
         { status: 400 }
       );
+    }
+
+    if (auth.companyId && auth.companyId !== companyId) {
+      await writeAuditEvent({
+        request,
+        action: 'apartments.import',
+        status: 'denied',
+        actorUid: auth.uid,
+        actorRole: auth.role,
+        companyId,
+        reason: 'tenant_mismatch',
+      });
+
+      return NextResponse.json({ error: 'Access denied for company' }, { status: 403 });
     }
 
     // Read Excel file
@@ -538,12 +576,45 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    await writeAuditEvent({
+      request,
+      action: 'apartments.import',
+      status: 'success',
+      actorUid: auth.uid,
+      actorRole: auth.role,
+      companyId,
+      metadata: {
+        buildingId,
+        imported: results.imported,
+        skippedDuplicates: results.skippedDuplicates.length,
+        rowErrors: results.errors.length,
+      },
+    });
+
     return NextResponse.json({
       success: true,
       results,
     });
   } catch (error) {
+    if (error instanceof Error && error.name === 'ApiAuthError') {
+      await writeAuditEvent({
+        request,
+        action: 'apartments.import',
+        status: 'denied',
+        reason: error.message,
+      });
+
+      return toAuthErrorResponse(error);
+    }
+
     console.error('Import error:', error);
+    await writeAuditEvent({
+      request,
+      action: 'apartments.import',
+      status: 'error',
+      reason: error instanceof Error ? error.message : 'unknown_error',
+    });
+
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Import failed' },
       { status: 500 }

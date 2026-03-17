@@ -1,62 +1,170 @@
-// Firestore Security Rules for Domera Platform
-// ⚠️ DEVELOPMENT MODE - Permissive rules for rapid development
-// TODO: Replace with strict rules before production deployment
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Helper functions
     function isAuthenticated() {
       return request.auth != null;
     }
-    
-    // DEVELOPMENT: Allow authenticated users to read and write most collections
-    // This will be replaced with strict role-based rules before production
-    
-    // Companies Collection
+
+    function userDocExists() {
+      return isAuthenticated()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function userRole() {
+      return request.auth.token.role != null
+        ? request.auth.token.role
+        : (userDocExists() ? userDoc().role : null);
+    }
+
+    function userCompanyId() {
+      return request.auth.token.companyId != null
+        ? request.auth.token.companyId
+        : (userDocExists() ? userDoc().companyId : null);
+    }
+
+    function userApartmentId() {
+      return request.auth.token.apartmentId != null
+        ? request.auth.token.apartmentId
+        : (userDocExists() ? userDoc().apartmentId : null);
+    }
+
+    function isManagementStaff() {
+      return isAuthenticated() && userRole() in ['ManagementCompany', 'Accountant'];
+    }
+
+    function isResident() {
+      return isAuthenticated() && userRole() == 'Resident';
+    }
+
+    function hasCompanyAccess(companyId) {
+      return companyId != null && userCompanyId() != null && userCompanyId() == companyId;
+    }
+
+    function hasApartmentAccess(apartmentId) {
+      return apartmentId != null && userApartmentId() != null && userApartmentId() == apartmentId;
+    }
+
+    function apartmentHasCompanyAccess(companyIds) {
+      return companyIds is list
+        && userCompanyId() != null
+        && companyIds.hasAny([userCompanyId()]);
+    }
+
     match /companies/{companyId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isManagementStaff() && hasCompanyAccess(companyId);
+      allow create: if isManagementStaff() && request.auth.uid == request.resource.data.userId;
+      allow update, delete: if isManagementStaff() && hasCompanyAccess(companyId);
     }
-    
-    // Users Collection - Allow creation by authenticated users
+
     match /users/{userId} {
-      allow read: if isAuthenticated();
-      allow create, write: if isAuthenticated();
+      allow read: if isAuthenticated() && (
+        request.auth.uid == userId
+        || (isManagementStaff() && hasCompanyAccess(resource.data.companyId))
+      );
+
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+
+      allow update: if isAuthenticated() && (
+        request.auth.uid == userId
+        || (isManagementStaff() && hasCompanyAccess(resource.data.companyId))
+      );
+
+      allow delete: if isManagementStaff() && hasCompanyAccess(resource.data.companyId);
     }
-    
-    // Buildings Collection
+
     match /buildings/{buildingId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated() && (
+        (isManagementStaff() && hasCompanyAccess(resource.data.companyId))
+        || (isResident() && resource.data.apartmentIds is list && resource.data.apartmentIds.hasAny([userApartmentId()]))
+      );
+
+      allow create, update: if isManagementStaff() && hasCompanyAccess(request.resource.data.companyId);
+      allow delete: if isManagementStaff() && hasCompanyAccess(resource.data.companyId);
     }
-    
-    // Apartments Collection
+
     match /apartments/{apartmentId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated() && (
+        (isManagementStaff() && apartmentHasCompanyAccess(resource.data.companyIds))
+        || (isResident() && hasApartmentAccess(apartmentId))
+      );
+
+      allow create, update: if isManagementStaff() && apartmentHasCompanyAccess(request.resource.data.companyIds);
+      allow delete: if isManagementStaff() && apartmentHasCompanyAccess(resource.data.companyIds);
     }
-    
-    // Meters Collection
+
     match /meters/{meterId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated() && (
+        (isManagementStaff() && hasCompanyAccess(resource.data.companyId))
+        || (isResident() && hasApartmentAccess(resource.data.apartmentId))
+      );
+
+      allow create, update: if isManagementStaff() && hasCompanyAccess(request.resource.data.companyId);
+      allow delete: if isManagementStaff() && hasCompanyAccess(resource.data.companyId);
     }
-    
-    // Meter Readings Collection
+
     match /meter_readings/{readingId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated() && (
+        (isManagementStaff() && hasCompanyAccess(resource.data.companyId))
+        || (isResident() && hasApartmentAccess(resource.data.apartmentId))
+      );
+
+      allow create, update: if isManagementStaff() && hasCompanyAccess(request.resource.data.companyId);
+      allow delete: if isManagementStaff() && hasCompanyAccess(resource.data.companyId);
     }
-    
-    // Invoices Collection
+
     match /invoices/{invoiceId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated() && (
+        (isManagementStaff() && hasCompanyAccess(resource.data.companyId))
+        || (isResident() && hasApartmentAccess(resource.data.apartmentId))
+      );
+
+      allow create, update: if isManagementStaff() && hasCompanyAccess(request.resource.data.companyId);
+      allow delete: if isManagementStaff() && hasCompanyAccess(resource.data.companyId);
     }
-    
-    // Invitations Collection
+
     match /invitations/{invitationId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isManagementStaff() && hasCompanyAccess(resource.data.companyId);
+      allow create, update: if isManagementStaff() && hasCompanyAccess(request.resource.data.companyId);
+      allow delete: if isManagementStaff() && hasCompanyAccess(resource.data.companyId);
     }
-    
-    // Default deny all other collections
+
+    match /company_invitations/{invitationId} {
+      allow read: if isManagementStaff() && hasCompanyAccess(resource.data.companyId);
+      allow create, update: if isManagementStaff() && hasCompanyAccess(request.resource.data.companyId);
+      allow delete: if isManagementStaff() && hasCompanyAccess(resource.data.companyId);
+    }
+
+    match /notifications/{notificationId} {
+      allow read, update: if isAuthenticated() && request.auth.uid == resource.data.userId;
+      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.userId;
+      allow delete: if false;
+    }
+
+    match /news/{newsId} {
+      allow read: if isAuthenticated() && (
+        (isManagementStaff() && hasCompanyAccess(resource.data.companyId))
+        || isResident()
+      );
+
+      allow create, update: if isManagementStaff() && hasCompanyAccess(request.resource.data.companyId);
+      allow delete: if isManagementStaff() && hasCompanyAccess(resource.data.companyId);
+    }
+
+    match /projects/{projectId} {
+      allow read: if isAuthenticated() && (
+        (isManagementStaff() && hasCompanyAccess(resource.data.companyId))
+        || isResident()
+      );
+
+      allow create, update: if isManagementStaff() && hasCompanyAccess(request.resource.data.companyId);
+      allow delete: if isManagementStaff() && hasCompanyAccess(resource.data.companyId);
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
