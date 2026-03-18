@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { createDocument } from '@/firebase/services/firestoreService';
+import { getFirebaseAdminDb } from '@/firebase/admin';
 import { FIRESTORE_COLLECTIONS } from '@/shared/constants';
 import { requireRequestAuth, toAuthErrorResponse } from '@/shared/lib/serverAuth';
 import { writeAuditEvent } from '@/shared/lib/auditLog';
@@ -81,6 +82,41 @@ export async function POST(request: NextRequest) {
       });
 
       return NextResponse.json({ error: 'Access denied for company' }, { status: 403 });
+    }
+
+    const db = getFirebaseAdminDb();
+    const buildingSnap = await db.collection('buildings').doc(payload.buildingId).get();
+    if (!buildingSnap.exists) {
+      await writeAuditEvent({
+        request,
+        action: 'company_invitation.send',
+        status: 'denied',
+        actorUid: auth.uid,
+        actorRole: auth.role,
+        companyId: payload.companyId,
+        reason: 'building_not_found',
+      });
+
+      return NextResponse.json({ error: 'Building not found' }, { status: 404 });
+    }
+
+    const building = buildingSnap.data() as Record<string, unknown>;
+    const buildingCompanyId =
+      (typeof building.companyId === 'string' ? building.companyId : undefined) ??
+      ((building.managedBy as Record<string, unknown> | undefined)?.companyId as string | undefined);
+
+    if (!buildingCompanyId || buildingCompanyId !== payload.companyId) {
+      await writeAuditEvent({
+        request,
+        action: 'company_invitation.send',
+        status: 'denied',
+        actorUid: auth.uid,
+        actorRole: auth.role,
+        companyId: payload.companyId,
+        reason: 'building_company_mismatch',
+      });
+
+      return NextResponse.json({ error: 'Access denied for building/company ownership' }, { status: 403 });
     }
 
     const normalizedEmail = payload.email.trim().toLowerCase();

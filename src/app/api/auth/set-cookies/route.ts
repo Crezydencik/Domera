@@ -3,6 +3,7 @@ import { getFirebaseAdminAuth } from '@/firebase/admin';
 import { buildRateLimitKey, consumeRateLimit } from '@/shared/lib/rateLimit';
 import { writeAuditEvent } from '@/shared/lib/auditLog';
 import { toSafeErrorDetails } from '@/shared/lib/safeLog';
+import { getSessionCookieMaxAgeSeconds, getSessionTtlMs, SESSION_COOKIE_NAME } from '@/shared/lib/authSession';
 
 export async function POST(request: NextRequest) {
   try {
@@ -35,7 +36,7 @@ export async function POST(request: NextRequest) {
 
     let decoded;
     try {
-      decoded = await getFirebaseAdminAuth().verifyIdToken(idToken);
+      decoded = await getFirebaseAdminAuth().verifyIdToken(idToken, true);
     } catch {
       await writeAuditEvent({
         request,
@@ -69,36 +70,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'email does not match token subject' }, { status: 403 });
     }
 
+    const sessionTtlMs = getSessionTtlMs();
+    const sessionCookie = await getFirebaseAdminAuth().createSessionCookie(idToken, {
+      expiresIn: sessionTtlMs,
+    });
+
     const response = NextResponse.json({ success: true });
-    const nowInSeconds = Math.floor(Date.now() / 1000);
-    const tokenMaxAge = typeof decoded.exp === 'number' ? Math.max(decoded.exp - nowInSeconds, 0) : 60 * 60;
-
-    // Set auth cookies
-    response.cookies.set('userId', decoded.uid, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        maxAge: 60 * 60 * 24 * 7, // 7 days
-        path: '/',
-      });
-
-    if (decoded.email) {
-      response.cookies.set('userEmail', decoded.email, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        maxAge: 60 * 60 * 24 * 7, // 7 days
-        path: '/',
-      });
-    }
-
-    response.cookies.set('authToken', idToken, {
+    response.cookies.set(SESSION_COOKIE_NAME, sessionCookie, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      maxAge: tokenMaxAge,
+      maxAge: getSessionCookieMaxAgeSeconds(),
       path: '/',
     });
+
+    // Cleanup legacy cookies from previous auth model
+    response.cookies.delete('authToken');
+    response.cookies.delete('userId');
+    response.cookies.delete('userEmail');
 
     await writeAuditEvent({
       request,
@@ -106,6 +95,9 @@ export async function POST(request: NextRequest) {
       status: 'success',
       actorUid: decoded.uid,
       targetEmail: decoded.email,
+      metadata: {
+        sessionTtlMs,
+      },
     });
 
     return response;

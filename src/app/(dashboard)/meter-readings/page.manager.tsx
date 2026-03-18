@@ -507,9 +507,7 @@ export default function MeterReadingsManagerPage() {
           const selectedBuilding = selectedBuildingId ? buildings.find(b => b.id === selectedBuildingId) : null;
           // Сохранение изменений
           const handleSaveDays = async () => {
-            console.log('handleSaveDays called', { editOpenDate, editCloseDate, selectedBuilding });
             if (!selectedBuilding) {
-              console.error('Нет выбранного дома!');
               return;
             }
             setIsSaving(true);

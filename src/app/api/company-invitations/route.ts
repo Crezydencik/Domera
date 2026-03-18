@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { queryDocuments } from '@/firebase/services/firestoreService';
+import { getFirebaseAdminDb } from '@/firebase/admin';
 import { FIRESTORE_COLLECTIONS } from '@/shared/constants';
 import { requireRequestAuth, toAuthErrorResponse } from '@/shared/lib/serverAuth';
 
@@ -18,6 +19,21 @@ export async function GET(request: NextRequest) {
 
     if (auth.companyId && auth.companyId !== companyId) {
       return NextResponse.json({ error: 'Access denied for company' }, { status: 403 });
+    }
+
+    const db = getFirebaseAdminDb();
+    const buildingSnap = await db.collection('buildings').doc(buildingId).get();
+    if (!buildingSnap.exists) {
+      return NextResponse.json({ error: 'Building not found' }, { status: 404 });
+    }
+
+    const building = buildingSnap.data() as Record<string, unknown>;
+    const buildingCompanyId =
+      (typeof building.companyId === 'string' ? building.companyId : undefined) ??
+      ((building.managedBy as Record<string, unknown> | undefined)?.companyId as string | undefined);
+
+    if (!buildingCompanyId || buildingCompanyId !== companyId) {
+      return NextResponse.json({ error: 'Access denied for building/company ownership' }, { status: 403 });
     }
 
     const invitations = await queryDocuments(FIRESTORE_COLLECTIONS.COMPANY_INVITATIONS, [

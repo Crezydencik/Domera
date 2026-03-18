@@ -1,11 +1,11 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { getApartmentsFromDatabase, deleteApartment, unassignResidentFromApartment } from '@/modules/apartments/services/apartmentsService';
+import { getApartmentsByCompany, createApartment, deleteApartment, unassignResidentFromApartment } from '@/modules/apartments/services/apartmentsService';
 import { logout } from '@/modules/auth/services/authService';
-import { getBuildingsFromDatabase } from '@/firebase/services/firestoreService';
+import { getBuildingsByCompany } from '@/modules/invoices/services/buildings/services/buildingsService';
 import { revokeInvitation } from '@/modules/invitations/services/invitationsService';
-import { doc, addDoc, collection, onSnapshot, query, where, updateDoc, getDoc } from 'firebase/firestore';
+import { doc, collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '@/firebase/config';
 import { useAuth } from '@/shared/hooks/useAuth';
 import { useTranslations } from 'next-intl';
@@ -65,19 +65,42 @@ export default function ApartmentsManagementPage() {
   // Вынес fetchData наружу, чтобы можно было вызывать после добавления квартиры
   const fetchData = async () => {
     try {
+      const currentCompanyId = user?.companyId?.trim();
+      if (!currentCompanyId) {
+        setApartments([]);
+        setBuildings([]);
+        return;
+      }
+
       const [apartmentData, buildingData] = await Promise.all([
-        getApartmentsFromDatabase(),
-        getBuildingsFromDatabase(),
+        getApartmentsByCompany(currentCompanyId),
+        getBuildingsByCompany(currentCompanyId),
       ]);
+
+      const tenantBuildings = buildingData.filter((building) => {
+        const managedCompanyId =
+          typeof building.companyId === 'string'
+            ? building.companyId
+            : (building.managedBy?.companyId ?? '');
+        return managedCompanyId === currentCompanyId;
+      });
+
+      const tenantBuildingIds = new Set(tenantBuildings.map((building) => building.id));
+
+      const tenantApartments = apartmentData.filter((apartment) => {
+        const hasCompany = Array.isArray(apartment.companyIds) && apartment.companyIds.includes(currentCompanyId);
+        return hasCompany || tenantBuildingIds.has(apartment.buildingId);
+      });
+
       setApartments(
-        apartmentData.map(ap => ({
+        tenantApartments.map(ap => ({
           ...ap,
           companyIds: Array.isArray(ap.companyIds) ? ap.companyIds : [],
         })) 
       );
       // (meters loading removed — not needed in this view)
       setBuildings(
-        buildingData.map((building) => ({
+        tenantBuildings.map((building) => ({
           ...building,
           name: building.name || "Unnamed Building",
           apartmentIds: building.apartmentIds || [],
@@ -92,12 +115,19 @@ export default function ApartmentsManagementPage() {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [user?.companyId]);
 
   // subscribe to invitations so we can hide apartments that already have invites in the global invite selector
   useEffect(() => {
+    if (!user?.companyId) {
+      setInvitedApartmentIds([]);
+      setPendingInvitationByApartmentId({});
+      return;
+    }
+
     const invitationsCollection = collection(db, 'invitations');
-    const unsub = onSnapshot(invitationsCollection, (qs) => {
+    const invitationsQuery = query(invitationsCollection, where('companyId', '==', user.companyId));
+    const unsub = onSnapshot(invitationsQuery, (qs) => {
       const pendingByApartment: Record<string, string> = {};
       const ids = Array.from(new Set(qs.docs
         .map(d => {
@@ -115,7 +145,7 @@ export default function ApartmentsManagementPage() {
       setPendingInvitationByApartmentId(pendingByApartment);
     });
     return () => unsub();
-  }, []);
+  }, [user?.companyId]);
 
   if (loading) {
     return (
@@ -130,6 +160,12 @@ export default function ApartmentsManagementPage() {
 
   const handleAddApartment = async () => {
     try {
+      const currentCompanyId = user?.companyId?.trim();
+      if (!currentCompanyId) {
+        toast.error('Не удалось определить управляющую компанию');
+        return;
+      }
+
       // companyId УК только из выбранного дома
       const selectedBuilding = buildings.find(b => b.id === newApartment.buildingId);
       // Проверка: нельзя добавить квартиру с уже существующим номером в этом доме
@@ -140,41 +176,15 @@ export default function ApartmentsManagementPage() {
         toast.error('Квартира с таким номером уже существует в этом доме!');
         return;
       }
-      // companyId УК только из выбранного дома (берём из самого объекта дома)
-      const companyId = selectedBuilding?.companyId;
-      if (!companyId) {
+      if (!selectedBuilding) {
         toast.error('У выбранного дома не найден идентификатор управляющей компании!');
         return;
       }
-      const newApartmentData = {
-        buildingId: newApartment.buildingId,
-        companyIds: [companyId],
-        number: newApartment.number,
-      };
-      const apartmentsCollection = collection(db, 'apartments');
-      const docRef = await addDoc(apartmentsCollection, newApartmentData);
 
-      // --- Гарантируем добавление id квартиры в apartmentIds дома ---
-      try {
-        const buildingDocRef = doc(db, 'buildings', newApartment.buildingId);
-        // Получаем актуальные данные здания
-        const buildingSnap = await getDoc(buildingDocRef);
-        const buildingData = buildingSnap.exists() ? buildingSnap.data() : {};
-        // apartmentIds всегда массив строк
-        let currentApartmentIds = [];
-        if (Array.isArray(buildingData.apartmentIds)) {
-          currentApartmentIds = buildingData.apartmentIds;
-        } else if (typeof buildingData.apartmentIds === 'object' && buildingData.apartmentIds !== null) {
-          // Firestore может хранить объект вместо массива, если был ошибочный апдейт
-          console.warn('[handleAddApartment] apartmentIds был объектом, а не массивом! Удалите поле вручную в консоли Firestore и повторите добавление.');
-        }
-        const updatedApartmentIds = [...new Set([...currentApartmentIds, docRef.id])];
-        await updateDoc(buildingDocRef, {
-          apartmentIds: updatedApartmentIds,
-        });
-      } catch (e) {
-        console.error('[handleAddApartment] Ошибка при обновлении apartmentIds в доме:', toSafeErrorDetails(e));
-      }
+      await createApartment({
+        buildingId: newApartment.buildingId,
+        number: newApartment.number,
+      }, currentCompanyId);
 
       setNewApartment({ number: '', buildingId: '' });
       setIsAddingApartment(false);

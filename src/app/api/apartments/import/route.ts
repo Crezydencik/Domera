@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import * as XLSX from 'xlsx';
 import { db } from '@/firebase/config';
 import { collection, doc, setDoc, updateDoc, arrayUnion, getDocs, query, where } from 'firebase/firestore';
+import { getFirebaseAdminDb } from '@/firebase/admin';
 import { requireRequestAuth, toAuthErrorResponse } from '@/shared/lib/serverAuth';
 import { writeAuditEvent } from '@/shared/lib/auditLog';
 
@@ -307,14 +308,44 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Access denied for company' }, { status: 403 });
     }
 
+    // Verify the target building belongs to the company
+    const adminDb = getFirebaseAdminDb();
+    const importBuildingSnap = await adminDb.collection('buildings').doc(buildingId).get();
+    if (!importBuildingSnap.exists) {
+      await writeAuditEvent({
+        request,
+        action: 'apartments.import',
+        status: 'denied',
+        actorUid: auth.uid,
+        actorRole: auth.role,
+        companyId,
+        reason: 'building_not_found',
+      });
+      return NextResponse.json({ error: 'Building not found' }, { status: 404 });
+    }
+    const importBuildingData = importBuildingSnap.data() as Record<string, unknown>;
+    const importBuildingCompanyId =
+      (typeof importBuildingData.companyId === 'string' ? importBuildingData.companyId : undefined) ??
+      ((importBuildingData.managedBy as Record<string, unknown> | undefined)?.companyId as string | undefined);
+    if (!importBuildingCompanyId || importBuildingCompanyId !== companyId) {
+      await writeAuditEvent({
+        request,
+        action: 'apartments.import',
+        status: 'denied',
+        actorUid: auth.uid,
+        actorRole: auth.role,
+        companyId,
+        reason: 'building_company_mismatch',
+      });
+      return NextResponse.json({ error: 'Access denied for building/company ownership' }, { status: 403 });
+    }
+
     // Read Excel file
     const buffer = await file.arrayBuffer();
     const workbook = XLSX.read(buffer, { type: 'array' });
     const sheetName = workbook.SheetNames[0];
     const sheet = workbook.Sheets[sheetName];
     const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' }) as Record<string, unknown>[];
-
-    console.log(`Processing ${rows.length} apartments from Excel`);
 
     const existingApartmentsSnapshot = await getDocs(
       query(collection(db, 'apartments'), where('buildingId', '==', buildingId))
@@ -406,7 +437,6 @@ export async function POST(request: NextRequest) {
 
         if (existingApartmentNumbers.has(normalizedApartmentNumber) || importedApartmentNumbers.has(normalizedApartmentNumber)) {
           results.skippedDuplicates.push(`Квартира ${apartmentNumber} уже существует в выбранном доме`);
-          console.warn(`Duplicate apartment skipped: ${apartmentNumber} for building ${buildingId}`);
           continue;
         }
 
@@ -457,7 +487,6 @@ export async function POST(request: NextRequest) {
         });
 
         const apartmentRef = doc(collection(db, 'apartments'));
-        console.log(`✓ Created apartment: ${apartmentNumber} (${apartmentRef.id})`);
 
         const waterReadings: Record<string, unknown> = {};
         const hotWaterCheckDueDate = findDueDateFromRow(row, 'hot');
@@ -503,7 +532,6 @@ export async function POST(request: NextRequest) {
             createdAt: new Date(),
           });
 
-          console.log(`  ✓ Hot water meter: ${hotWaterMeterNumber}`);
           waterReadings.hotmeterwater = hotGroup;
         }
 
@@ -547,7 +575,6 @@ export async function POST(request: NextRequest) {
             createdAt: new Date(),
           });
 
-          console.log(`  ✓ Cold water meter: ${coldWaterMeterNumber}`);
           waterReadings.coldmeterwater = coldGroup;
         }
 
@@ -568,11 +595,9 @@ export async function POST(request: NextRequest) {
         results.createdApartments.push(
           `${apartmentNumber} (${apartmentData.address || 'N/A'}) - Собственник: ${apartmentData.owner || 'N/A'}`
         );
-        console.log(`✓ Fully processed apartment ${apartmentNumber}\n`);
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
         results.errors.push(`Row ${i + 1}: ${errorMsg}`);
-        console.error(`✗ Error importing row ${i + 1}:`, errorMsg);
       }
     }
 

@@ -57,9 +57,12 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     await ref.set(payload, { merge: true });
 
+    const fileAction = typeof payload.pdfUrl === 'string' && payload.pdfUrl !== current.pdfUrl
+      ? 'invoice.file_attach'
+      : 'invoice.update';
     await writeAuditEvent({
       request,
-      action: 'invoice.update',
+      action: fileAction,
       status: 'success',
       actorUid: auth.uid,
       actorRole: auth.role,
@@ -135,6 +138,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 
     await ref.delete();
 
+    const hasPdf = typeof current.pdfUrl === 'string' && current.pdfUrl !== '';
     await writeAuditEvent({
       request,
       action: 'invoice.delete',
@@ -143,7 +147,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
       actorRole: auth.role,
       companyId: targetCompanyId,
       apartmentId: typeof current.apartmentId === 'string' ? current.apartmentId : undefined,
-      metadata: { invoiceId },
+      metadata: { invoiceId, hadPdf: hasPdf },
     });
 
     return NextResponse.json({ success: true });

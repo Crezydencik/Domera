@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { DecodedIdToken } from 'firebase-admin/auth';
 import { getFirebaseAdminAuth } from '@/firebase/admin';
 import type { UserRole } from '@/shared/types';
+import { SESSION_COOKIE_NAME } from '@/shared/lib/authSession';
 
 type AuthOptions = {
   allowedRoles?: UserRole[];
@@ -33,12 +34,35 @@ const parseBearerToken = (authorizationHeader: string | null): string | null => 
   return token.trim();
 };
 
-const extractTokenFromRequest = (request: NextRequest): string | null => {
-  const authHeaderToken = parseBearerToken(request.headers.get('authorization'));
-  if (authHeaderToken) return authHeaderToken;
+type ExtractedToken = {
+  token: string;
+  source: 'session_cookie' | 'bearer_id_token' | 'legacy_cookie_id_token';
+};
 
-  const cookieToken = request.cookies.get('authToken')?.value;
-  if (cookieToken?.trim()) return cookieToken.trim();
+const extractTokenFromRequest = (request: NextRequest): ExtractedToken | null => {
+  const sessionCookie = request.cookies.get(SESSION_COOKIE_NAME)?.value?.trim();
+  if (sessionCookie) {
+    return {
+      token: sessionCookie,
+      source: 'session_cookie',
+    };
+  }
+
+  const authHeaderToken = parseBearerToken(request.headers.get('authorization'));
+  if (authHeaderToken) {
+    return {
+      token: authHeaderToken,
+      source: 'bearer_id_token',
+    };
+  }
+
+  const legacyCookieToken = request.cookies.get('authToken')?.value?.trim();
+  if (legacyCookieToken) {
+    return {
+      token: legacyCookieToken,
+      source: 'legacy_cookie_id_token',
+    };
+  }
 
   return null;
 };
@@ -51,14 +75,18 @@ export const requireRequestAuth = async (
   request: NextRequest,
   options: AuthOptions = {}
 ): Promise<RequestAuthContext> => {
-  const token = extractTokenFromRequest(request);
-  if (!token) {
+  const extracted = extractTokenFromRequest(request);
+  if (!extracted) {
     throw new ApiAuthError('Authentication required', 401);
   }
 
   let decoded: DecodedIdToken;
   try {
-    decoded = await getFirebaseAdminAuth().verifyIdToken(token);
+    if (extracted.source === 'session_cookie') {
+      decoded = await getFirebaseAdminAuth().verifySessionCookie(extracted.token, true);
+    } else {
+      decoded = await getFirebaseAdminAuth().verifyIdToken(extracted.token, true);
+    }
   } catch {
     throw new ApiAuthError('Invalid authentication token', 401);
   }

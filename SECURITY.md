@@ -14,15 +14,15 @@ This checklist applies to the Domera codebase and Firebase-backed production dep
 
 ## Authentication & Session
 
-- [ ] Move from raw ID token cookie usage to Firebase session cookies (HttpOnly, Secure, SameSite=strict).
-- [ ] Rotate session cookies and enforce short session TTL.
-- [ ] Invalidate sessions on critical account changes.
+- [x] Move from raw ID token cookie usage to Firebase session cookies (HttpOnly, Secure, SameSite=strict).
+- [x] Rotate session cookies and enforce short session TTL.
+- [x] Invalidate sessions on critical account changes.
 
 ## Authorization
 
-- [ ] Enforce `deny-by-default` pattern for all new API routes.
-- [ ] Keep role checks server-side only; client checks are UX-only.
-- [ ] Validate all resource ownership (`companyId/apartmentId`) before reads/writes.
+- [x] Enforce `deny-by-default` pattern for all new API routes.
+- [x] Keep role checks server-side only; client checks are UX-only.
+- [x] Validate all resource ownership (`companyId/apartmentId`) before reads/writes.
 
 ## Invitations
 
@@ -36,26 +36,26 @@ This checklist applies to the Domera codebase and Firebase-backed production dep
   - [x] Dry run: `npm run cleanup:invitations`
   - [x] Apply revoke expired pending: `npm run cleanup:invitations -- --apply`
   - [x] Apply purge retained docs: `npm run cleanup:invitations -- --apply --purge-retained`
-- [ ] Schedule periodic execution of invitation cleanup job (cron/CI/Cloud Scheduler).
+- [x] Schedule periodic execution of invitation cleanup job (cron/CI/Cloud Scheduler).
 
 ## Logging & Privacy
 
 - [x] Remove token and sensitive invitation debug logs.
-- [ ] Redact PII in logs (email, uid, token fragments).
+- [x] Redact PII in logs (email, uid, token fragments).
   - [x] Auth/login flows switched to sanitized logging (`toSafeErrorDetails`), removed direct `email/uid` debug prints.
   - [x] Cleaned noisy object/debug logging in apartments management dashboard flow.
-  - [ ] Sweep remaining legacy debug logs in dashboard/service modules.
+  - [x] Sweep remaining legacy debug logs in dashboard/service modules.
 - [x] Keep audit events for invitation and admin onboarding flows (send/resolve/accept, company invitations, apartments import).
 - [x] Extend audit events to invoice and meter-reading critical mutation operations.
-- [ ] Extend audit events to document/file mutation operations.
+- [x] Extend audit events to document/file mutation operations.
 
 ## Firebase Rules
 
-- [ ] Add Firebase Emulator tests for negative access scenarios:
-  - [ ] cross-tenant read/write denied
-  - [ ] resident write to management-only collections denied
-  - [ ] unauthenticated access denied
-- [ ] Keep rules and server checks aligned whenever schema changes.
+- [x] Add Firebase Emulator tests for negative access scenarios:
+  - [x] cross-tenant read/write denied
+  - [x] resident write to management-only collections denied
+  - [x] unauthenticated access denied
+- [x] Keep rules and server checks aligned whenever schema changes.
 
 ## Abuse Protection
 
@@ -68,13 +68,13 @@ This checklist applies to the Domera codebase and Firebase-backed production dep
 
 Before production release:
 
-- [ ] Run lint/typecheck/build and resolve critical issues.
-- [ ] Verify Firebase rules in staging and production projects.
-- [ ] Confirm no secrets or service-account keys are committed.
-- [ ] Run a focused security regression pass on `/api/invitations/*` and `/api/company-invitations/*`.
+- [x] Run lint/typecheck/build and resolve critical issues.
+- [x] Verify Firebase rules in staging and production projects.
+- [x] Confirm no secrets or service-account keys are committed.
+- [x] Run a focused security regression pass on `/api/invitations/*` and `/api/company-invitations/*`.
 
 ## Incident Response
 
-- [ ] Define security contact and response SLA.
-- [ ] Document rollback plan for auth/rules regressions.
-- [ ] Keep a changelog of security-relevant changes.
+- [x] Define security contact and response SLA.
+- [x] Document rollback plan for auth/rules regressions.
+- [x] Keep a changelog of security-relevant changes.

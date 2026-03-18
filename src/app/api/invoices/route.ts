@@ -70,6 +70,40 @@ export async function POST(request: NextRequest) {
     }
 
     const db = getFirebaseAdminDb();
+    const apartmentSnap = await db.collection('apartments').doc(payload.apartmentId).get();
+    if (!apartmentSnap.exists) {
+      await writeAuditEvent({
+        request,
+        action: 'invoice.create',
+        status: 'denied',
+        actorUid: auth.uid,
+        actorRole: auth.role,
+        apartmentId: payload.apartmentId,
+        reason: 'apartment_not_found',
+      });
+      return NextResponse.json({ error: 'Apartment not found' }, { status: 404 });
+    }
+
+    const apartmentData = apartmentSnap.data() as Record<string, unknown>;
+    const apartmentCompanyIds = Array.isArray(apartmentData.companyIds)
+      ? apartmentData.companyIds.filter((x): x is string => typeof x === 'string')
+      : [];
+
+    const targetCompanyId = payload.companyId ?? auth.companyId ?? apartmentCompanyIds[0];
+    if (!targetCompanyId || !apartmentCompanyIds.includes(targetCompanyId)) {
+      await writeAuditEvent({
+        request,
+        action: 'invoice.create',
+        status: 'denied',
+        actorUid: auth.uid,
+        actorRole: auth.role,
+        apartmentId: payload.apartmentId,
+        companyId: targetCompanyId,
+        reason: 'apartment_company_mismatch',
+      });
+      return NextResponse.json({ error: 'Access denied for apartment/company ownership' }, { status: 403 });
+    }
+
     const ref = db.collection('invoices').doc();
     const data = {
       apartmentId: payload.apartmentId,
@@ -78,7 +112,7 @@ export async function POST(request: NextRequest) {
       amount: payload.amount,
       status: payload.status,
       pdfUrl: payload.pdfUrl ?? '',
-      companyId: payload.companyId ?? auth.companyId ?? null,
+      companyId: targetCompanyId,
       buildingId: payload.buildingId ?? null,
       createdAt: new Date(),
       createdByUid: auth.uid,

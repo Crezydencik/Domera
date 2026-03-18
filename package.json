@@ -7,11 +7,17 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "typecheck": "tsc --noEmit",
     "analyze:excel": "tsx scripts/analyzeExcelStructure.ts",
     "import:apartments": "tsx scripts/importApartmentsFromExcel.ts",
     "migrate:waterReadings": "tsx scripts/migrateWaterReadings.ts",
     "migrate:invitationTokens": "tsx scripts/migrateInvitationTokens.ts",
-    "cleanup:invitations": "tsx scripts/cleanupExpiredInvitations.ts"
+    "cleanup:invitations": "tsx scripts/cleanupExpiredInvitations.ts",
+    "test:rules:run": "tsx tests/security/firestore.rules.test.ts",
+    "test:rules": "firebase emulators:exec --only firestore \"npm run test:rules:run\"",
+    "security:regression": "tsx scripts/securityRegression.ts",
+    "security:secrets": "tsx scripts/checkCommittedSecrets.ts",
+    "security:release-gate": "npm run lint && npm run typecheck && npm run build && npm run security:secrets && npm run test:rules && npm run security:regression"
   },
   "dependencies": {
     "firebase": "^12.9.0",
@@ -29,12 +35,14 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
+    "firebase-tools": "^14.23.0",
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
     "typescript": "5.9.3"

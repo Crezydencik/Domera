@@ -1,5 +1,10 @@
 rules_version = '2';
 
+// ALIGNMENT NOTE: These Firestore rules are the second line of defence.
+// Every collection rule here has a corresponding server-side ownership check
+// in src/app/api/**. When schema changes, update both in the same PR so they
+// stay in sync. Tests live in tests/security/firestore.rules.test.ts.
+
 service cloud.firestore {
   match /databases/{database}/documents {
     function isAuthenticated() {
@@ -83,7 +88,8 @@ service cloud.firestore {
         || (isResident() && resource.data.apartmentIds is list && resource.data.apartmentIds.hasAny([userApartmentId()]))
       );
 
-      allow create, update: if isManagementStaff() && hasCompanyAccess(request.resource.data.companyId);
+      allow create: if isManagementStaff() && hasCompanyAccess(request.resource.data.companyId);
+      allow update: if isManagementStaff() && hasCompanyAccess(resource.data.companyId);
       allow delete: if isManagementStaff() && hasCompanyAccess(resource.data.companyId);
     }
 
@@ -93,7 +99,8 @@ service cloud.firestore {
         || (isResident() && hasApartmentAccess(apartmentId))
       );
 
-      allow create, update: if isManagementStaff() && apartmentHasCompanyAccess(request.resource.data.companyIds);
+      allow create: if isManagementStaff() && apartmentHasCompanyAccess(request.resource.data.companyIds);
+      allow update: if isManagementStaff() && apartmentHasCompanyAccess(resource.data.companyIds);
       allow delete: if isManagementStaff() && apartmentHasCompanyAccess(resource.data.companyIds);
     }
 
@@ -103,7 +110,8 @@ service cloud.firestore {
         || (isResident() && hasApartmentAccess(resource.data.apartmentId))
       );
 
-      allow create, update: if isManagementStaff() && hasCompanyAccess(request.resource.data.companyId);
+      allow create: if isManagementStaff() && hasCompanyAccess(request.resource.data.companyId);
+      allow update: if isManagementStaff() && hasCompanyAccess(resource.data.companyId);
       allow delete: if isManagementStaff() && hasCompanyAccess(resource.data.companyId);
     }
 
@@ -113,7 +121,8 @@ service cloud.firestore {
         || (isResident() && hasApartmentAccess(resource.data.apartmentId))
       );
 
-      allow create, update: if isManagementStaff() && hasCompanyAccess(request.resource.data.companyId);
+      allow create: if isManagementStaff() && hasCompanyAccess(request.resource.data.companyId);
+      allow update: if isManagementStaff() && hasCompanyAccess(resource.data.companyId);
       allow delete: if isManagementStaff() && hasCompanyAccess(resource.data.companyId);
     }
 
@@ -123,19 +132,23 @@ service cloud.firestore {
         || (isResident() && hasApartmentAccess(resource.data.apartmentId))
       );
 
-      allow create, update: if isManagementStaff() && hasCompanyAccess(request.resource.data.companyId);
+      allow create: if isManagementStaff() && hasCompanyAccess(request.resource.data.companyId);
+      allow update: if isManagementStaff() && hasCompanyAccess(resource.data.companyId);
       allow delete: if isManagementStaff() && hasCompanyAccess(resource.data.companyId);
     }
 
     match /invitations/{invitationId} {
-      allow read: if isManagementStaff() && hasCompanyAccess(resource.data.companyId);
-      allow create, update: if isManagementStaff() && hasCompanyAccess(request.resource.data.companyId);
+      allow read: if isManagementStaff() && hasCompanyAccess(resource.data.companyId)
+        || (isResident() && hasApartmentAccess(resource.data.apartmentId));
+      allow create: if isManagementStaff() && hasCompanyAccess(request.resource.data.companyId);
+      allow update: if isManagementStaff() && hasCompanyAccess(resource.data.companyId);
       allow delete: if isManagementStaff() && hasCompanyAccess(resource.data.companyId);
     }
 
     match /company_invitations/{invitationId} {
       allow read: if isManagementStaff() && hasCompanyAccess(resource.data.companyId);
-      allow create, update: if isManagementStaff() && hasCompanyAccess(request.resource.data.companyId);
+      allow create: if isManagementStaff() && hasCompanyAccess(request.resource.data.companyId);
+      allow update: if isManagementStaff() && hasCompanyAccess(resource.data.companyId);
       allow delete: if isManagementStaff() && hasCompanyAccess(resource.data.companyId);
     }
 
@@ -151,7 +164,8 @@ service cloud.firestore {
         || isResident()
       );
 
-      allow create, update: if isManagementStaff() && hasCompanyAccess(request.resource.data.companyId);
+      allow create: if isManagementStaff() && hasCompanyAccess(request.resource.data.companyId);
+      allow update: if isManagementStaff() && hasCompanyAccess(resource.data.companyId);
       allow delete: if isManagementStaff() && hasCompanyAccess(resource.data.companyId);
     }
 
@@ -161,7 +175,8 @@ service cloud.firestore {
         || isResident()
       );
 
-      allow create, update: if isManagementStaff() && hasCompanyAccess(request.resource.data.companyId);
+      allow create: if isManagementStaff() && hasCompanyAccess(request.resource.data.companyId);
+      allow update: if isManagementStaff() && hasCompanyAccess(resource.data.companyId);
       allow delete: if isManagementStaff() && hasCompanyAccess(resource.data.companyId);
     }
 

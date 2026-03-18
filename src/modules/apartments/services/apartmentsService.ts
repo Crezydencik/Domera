@@ -169,14 +169,9 @@ export const createApartment = async (
         : []), id])
     );
 
-    console.log('[createApartment] nextApartmentIds:', nextApartmentIds);
-    console.log('[createApartment] apartmentsArr:', apartmentsArr);
-
-
     await updateDocument(FIRESTORE_COLLECTIONS.BUILDINGS, data.buildingId, {
       apartmentIds: nextApartmentIds
     });
-    console.log('[createApartment] apartmentIds после update:', nextApartmentIds);
 
     // Fallback: если после обновления apartmentIds не появился, пробуем восстановить вручную
     setTimeout(async () => {
@@ -189,11 +184,7 @@ export const createApartment = async (
           const aSnap = await getDocs(aQuery);
           const ids = aSnap.docs.map((d) => d.id);
           await updateDocument(FIRESTORE_COLLECTIONS.BUILDINGS, data.buildingId, { apartmentIds: ids });
-          console.log('[createApartment fallback] apartmentIds восстановлен:', ids);
         }
-        // Проверяем, что id действительно есть в apartmentIds
-        const checkDoc = await getDocument(FIRESTORE_COLLECTIONS.BUILDINGS, data.buildingId);
-        console.log('[createApartment fallback] apartmentIds после восстановления:', (checkDoc as any)?.apartmentIds);
       } catch (e) {
         console.error('[createApartment fallback] Ошибка восстановления apartmentIds:', e);
       }

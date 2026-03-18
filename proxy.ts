@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { SESSION_COOKIE_NAME } from '@/shared/lib/authSession';
 
 const PUBLIC_PAGES = new Set([
   '/',
@@ -18,13 +19,17 @@ export function proxy(request: NextRequest) {
   }
 
   const isPublicPage = PUBLIC_PAGES.has(pathname);
-  const userId = request.cookies.get('userId')?.value;
+  const hasSession = Boolean(
+    request.cookies.get(SESSION_COOKIE_NAME)?.value ||
+      request.cookies.get('userId')?.value ||
+      request.cookies.get('authToken')?.value
+  );
 
-  if (!isPublicPage && !userId) {
+  if (!isPublicPage && !hasSession) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  if ((pathname === '/login' || pathname === '/register') && userId) {
+  if ((pathname === '/login' || pathname === '/register') && hasSession) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 

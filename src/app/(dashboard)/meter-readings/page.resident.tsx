@@ -533,8 +533,6 @@ export default function MeterReadingsPage() {
             apartmentsData = [apt];
             if (apt.buildingId) {
               const b = await getBuilding(apt.buildingId);
-              // DEBUG: вывод результата getBuilding
-              console.log('DEBUG getBuilding result:', b, 'for id:', apt.buildingId);
               if (b) buildingsData = [b];
             }
             // defer reading fetch for faster initial render
@@ -830,16 +828,7 @@ export default function MeterReadingsPage() {
           const isFirstReading = !lastReading;
           const previousValue = lastReading?.currentValue ?? 0;
 
-          // If user entered a serial number for this meter (one-time), persist it
-          const pendingSerial = meterSerialInputByMeterId[meter.id];
-          if (pendingSerial && !meter.serialNumber) {
-            try {
-              const options = { force: Boolean(forceSaveByMeterId[meter.id]), apartmentId: apartment.id };
-              await updateMeter(meter.id, { serialNumber: pendingSerial }, options);
-            } catch (err) {
-              console.warn('Failed to persist meter serial:', err);
-            }
-          }
+          // Metadata updates (serial/check date) are managed by ManagementCompany only.
 
           const intPart = (waterReadingIntegerByMeterId[meter.id] ?? '').replace(/\D/g, '').slice(0,5) || '0';
           let fracPart = (waterReadingFractionByMeterId[meter.id] ?? '').replace(/\D/g, '').slice(0,3);
