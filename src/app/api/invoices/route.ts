@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid invoice payload' }, { status: 400 });
     }
 
-    const rl = consumeRateLimit(
+    const rl = await consumeRateLimit(
       buildRateLimitKey(request, 'invoice:create', auth.uid),
       20,
       60_000

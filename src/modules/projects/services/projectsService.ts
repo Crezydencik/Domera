@@ -17,6 +17,7 @@ import {
 } from '@/firebase/services/firestoreService';
 import { FIRESTORE_COLLECTIONS } from '@/shared/constants';
 import type { Project } from '@/shared/types';
+import { toSafeErrorDetails } from '@/shared/lib/safeLog';
 
 /**
  * Create new project
@@ -37,7 +38,7 @@ export const createProject = async (
       ...projectData,
     };
   } catch (error) {
-    console.error('Error creating project:', error);
+    console.error('Error creating project:', toSafeErrorDetails(error));
     throw error;
   }
 };
@@ -50,7 +51,7 @@ export const getProject = async (projectId: string): Promise<Project | null> => 
     const doc = await getDocument(FIRESTORE_COLLECTIONS.PROJECTS, projectId);
     return doc ? ({ id: projectId, ...doc } as Project) : null;
   } catch (error) {
-    console.error('Error getting project:', error);
+    console.error('Error getting project:', toSafeErrorDetails(error));
     throw error;
   }
 };
@@ -63,7 +64,7 @@ export const getProjectsByCompany = async (companyId: string): Promise<Project[]
     const projects = await getDocumentsByCompany(FIRESTORE_COLLECTIONS.PROJECTS, companyId);
     return projects as Project[];
   } catch (error) {
-    console.error('Error getting projects by company:', error);
+    console.error('Error getting projects by company:', toSafeErrorDetails(error));
     throw error;
   }
 };
@@ -78,7 +79,7 @@ export const updateProject = async (
   try {
     await updateDocument(FIRESTORE_COLLECTIONS.PROJECTS, projectId, data);
   } catch (error) {
-    console.error('Error updating project:', error);
+    console.error('Error updating project:', toSafeErrorDetails(error));
     throw error;
   }
 };
@@ -90,7 +91,7 @@ export const deleteProject = async (projectId: string): Promise<void> => {
   try {
     await deleteDocument(FIRESTORE_COLLECTIONS.PROJECTS, projectId);
   } catch (error) {
-    console.error('Error deleting project:', error);
+    console.error('Error deleting project:', toSafeErrorDetails(error));
     throw error;
   }
 };

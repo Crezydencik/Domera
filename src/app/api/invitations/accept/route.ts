@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
     }
 
     const tokenHash = await hashInvitationToken(payload.token);
-    const rl = consumeRateLimit(
+    const rl = await consumeRateLimit(
       buildRateLimitKey(request, 'invitations:accept', tokenHash.slice(0, 12)),
       10,
       60_000

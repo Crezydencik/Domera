@@ -161,7 +161,7 @@ service cloud.firestore {
     match /news/{newsId} {
       allow read: if isAuthenticated() && (
         (isManagementStaff() && hasCompanyAccess(resource.data.companyId))
-        || isResident()
+        || (isResident() && hasCompanyAccess(resource.data.companyId))
       );
 
       allow create: if isManagementStaff() && hasCompanyAccess(request.resource.data.companyId);
@@ -172,7 +172,7 @@ service cloud.firestore {
     match /projects/{projectId} {
       allow read: if isAuthenticated() && (
         (isManagementStaff() && hasCompanyAccess(resource.data.companyId))
-        || isResident()
+        || (isResident() && hasCompanyAccess(resource.data.companyId))
       );
 
       allow create: if isManagementStaff() && hasCompanyAccess(request.resource.data.companyId);

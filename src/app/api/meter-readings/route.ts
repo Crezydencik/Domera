@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'apartmentId and meterId are required' }, { status: 400 });
     }
 
-    const rl = consumeRateLimit(
+    const rl = await consumeRateLimit(
       buildRateLimitKey(request, 'meter-readings:submit', payload.apartmentId),
       20,
       60_000

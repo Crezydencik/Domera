@@ -1,0 +1,76 @@
+name: Security Ops (Manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: "Task to run"
+        required: true
+        default: "security_release_gate"
+        type: choice
+        options:
+          - invitation_tokens_migration_dry_run
+          - invitation_tokens_migration_apply
+          - firestore_rules_tests
+          - security_release_gate
+          - deploy_firestore_rules
+
+jobs:
+  run:
+    name: Run security operation
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Prepare Firebase service account
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT_JSON" ]; then
+            echo "FIREBASE_SERVICE_ACCOUNT_JSON secret is required"
+            exit 1
+          fi
+
+      - name: Invitation token migration (dry run)
+        if: ${{ github.event.inputs.task == 'invitation_tokens_migration_dry_run' }}
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+        run: npm run migrate:invitationTokens
+
+      - name: Invitation token migration (apply)
+        if: ${{ github.event.inputs.task == 'invitation_tokens_migration_apply' }}
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+        run: npm run migrate:invitationTokens -- --apply
+
+      - name: Firestore rules tests (emulator)
+        if: ${{ github.event.inputs.task == 'firestore_rules_tests' }}
+        run: npm run test:rules
+
+      - name: Security release gate
+        if: ${{ github.event.inputs.task == 'security_release_gate' }}
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+        run: npm run security:release-gate
+
+      - name: Deploy Firestore rules
+        if: ${{ github.event.inputs.task == 'deploy_firestore_rules' }}
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        run: |
+          if [ -z "$FIREBASE_TOKEN" ]; then
+            echo "FIREBASE_TOKEN secret is required for deploy_firestore_rules"
+            exit 1
+          fi
+          npx firebase-tools deploy --only firestore:rules --token "$FIREBASE_TOKEN"

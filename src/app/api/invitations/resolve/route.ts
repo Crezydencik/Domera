@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
     }
 
     const tokenHash = await hashInvitationToken(token);
-    const rl = consumeRateLimit(
+    const rl = await consumeRateLimit(
       buildRateLimitKey(request, 'invitations:resolve', tokenHash.slice(0, 12)),
       30,
       60_000

@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
     const email = payload?.email?.trim().toLowerCase();
 
     const rlKey = buildRateLimitKey(request, 'auth:password-reset', email ?? 'anon');
-    const rl = consumeRateLimit(rlKey, 6, 60_000);
+    const rl = await consumeRateLimit(rlKey, 6, 60_000);
     if (!rl.allowed) {
       const retryAfter = Math.max(1, Math.ceil((rl.resetAt - Date.now()) / 1000));
       await writeAuditEvent({

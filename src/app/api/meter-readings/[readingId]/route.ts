@@ -33,7 +33,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       return NextResponse.json({ error: 'readingId, apartmentId and data are required' }, { status: 400 });
     }
 
-    const rl = consumeRateLimit(buildRateLimitKey(request, 'meter-reading:update', readingId), 30, 60_000);
+    const rl = await consumeRateLimit(buildRateLimitKey(request, 'meter-reading:update', readingId), 30, 60_000);
     if (!rl.allowed) {
       const retryAfter = Math.max(1, Math.ceil((rl.resetAt - Date.now()) / 1000));
       await writeAuditEvent({
@@ -131,7 +131,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
       return NextResponse.json({ error: 'readingId and apartmentId are required' }, { status: 400 });
     }
 
-    const rl = consumeRateLimit(buildRateLimitKey(request, 'meter-reading:delete', readingId), 20, 60_000);
+    const rl = await consumeRateLimit(buildRateLimitKey(request, 'meter-reading:delete', readingId), 20, 60_000);
     if (!rl.allowed) {
       const retryAfter = Math.max(1, Math.ceil((rl.resetAt - Date.now()) / 1000));
       await writeAuditEvent({

@@ -1,6 +1,7 @@
 import { Notification, NotificationType } from '@/shared/types';
 import { FIRESTORE_COLLECTIONS } from '@/shared/constants';
 import { createDocument, queryDocuments, updateDocument } from '@/firebase/services/firestoreService';
+import { toSafeErrorDetails } from '@/shared/lib/safeLog';
 
 /**
  * Create a notification for a user
@@ -34,7 +35,7 @@ export const createNotification = async (
       ...notificationData,
     } as Notification;
   } catch (error) {
-    console.error('Error creating notification:', error);
+    console.error('Error creating notification:', toSafeErrorDetails(error));
     throw error;
   }
 };
@@ -61,7 +62,7 @@ export const getUserNotifications = async (userId: string): Promise<Notification
       readAt: doc.readAt as Date | undefined,
     }));
   } catch (error) {
-    console.error('Error getting user notifications:', error);
+    console.error('Error getting user notifications:', toSafeErrorDetails(error));
     throw error;
   }
 };
@@ -76,7 +77,7 @@ export const markNotificationAsRead = async (notificationId: string): Promise<vo
       readAt: new Date(),
     });
   } catch (error) {
-    console.error('Error marking notification as read:', error);
+    console.error('Error marking notification as read:', toSafeErrorDetails(error));
     throw error;
   }
 };
@@ -93,7 +94,7 @@ export const markAllNotificationsAsRead = async (userId: string): Promise<void> 
         .map(n => markNotificationAsRead(n.id))
     );
   } catch (error) {
-    console.error('Error marking all notifications as read:', error);
+    console.error('Error marking all notifications as read:', toSafeErrorDetails(error));
     throw error;
   }
 };
@@ -106,9 +107,9 @@ export const deleteNotification = async (notificationId: string): Promise<void> 
     // Implement delete functionality
     // Note: Firestore doesn't have a direct delete document method exposed
     // You might want to use a soft delete (update read to true) or implement via API
-    console.log('Delete notification:', notificationId);
+    // Note: soft delete via API or deleteDocument should be handled at the route level
   } catch (error) {
-    console.error('Error deleting notification:', error);
+    console.error('Error deleting notification:', toSafeErrorDetails(error));
     throw error;
   }
 };

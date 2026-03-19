@@ -44,7 +44,7 @@ This checklist applies to the Domera codebase and Firebase-backed production dep
 - [x] Redact PII in logs (email, uid, token fragments).
   - [x] Auth/login flows switched to sanitized logging (`toSafeErrorDetails`), removed direct `email/uid` debug prints.
   - [x] Cleaned noisy object/debug logging in apartments management dashboard flow.
-  - [x] Sweep remaining legacy debug logs in dashboard/service modules.
+  - [x] Swept `invitationsService`, `notificationsService`, `projectsService` — raw error objects replaced with `toSafeErrorDetails`. Removed stray debug `console.log` in notificationsService.
 - [x] Keep audit events for invitation and admin onboarding flows (send/resolve/accept, company invitations, apartments import).
 - [x] Extend audit events to invoice and meter-reading critical mutation operations.
 - [x] Extend audit events to document/file mutation operations.
@@ -52,9 +52,13 @@ This checklist applies to the Domera codebase and Firebase-backed production dep
 ## Firebase Rules
 
 - [x] Add Firebase Emulator tests for negative access scenarios:
-  - [x] cross-tenant read/write denied
+  - [x] cross-tenant read/write denied (manager A vs company B)
   - [x] resident write to management-only collections denied
-  - [x] unauthenticated access denied
+  - [x] unauthenticated access denied for all collections (companies, buildings, apartments, meters, invoices, news, projects)
+  - [x] resident cross-tenant read of news/projects denied
+  - [x] accountant cross-tenant denial
+  - [x] resident cannot read another apartment's invitations
+- [x] Resident read on `news` and `projects` scoped to own company (cross-tenant read gap fixed).
 - [x] Keep rules and server checks aligned whenever schema changes.
 
 ## Abuse Protection
@@ -64,6 +68,13 @@ This checklist applies to the Domera codebase and Firebase-backed production dep
 - [x] Add rate limits for auth endpoints.
 - [x] Add alerting for repeated 401/403/429 bursts.
 
+- [x] Rate limits on `company-invitations` list (GET) and accept (POST) — previously missing.
+- [x] All 429 responses include `Retry-After` header.
+- [x] Rate limiter migrated from in-process `Map` to Firestore-backed distributed store.
+  - **OPERATIONAL**: configure Firestore TTL policy — Collection: `rate_limits`, Field: `expiresAt`.
+- [x] Invite acceptance (both new-user and authenticated-user flows) wrapped in Firestore transaction
+      to prevent TOCTOU double-acceptance.
+
 ## Release Gate
 
 Before production release:
@@ -72,6 +83,29 @@ Before production release:
 - [x] Verify Firebase rules in staging and production projects.
 - [x] Confirm no secrets or service-account keys are committed.
 - [x] Run a focused security regression pass on `/api/invitations/*` and `/api/company-invitations/*`.
+
+### Pre-go-live operational tasks
+
+- [ ] Run invitation token migration: `npm run migrate:invitationTokens -- --apply`
+- [ ] Schedule `npm run cleanup:invitations -- --apply` via Cloud Scheduler or CI cron (recommended: daily).
+- [ ] Configure Firestore TTL policy on `rate_limits` collection, field `expiresAt`.
+- [ ] Run emulator rules tests: `npx ts-node tests/security/firestore.rules.test.ts` (requires Firebase emulator).
+- [ ] Deploy updated Firestore rules to production: `firebase deploy --only firestore:rules`.
+
+### CI/CD automation configured
+
+- [x] Scheduled cleanup workflow: `.github/workflows/cleanup-invitations.yml`
+  - Daily run at `02:00 UTC`
+  - Manual run with optional `purge_retained` flag
+- [x] Manual security operations workflow: `.github/workflows/security-ops.yml`
+  - `invitation_tokens_migration_dry_run`
+  - `invitation_tokens_migration_apply`
+  - `firestore_rules_tests`
+  - `security_release_gate`
+  - `deploy_firestore_rules`
+- [ ] Required GitHub secrets in repo/environment:
+  - `FIREBASE_SERVICE_ACCOUNT_JSON`
+  - `FIREBASE_TOKEN` (required for `deploy_firestore_rules`)
 
 ## Incident Response
 

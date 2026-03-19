@@ -7,7 +7,7 @@ import { getSessionCookieMaxAgeSeconds, getSessionTtlMs, SESSION_COOKIE_NAME } f
 
 export async function POST(request: NextRequest) {
   try {
-    const rl = consumeRateLimit(buildRateLimitKey(request, 'auth:set-cookies'), 30, 60_000);
+    const rl = await consumeRateLimit(buildRateLimitKey(request, 'auth:set-cookies'), 30, 60_000);
     if (!rl.allowed) {
       const retryAfter = Math.max(1, Math.ceil((rl.resetAt - Date.now()) / 1000));
       await writeAuditEvent({

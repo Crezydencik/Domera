@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
 
     const payload = (await request.json()) as SendCompanyInvitationPayload;
 
-    const rl = consumeRateLimit(buildRateLimitKey(request, 'company-invitation:send', auth.uid), 10, 60_000);
+    const rl = await consumeRateLimit(buildRateLimitKey(request, 'company-invitation:send', auth.uid), 10, 60_000);
     if (!rl.allowed) {
       const retryAfter = Math.max(1, Math.ceil((rl.resetAt - Date.now()) / 1000));
       await writeAuditEvent({

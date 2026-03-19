@@ -1,16 +1,13 @@
 // ...existing code...
-import { Invitation, User, InvitationStatus, InvitationGdprMeta, TenantPermission } from '@/shared/types';
+import { Invitation, InvitationStatus, InvitationGdprMeta, TenantPermission } from '@/shared/types';
 import { FIRESTORE_COLLECTIONS, INVITATION_STATUSES, INVITATION_TOKEN_EXPIRY_HOURS } from '@/shared/constants';
 import { createDocument, updateDocument, queryDocuments, getDocument } from '@/firebase/services/firestoreService';
 import { generateToken } from '@/shared/lib/utils';
-import { registerUser } from '@/modules/auth/services/authService';
-import { assignResidentToApartment } from '@/modules/apartments/services/apartmentsService';
-import { getUserById } from '@/modules/auth/services/authService';
 import { validateEmail } from '@/shared/validation';
-import { createNotification } from '@/modules/notifications/services/notificationsService';
+import { toSafeErrorDetails } from '@/shared/lib/safeLog';
 import { hashInvitationToken, normalizeEmail } from '@/shared/lib/invitationToken';
 
-const syncApartmentOwnerEmailIfNeeded = async (
+export const syncApartmentOwnerEmailIfNeeded = async (
   apartmentId: string,
   invitationEmail: string
 ): Promise<void> => {
@@ -120,13 +117,15 @@ export const createInvitation = async (
       reusedExisting: false,
     };
   } catch (error) {
-    console.error('Error creating invitation:', error);
+    console.error('Error creating invitation:', toSafeErrorDetails(error));
     throw error;
   }
 };
 
 /**
  * Get invitation by token
+ *
+ * NOTE: This function is exported for use in server-only context via invitationsService.server.ts
  */
 export const getInvitationByToken = async (token: string): Promise<Invitation | null> => {
   if (!token || typeof token !== 'string') {
@@ -172,173 +171,10 @@ export const getInvitationByToken = async (token: string): Promise<Invitation | 
 
     return invitation;
   } catch (error) {
-    console.error('Error getting invitation by token:', error);
+    console.error('Error getting invitation by token:', toSafeErrorDetails(error));
     throw error;
   }
 };
-
-/**
- * Accept invitation and create resident user
- */
-export const acceptInvitation = async (
-  token: string,
-  password: string,
-  dataSubjectConsentConfirmed: boolean
-): Promise<User> => {
-  try {
-    if (!dataSubjectConsentConfirmed) {
-      throw new Error('Необходимо согласие на обработку персональных данных');
-    }
-
-    const invitation = await getInvitationByToken(token);
-
-    if (!invitation) {
-      throw new Error('Invalid or expired invitation');
-    }
-
-    if (invitation.status !== INVITATION_STATUSES.PENDING) {
-      throw new Error('Invitation already used or not active');
-    }
-
-    // Create user with Resident role
-    const user = await registerUser(
-      {
-        email: invitation.email,
-        password,
-        token,
-      },
-      'Resident',
-      '', // companyId отсутствует
-      invitation.apartmentId
-    );
-
-    // Mark invitation as accepted
-    await updateDocument(FIRESTORE_COLLECTIONS.INVITATIONS, invitation.id, {
-      status: INVITATION_STATUSES.ACCEPTED,
-      acceptedAt: new Date(),
-      gdpr: {
-        ...(invitation.gdpr ?? {}),
-        dataSubjectConsentAt: new Date(),
-      },
-    });
-
-    // Assign resident to apartment
-    await assignResidentToApartment(invitation.apartmentId, user.uid);
-
-    // Sync primary owner email with accepted invitation email
-    await syncApartmentOwnerEmailIfNeeded(invitation.apartmentId, invitation.email);
-
-    // Create notification about joining apartment
-    try {
-      await createNotification(
-        user.uid,
-        'apartment-joined',
-        'Присоединение к квартире',
-        `Вы успешно зарегистрировались и присоединились к квартире.`,
-        { apartmentId: invitation.apartmentId }
-      );
-    } catch (notifErr) {
-      console.warn('Error creating notification:', notifErr);
-      // Don't throw, notification failure shouldn't block the flow
-    }
-
-    return user;
-  } catch (error) {
-    console.error('Error accepting invitation:', error);
-    throw error;
-  }
-};
-
-/**
- * Accept invitation for already authenticated existing user
- */
-export const acceptInvitationForAuthenticatedUser = async (
-  token: string,
-  authenticatedUserId: string,
-  dataSubjectConsentConfirmed: boolean
-): Promise<void> => {
-  try {
-    if (!dataSubjectConsentConfirmed) {
-      throw new Error('Необходимо согласие на обработку персональных данных');
-    }
-
-    if (!authenticatedUserId) {
-      throw new Error('Требуется авторизация пользователя');
-    }
-
-    const invitation = await getInvitationByToken(token);
-
-    if (!invitation) {
-      throw new Error('Приглашение недействительно или истекло');
-    }
-
-    if (invitation.status !== INVITATION_STATUSES.PENDING) {
-      throw new Error('Приглашение уже использовано или недоступно');
-    }
-
-    const user = await getUserById(authenticatedUserId);
-    if (!user) {
-      throw new Error('Пользователь не найден');
-    }
-
-    const invitationEmail = normalizeEmail(invitation.email);
-    const userEmail = normalizeEmail(user.email);
-
-    if (invitationEmail !== userEmail) {
-      throw new Error('Приглашение выдано на другой email. Войдите под нужным аккаунтом.');
-    }
-
-    if (user.role === 'ManagementCompany') {
-      throw new Error('Нельзя принять приглашение жильца из аккаунта управляющей компании');
-    }
-
-    await updateDocument(FIRESTORE_COLLECTIONS.USERS, user.uid, {
-      role: 'Resident',
-      apartmentId: invitation.apartmentId,
-    });
-
-    await updateDocument(FIRESTORE_COLLECTIONS.INVITATIONS, invitation.id, {
-      status: INVITATION_STATUSES.ACCEPTED,
-      acceptedAt: new Date(),
-      gdpr: {
-        ...(invitation.gdpr ?? {}),
-        dataSubjectConsentAt: new Date(),
-      },
-    });
-
-    await assignResidentToApartment(invitation.apartmentId, user.uid);
-
-    // Sync primary owner email with accepted invitation email
-    await syncApartmentOwnerEmailIfNeeded(invitation.apartmentId, invitation.email);
-
-    // Create notification about joining apartment
-    try {
-      await createNotification(
-        authenticatedUserId,
-        'apartment-joined',
-        'Присоединение к квартире',
-        `Вы успешно присоединились к квартире.`,
-        { apartmentId: invitation.apartmentId }
-      );
-    } catch (notifErr) {
-      console.warn('Error creating notification:', notifErr);
-      // Don't throw, notification failure shouldn't block the flow
-    }
-  } catch (error) {
-    console.error('Error accepting invitation for authenticated user:', error);
-    throw error;
-  }
-};
-
-/**
- * Get invitations by company
- */
-// Функция getInvitationsByCompany удалена
-
-/**
- * Get pending invitations by company
- */
-// Функция getPendingInvitationsByCompany удалена
 
 /**
  * Get invitation by email
@@ -365,7 +201,7 @@ export const getInvitationByEmail = async (email: string): Promise<Invitation | 
       permissions: results[0].permissions as TenantPermission[],
     } : null;
   } catch (error) {
-    console.error('Error getting invitation by email:', error);
+    console.error('Error getting invitation by email:', toSafeErrorDetails(error));
     throw error;
   }
 };
@@ -380,7 +216,7 @@ export const revokeInvitation = async (invitationId: string): Promise<void> => {
       revokedAt: new Date(),
     });
   } catch (error) {
-    console.error('Error revoking invitation:', error);
+    console.error('Error revoking invitation:', toSafeErrorDetails(error));
     throw error;
   }
 };
@@ -399,7 +235,7 @@ export const revokePendingInvitationsForApartment = async (
     await Promise.all(invitations.map((inv) => revokeInvitation(String(inv.id))));
     return invitations.length;
   } catch (error) {
-    console.error('Error revoking pending invitations for apartment:', error);
+    console.error('Error revoking pending invitations for apartment:', toSafeErrorDetails(error));
     throw error;
   }
 };
@@ -416,7 +252,7 @@ export const getInvitationsByCompany = async (companyId: string): Promise<Invita
     ]);
     return docs as unknown as Invitation[];
   } catch (error) {
-    console.error('Error getting invitations by company:', error);
+    console.error('Error getting invitations by company:', toSafeErrorDetails(error));
     throw error;
   }
 };

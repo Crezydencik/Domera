@@ -3,6 +3,8 @@ import { getDocument, updateDocument } from '@/firebase/services/firestoreServic
 import { FIRESTORE_COLLECTIONS } from '@/shared/constants';
 import { requireRequestAuth, toAuthErrorResponse } from '@/shared/lib/serverAuth';
 import { writeAuditEvent } from '@/shared/lib/auditLog';
+import { buildRateLimitKey, consumeRateLimit } from '@/shared/lib/rateLimit';
+import { toSafeErrorDetails } from '@/shared/lib/safeLog';
 
 interface AcceptInvitationPayload {
   invitationId: string;
@@ -11,6 +13,28 @@ interface AcceptInvitationPayload {
 export async function POST(request: NextRequest) {
   try {
     const auth = await requireRequestAuth(request);
+
+    const rl = await consumeRateLimit(
+      buildRateLimitKey(request, 'company-invitation:accept', auth.uid),
+      10,
+      60_000
+    );
+    if (!rl.allowed) {
+      const retryAfter = Math.max(1, Math.ceil((rl.resetAt - Date.now()) / 1000));
+      await writeAuditEvent({
+        request,
+        action: 'company_invitation.accept',
+        status: 'rate_limited',
+        actorUid: auth.uid,
+        actorRole: auth.role,
+        reason: 'too_many_requests',
+      });
+      return NextResponse.json(
+        { error: 'Too many requests' },
+        { status: 429, headers: { 'Retry-After': String(retryAfter) } }
+      );
+    }
+
     const payload = (await request.json()) as AcceptInvitationPayload;
 
     if (!payload.invitationId) {
@@ -92,7 +116,7 @@ export async function POST(request: NextRequest) {
       return toAuthErrorResponse(error);
     }
 
-    console.error('Error accepting company invitation:', error);
+    console.error('Error accepting company invitation:', toSafeErrorDetails(error));
     await writeAuditEvent({
       request,
       action: 'company_invitation.accept',

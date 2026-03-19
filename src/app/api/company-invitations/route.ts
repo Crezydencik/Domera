@@ -3,12 +3,36 @@ import { queryDocuments } from '@/firebase/services/firestoreService';
 import { getFirebaseAdminDb } from '@/firebase/admin';
 import { FIRESTORE_COLLECTIONS } from '@/shared/constants';
 import { requireRequestAuth, toAuthErrorResponse } from '@/shared/lib/serverAuth';
+import { buildRateLimitKey, consumeRateLimit } from '@/shared/lib/rateLimit';
+import { writeAuditEvent } from '@/shared/lib/auditLog';
+import { toSafeErrorDetails } from '@/shared/lib/safeLog';
 
 export async function GET(request: NextRequest) {
   try {
     const auth = await requireRequestAuth(request, {
       allowedRoles: ['ManagementCompany', 'Accountant'],
     });
+
+    const rl = await consumeRateLimit(
+      buildRateLimitKey(request, 'company-invitations:list', auth.uid),
+      30,
+      60_000
+    );
+    if (!rl.allowed) {
+      const retryAfter = Math.max(1, Math.ceil((rl.resetAt - Date.now()) / 1000));
+      await writeAuditEvent({
+        request,
+        action: 'company_invitation.list',
+        status: 'rate_limited',
+        actorUid: auth.uid,
+        actorRole: auth.role,
+        reason: 'too_many_requests',
+      });
+      return NextResponse.json(
+        { error: 'Too many requests' },
+        { status: 429, headers: { 'Retry-After': String(retryAfter) } }
+      );
+    }
 
     const companyId = request.nextUrl.searchParams.get('companyId');
     const buildingId = request.nextUrl.searchParams.get('buildingId');
@@ -54,10 +78,7 @@ export async function GET(request: NextRequest) {
       return toAuthErrorResponse(error);
     }
 
-    console.error('Error loading company invitations:', error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Не удалось загрузить приглашения' },
-      { status: 500 }
-    );
+    console.error('Error loading company invitations:', toSafeErrorDetails(error));
+    return NextResponse.json({ error: 'Failed to load invitations' }, { status: 500 });
   }
 }
