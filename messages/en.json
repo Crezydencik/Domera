@@ -548,15 +548,14 @@
       "loginInstead": "Or simply",
       "loginAndAcceptAccess": "log in and accept access",
       "accountCreated": "Account successfully created",
-      "userAdded": "User successfully added"
-    },
-    "user": "User",
-    "successSaveInfo": "Information saved",
-    "errorSaveInfo": "Error saving information",
-    "successAddTenant": "Tenant added successfully",
-    "errorAddTenant": "Error adding tenant",
-    "noNewNotifications": "No new notifications",
-    "allEventsViewed": "All events viewed",
-    "apartments": "Apartments"
+      "userAdded": "User successfully added",
+      "user": "User",
+      "successSaveInfo": "Information saved",
+      "errorSaveInfo": "Error saving information",
+      "successAddTenant": "Tenant added successfully",
+      "errorAddTenant": "Error adding tenant",
+      "noNewNotifications": "No new notifications",
+      "allEventsViewed": "All events viewed",
+      "apartments": "Apartments"
+    }
   }
-}
