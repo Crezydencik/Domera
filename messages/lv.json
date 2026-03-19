@@ -254,6 +254,14 @@
 "auth": {
     "welcome": "Laipni lūdzam, {name}!",
     "subtitle": "Pārvaldiet savus dzīvokļus un maksājumus ar vieglumu",
+    "layout": {
+      "badge": "Domera platforma",
+      "title": "Pārvaldiet dzīvokļus, iedzīvotājus un maksājumus vienuviet.",
+      "subtitle": "Piesakieties savā darba vidē, sekojiet galvenajiem rādītājiem un uzturiet ērtu saziņu ar iedzīvotājiem.",
+      "feature1": "Reāllaika panelis mājām, dzīvokļiem un rēķiniem",
+      "feature2": "Droša piekļuve ar lomām balstītiem skatiem pārvaldniekiem un iedzīvotājiem",
+      "feature3": "Automātiski atgādinājumi un ērta maksājumu uzskaite"
+    },
     "common": {
       "email": "Email",
       "emailPlaceholder": "example@mail.com",

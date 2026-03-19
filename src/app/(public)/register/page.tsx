@@ -7,8 +7,12 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { registerUser } from '@/modules/auth/services/authService';
 import AuthLayout from '@/shared/components/layout/AuthLayout';
+import { useTranslations } from 'next-intl';
 
 export default function RegisterPage() {
+  const t = useTranslations('auth');
+  const ts = useTranslations('system');
+
   const searchParams = useSearchParams();
   const invitedRoleParam = searchParams.get('inviteRole');
   const invitedCompanyId = searchParams.get('companyId');
@@ -236,13 +240,13 @@ export default function RegisterPage() {
     <AuthLayout>
       <div className="w-full max-w-md mx-auto">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2 text-center">Регистрация</h1>
-          <p className="text-gray-500 text-center">Создайте аккаунт для доступа к системе</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2 text-center">{t('register.title')}</h1>
+          <p className="text-gray-500 text-center">{t('register.description')}</p>
         </div>
 
         {/* Индикатор шагов */}
         <div className="flex flex-col items-center mb-6 select-none">
-          <span className="text-sm text-gray-500 mb-2">Шаг {step} из 2</span>
+          <span className="text-sm text-gray-500 mb-2">{ts('steps.steps')} {step} {ts('steps.from')} 2</span>
           <div className="flex gap-2">
             <div className={`w-8 h-2 rounded-full transition-all duration-200 ${step === 1 ? 'bg-indigo-600' : 'bg-gray-200'}`}></div>
             <div className={`w-8 h-2 rounded-full transition-all duration-200 ${step === 2 ? 'bg-indigo-600' : 'bg-gray-200'}`}></div>
@@ -254,7 +258,7 @@ export default function RegisterPage() {
           {step === 1 && (
             <>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{ts('form.email')}</label>
                 <input
                   type="email"
                   name="email"
@@ -268,11 +272,11 @@ export default function RegisterPage() {
                   required
                 />
                 {isCompanyInvite && (
-                  <p className="text-xs text-indigo-600 mt-1">Email зафиксирован приглашением</p>
+                  <p className="text-xs text-indigo-600 mt-1">{ts('form.emailFixedByInvite')}</p>
                 )}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Пароль</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{ts('form.password')}</label>
                 <input
                   type="password"
                   name="password"
@@ -283,10 +287,10 @@ export default function RegisterPage() {
                   autoComplete="new-password"
                   required
                 />
-                <p className="text-xs text-gray-500 mt-1">Минимум 6 символов</p>
+                <p className="text-xs text-gray-500 mt-1">{ts('form.passwordHint')}</p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Повторите пароль</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{ts('form.confirmPassword')}</label>
                 <input
                   type="password"
                   name="confirmPassword"
@@ -306,13 +310,13 @@ export default function RegisterPage() {
               onClick={() => {setRole('resident'); setStep(1);}}
               className={`px-4 py-2 rounded-4 border font-semibold transition-all duration-150 text-sm
                 ${role==='resident' ? 'bg-indigo-600 text-white border-indigo-600 shadow' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'}`}
-            >Жилец</button>
+            >{t('register.resident.title')}</button>
             <button
               type="button"
               onClick={() => {setRole('uk'); setStep(1);}}
               className={`px-4 py-2 rounded-4 border font-semibold transition-all duration-150 text-sm
                 ${role==='uk' ? 'bg-indigo-600 text-white border-indigo-600 shadow' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'}`}
-            >УК</button>
+            >{t('register.company.title')}</button>
           </div>
           )}
               <div className="flex gap-3 mt-6">
@@ -351,7 +355,7 @@ export default function RegisterPage() {
                     setLoading(false);
                   }}
                 >
-                  Далее
+                  {ts('button.next')}
                 </button>
               </div>
             </>
@@ -361,31 +365,31 @@ export default function RegisterPage() {
           {role === 'uk' && step === 2 && (
             <>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Название компании</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t('register.company.nameLabel')}</label>
                 <input
                   type="text"
                   name="companyName"
                   value={formData.companyName}
                   onChange={handleChange}
-                  placeholder="ООО УК Пример"
+                  placeholder="SIA Pārvaldnieks"
                   className="w-full px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-900"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Адрес</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{ts('form.address')}</label>
                 <input
                   type="text"
                   name="companyAddress"
                   value={formData.companyAddress}
                   onChange={handleChange}
-                  placeholder="г. Город, ул. Пример, д. 1"
+                  placeholder="Rīga, Brīvības iela 100"
                   className="w-full px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-900"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Телефон</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{ts('form.phone')}</label>
                 <div className="flex gap-2">
                   <select
                     className="px-2 py-2 rounded-lg border border-gray-300 bg-gray-100 text-gray-900"
@@ -414,31 +418,31 @@ export default function RegisterPage() {
           {role === 'resident' && step === 2 && (
             <>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Имя</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{ts('form.firstName')}</label>
                 <input
                   type="text"
                   name="firstName"
                   value={formData.firstName}
                   onChange={handleChange}
-                  placeholder="Иван"
+                  placeholder="Jānis"
                   className="w-full px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Фамилия</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{ts('form.lastName')}</label>
                 <input
                   type="text"
                   name="lastName"
                   value={formData.lastName}
                   onChange={handleChange}
-                  placeholder="Петров"
+                  placeholder="Pētersons"
                   className="w-full px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Телефон</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{ts('form.phone')}</label>
                 <div className="flex gap-2">
                   <select
                     className="px-2 py-2 rounded-lg border border-gray-300 bg-gray-100 text-gray-900"
@@ -454,7 +458,7 @@ export default function RegisterPage() {
                     name="phone"
                     value={formData.phone}
                     onChange={handleChange}
-                    placeholder="(___) ___-__-__"
+                    placeholder=""
                     className="flex-1 px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg"
                     required
                   />
@@ -466,7 +470,7 @@ export default function RegisterPage() {
                   onClick={() => setStep(1)}
                   className="flex-1 px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg font-semibold hover:bg-gray-50 transition duration-150"
                 >
-                  Назад
+                  {ts('button.back')}
                 </button>
               )}
               <button
@@ -474,7 +478,7 @@ export default function RegisterPage() {
                 disabled={loading}
                 className="flex-2 bg-indigo-600 text-white py-2 rounded-lg font-semibold hover:bg-indigo-700 disabled:bg-gray-400 transition-all duration-150"
               >
-                {loading ? 'Регистрация...' : 'Зарегистрироваться'}
+                {loading ? ts('button.registering') : ts('button.register')}
               </button>
             </div>
               </div>
@@ -487,8 +491,8 @@ export default function RegisterPage() {
           {/* Кнопки управления (Назад / Далее / Регистрация) */}
 
         <p className="text-center text-gray-500 mt-4">
-          Уже есть аккаунт?{' '}
-          <Link href="/login" className="text-indigo-600 hover:underline">Войти</Link>
+          {ts('button.alreadyHaveAccount')}{' '}
+          <Link href="/login" className="text-indigo-600 hover:underline">{ts('button.login')}</Link>
         </p>
       </div>
     </AuthLayout>

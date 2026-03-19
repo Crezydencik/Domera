@@ -15,6 +15,7 @@ import { toSafeErrorDetails } from '@/shared/lib/safeLog';
 export default function LoginPage() {
   
     const t = useTranslations('auth');
+    const ts = useTranslations('system');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -98,21 +99,21 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Email */}
           <Input
-            label={t('common.email')}
+            label={ts('form.email')}
             type="email"
             value={email}
             onChange={e => setEmail(e.target.value)}
-            placeholder={t('common.emailPlaceholder')}
+            placeholder={ts('form.email')}
             autoComplete="email"
             required
           />
           {/* Password */}
           <Input
-            label={t('common.password')}
+            label={ts('form.password')}
             type="password"
             value={password}
             onChange={e => setPassword(e.target.value)}
-            placeholder={t('common.passwordPlaceholder')}
+            placeholder={ts('form.password')}
             autoComplete="current-password"
             required
             showPasswordToggle
@@ -130,7 +131,7 @@ export default function LoginPage() {
             disabled={loading}
             className="w-full bg-indigo-600 text-white py-2 rounded-lg font-semibold hover:bg-indigo-700 disabled:bg-gray-400 transition"
           >
-            {loading ? t('login.inProgress') : t('login.submit')}
+            {loading ? t('login.inProgress') : ts('button.login')}
           </button>
         </form>
         {/* Divider */}

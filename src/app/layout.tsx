@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Domera - SaaS platforma māju pārvaldībai",
+  title: "Domera -platforma māju pārvaldībai",
   description: "Mākoņdatošanas platforma daudzdzīvokļu māju pārvaldībai",
   keywords: "māju pārvaldība, komunālie pakalpojumi, dzīvokļi, skaitītāji",
 };

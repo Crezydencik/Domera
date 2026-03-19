@@ -1,34 +1,37 @@
 'use client';
 
 import { useState } from 'react';
+import { Menu, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { useLanguage } from '@/shared/providers/LanguageProvider';
-import { locales, localeNames, localeFlags } from '@/../i8n/config';
 import { LanguageSwitcher } from '../shared/components/layout/LanguageSwitcher';
 
 export default function Home() {
-  const t = useTranslations('');
+  const t = useTranslations('home');
+  const ts = useTranslations('system');
+  const tSidebar = useTranslations('dashboard.sidebar');
+
   const { locale, setLocale } = useLanguage();
   const [openFaq, setOpenFaq] = useState<number | null>(null);
-  const [openLangMenu, setOpenLangMenu] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const faqItems = [
     {
-      question: t('home.faq1Question') || 'Как начать пользоваться платформой?',
-      answer: t('home.faq1Answer') || 'Создайте аккаунт менеджера за несколько минут и управляйте своими зданиями и квартирами.',
+      question: t('faq.faq1Question'),
+      answer: t('faq.faq1Answer'),
     },
     {
-      question: t('home.faq2Question') || 'Какие функции доступны?',
-      answer: t('home.faq2Answer') || 'Управление квартирами, отслеживание показаний счетчиков, выставление счетов и коммуникация с жильцами.',
+      question: t('faq.faq2Question'),
+      answer: t('faq.faq2Answer'),
     },
     {
-      question: t('home.faq3Question') || 'Безопасны ли мои данные?',
-      answer: t('home.faq3Answer') || 'Да, мы используем многоуровневую архитектуру безопасности и данные хранятся в защищенных облачных базах.',
+      question: t('faq.faq3Question'),
+      answer: t('faq.faq3Answer'),
     },
     {
-      question: t('home.faq4Question') || 'Есть ли пробный период?',
-      answer: t('home.faq4Answer') || 'Да, вы можете попробовать платформу бесплатно перед любыми платежами.',
+      question: t('faq.faq4Question'),
+      answer: t('faq.faq4Answer'),
     },
   ];
     const handleLanguageChange = (newLang: string) => {
@@ -44,21 +47,74 @@ export default function Home() {
           <div className="flex items-center">
             <img src="/Logo1.png" alt="Domera Logo" className="w-56 h-12" />
           </div>
-          <div className="flex items-center space-x-4">
-            {/* Language Switcher */}
-
+          <div className="hidden md:flex items-center space-x-4">
             <Link href="/login" className="text-slate-600 hover:text-blue-600 transition font-medium">
-              {t('auth.login.title')}
+              {ts('button.login')}
             </Link>
             <Link href="/register" className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-2 rounded-lg hover:shadow-lg transition duration-300">
-              {t('auth.register.title')}
+              {ts('button.register')}
             </Link>
             <div className="relative">
                                <LanguageSwitcher value={locale} onChange={handleLanguageChange} />
             </div>
           </div>
+          <button
+            type="button"
+            className="md:hidden inline-flex items-center justify-center rounded-lg border border-slate-200 p-2 text-slate-700 transition hover:bg-slate-100"
+            aria-label={isMobileMenuOpen ? tSidebar('closeMenu') : tSidebar('openMenu')}
+            onClick={() => setIsMobileMenuOpen(prev => !prev)}
+          >
+            {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          </button>
         </div>
       </nav>
+
+      {isMobileMenuOpen && (
+        <>
+          <button
+            type="button"
+            aria-label={tSidebar('closeMenu')}
+            className="fixed inset-0 z-40 bg-slate-900/40 md:hidden"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+          <aside className="fixed right-0 top-0 z-50 h-full w-80 max-w-[85vw] border-l border-slate-200 bg-white shadow-2xl md:hidden">
+            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+              <span className="text-lg font-semibold text-slate-900">Domera</span>
+              <button
+                type="button"
+                aria-label={tSidebar('closeMenu')}
+                className="rounded-lg p-2 text-slate-700 transition hover:bg-slate-100"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="flex h-[calc(100%-73px)] flex-col gap-6 px-5 py-6">
+              <div className="flex flex-col gap-3">
+                <Link
+                  href="/login"
+                  className="rounded-lg border border-slate-200 px-4 py-3 text-center font-medium text-slate-700 transition hover:border-blue-600 hover:text-blue-600"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  {ts('button.login')}
+                </Link>
+                <Link
+                  href="/register"
+                  className="rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-3 text-center font-semibold text-white transition hover:shadow-lg"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  {ts('button.register')}
+                </Link>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <LanguageSwitcher variant="mob" value={locale} onChange={handleLanguageChange} />
+              </div>
+            </div>
+          </aside>
+        </>
+      )}
 
       {/* Hero Section */}
       <section className="relative overflow-hidden pt-20 pb-32">
@@ -73,14 +129,14 @@ export default function Home() {
             <div className="space-y-8">
               <div className="space-y-4">
                 <div className="inline-block bg-blue-100 text-blue-700 px-4 py-2 rounded-full text-sm font-semibold">
-                  ✨ {t('home.newWayToManage') || 'Новый способ управления'}
+                  ✨ {t('newWayToManage')}
                 </div>
                 <h1 className="text-6xl font-bold text-slate-900 leading-tight">
-                  {t('home.subtitleManagement') || 'Управляйте зданиями'}
-                  <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent"> {t('home.subtitleManagementHighlight') || ' легко'}</span>
+                  {t('subtitleManagement')}
+                  <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent"> {t('subtitleManagementHighlight')}</span>
                 </h1>
                 <p className="text-xl text-slate-600 leading-relaxed max-w-lg">
-                  {t('home.subtitleResident') || 'Современная платформа для управления жилыми комплексами и коммуникации с жильцами'}
+                  {t('subtitleResident')}
                 </p>
               </div>
 
@@ -89,35 +145,35 @@ export default function Home() {
                   <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
                     <span className="text-white text-sm">✓</span>
                   </div>
-                  <span className="text-slate-700">{t('home.feature1') || 'Управление квартирами'}</span>
+                  <span className="text-slate-700">{t('feature1')}</span>
                 </div>
                 <div className="flex items-center space-x-3">
                   <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
                     <span className="text-white text-sm">✓</span>
                   </div>
-                  <span className="text-slate-700">{t('home.feature2') || 'Отслеживание показаний'}</span>
+                  <span className="text-slate-700">{t('feature2')}</span>
                 </div>
                 <div className="flex items-center space-x-3">
                   <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
                     <span className="text-white text-sm">✓</span>
                   </div>
-                  <span className="text-slate-700">{t('home.feature3') || 'Выставление счетов'}</span>
+                  <span className="text-slate-700">{t('feature3')}</span>
                 </div>
                 <div className="flex items-center space-x-3">
                   <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
                     <span className="text-white text-sm">✓</span>
                   </div>
-                  <span className="text-slate-700">{t('home.feature4') || 'Коммуникация с жильцами'}</span>
+                  <span className="text-slate-700">{t('feature4')}</span>
                 </div>
               </div>
 
               <div className="flex flex-wrap gap-4 pt-4">
                 <Link href="/register" className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white px-8 py-3 rounded-lg hover:shadow-xl transition duration-300 font-semibold">
-                  {t('home.startFree') || 'Начать бесплатно'}
+                  {t('startFree')}
                   <span>→</span>
                 </Link>
                 <Link href="/login" className="inline-flex items-center gap-2 border-2 border-slate-300 text-slate-700 px-8 py-3 rounded-lg hover:border-blue-600 hover:text-blue-600 transition duration-300 font-semibold">
-                  {t('home.alreadyHaveAccount')} →
+                  {t('alreadyHaveAccount')} →
                 </Link>
               </div>
             </div>
@@ -126,20 +182,20 @@ export default function Home() {
             <div className="grid gap-4">
               <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-8 hover:shadow-lg transition duration-300">
                 <div className="text-5xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-3">∞</div>
-                <h3 className="text-xl font-bold text-slate-900 mb-2">{t('home.scalability') || 'Масштабируемость'}</h3>
-                <p className="text-slate-600">{t('home.growWithoutLimits') || 'Растите без ограничений'}</p>
+                <h3 className="text-xl font-bold text-slate-900 mb-2">{t('scalability')}</h3>
+                <p className="text-slate-600">{t('growWithoutLimits')}</p>
               </div>
 
               <div className="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-2xl p-8 hover:shadow-lg transition duration-300">
                 <div className="text-5xl mb-3">🔒</div>
-                <h3 className="text-xl font-bold text-slate-900 mb-2">{t('home.security') || 'Безопасность'}</h3>
-                <p className="text-slate-600">{t('home.multiTenantArchitecture') || 'Многоуровневая архитектура'}</p>
+                <h3 className="text-xl font-bold text-slate-900 mb-2">{t('security')}</h3>
+                <p className="text-slate-600">{t('multiTenantArchitecture')}</p>
               </div>
 
               <div className="bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200 rounded-2xl p-8 hover:shadow-lg transition duration-300">
                 <div className="text-5xl mb-3">⚡</div>
-                <h3 className="text-xl font-bold text-slate-900 mb-2">{t('home.performance') || 'Производительность'}</h3>
-                <p className="text-slate-600">{t('home.cloudFirestoreSupport') || 'Поддержка облачных баз'}</p>
+                <h3 className="text-xl font-bold text-slate-900 mb-2">{t('performance')}</h3>
+                <p className="text-slate-600">{t('cloudFirestoreSupport')}</p>
               </div>
             </div>
           </div>
@@ -151,30 +207,30 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center max-w-3xl mx-auto mb-16">
             <h2 className="text-4xl font-bold text-slate-900 mb-4">
-              О платформе <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Domera</span>
+              {t('about.title')} <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Domera</span>
             </h2>
             <p className="text-xl text-slate-600">
-              Современное решение для управления жилыми комплексами, созданное с учетом потребностей менеджеров и жильцов
+              {t('about.description') }
             </p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
             <div className="p-8 border border-slate-200 rounded-xl hover:shadow-lg transition duration-300">
               <div className="text-4xl mb-4">👥</div>
-              <h3 className="text-xl font-bold text-slate-900 mb-3">{t('home.forManagers') || 'Для менеджеров'}</h3>
-              <p className="text-slate-600 leading-relaxed">{t('home.manageHomesAndApartments') || 'Управляйте зданиями и квартирами из одного интерфейса'}</p>
+              <h3 className="text-xl font-bold text-slate-900 mb-3">{t('about.forManagers')}</h3>
+              <p className="text-slate-600 leading-relaxed">{t('about.manageHomesAndApartments')}</p>
             </div>
 
             <div className="p-8 border border-slate-200 rounded-xl hover:shadow-lg transition duration-300">
               <div className="text-4xl mb-4">🏠</div>
-              <h3 className="text-xl font-bold text-slate-900 mb-3">{t('home.forResidents') || 'Для жильцов'}</h3>
-              <p className="text-slate-600 leading-relaxed">{t('home.residentsFeatures') || 'Простая система передачи показаний и просмотра счетов'}</p>
+              <h3 className="text-xl font-bold text-slate-900 mb-3">{t('about.forResidents')}</h3>
+              <p className="text-slate-600 leading-relaxed">{t('about.residentsFeatures')}</p>
             </div>
 
             <div className="p-8 border border-slate-200 rounded-xl hover:shadow-lg transition duration-300">
               <div className="text-4xl mb-4">🚀</div>
-              <h3 className="text-xl font-bold text-slate-900 mb-3">{t('home.readyForExpansion') || 'Готово к расширению'}</h3>
-              <p className="text-slate-600 leading-relaxed">{t('home.modularArchitecture') || 'Модульная архитектура для легкого добавления функций'}</p>
+              <h3 className="text-xl font-bold text-slate-900 mb-3">{t('about.readyForExpansion')}</h3>
+              <p className="text-slate-600 leading-relaxed">{t('about.modularArchitecture')}</p>
             </div>
           </div>
         </div>
@@ -185,10 +241,10 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center max-w-3xl mx-auto mb-16">
             <h2 className="text-4xl font-bold text-slate-900 mb-4">
-              Преимущества <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Domera</span>
+              {t('advantages.title')} <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Domera</span>
             </h2>
             <p className="text-xl text-slate-600">
-              Все что вам нужно для эффективного управления жилым комплексом
+              {t('advantages.description')}
             </p>
           </div>
 
@@ -200,8 +256,8 @@ export default function Home() {
                 </div>
               </div>
               <div>
-                <h3 className="text-lg font-bold text-slate-900 mb-2">Аналитика и отчеты</h3>
-                <p className="text-slate-600">Получайте подробные отчеты о состоянии вашего имущества и доходах</p>
+                <h3 className="text-lg font-bold text-slate-900 mb-2">{t('advantages.analyticsReptitle')}</h3>
+                <p className="text-slate-600">{t('advantages.analyticsRepdescr')}</p>
               </div>
             </div>
 
@@ -212,8 +268,8 @@ export default function Home() {
                 </div>
               </div>
               <div>
-                <h3 className="text-lg font-bold text-slate-900 mb-2">Автоматизация</h3>
-                <p className="text-slate-600">Автоматизируйте рутинные задачи и сэкономьте время</p>
+                <h3 className="text-lg font-bold text-slate-900 mb-2">{t('advantages.automationtitle')}</h3>
+                <p className="text-slate-600">{t('advantages.automationdescr')}</p>
               </div>
             </div>
 
@@ -224,8 +280,8 @@ export default function Home() {
                 </div>
               </div>
               <div>
-                <h3 className="text-lg font-bold text-slate-900 mb-2">Коммуникация</h3>
-                <p className="text-slate-600">Легко общайтесь с жильцами напрямую через платформу</p>
+                <h3 className="text-lg font-bold text-slate-900 mb-2">{t('advantages.communicationtitle')}</h3>
+                <p className="text-slate-600">{t('advantages.communicationdescr')}</p>
               </div>
             </div>
 
@@ -236,8 +292,8 @@ export default function Home() {
                 </div>
               </div>
               <div>
-                <h3 className="text-lg font-bold text-slate-900 mb-2">Доступность</h3>
-                <p className="text-slate-600">Управляйте из любого места, на любом устройстве</p>
+                <h3 className="text-lg font-bold text-slate-900 mb-2">{t('advantages.accessibilitytitle')}</h3>
+                <p className="text-slate-600">{t('advantages.accessibilitydescr')}</p>
               </div>
             </div>
 
@@ -248,8 +304,8 @@ export default function Home() {
                 </div>
               </div>
               <div>
-                <h3 className="text-lg font-bold text-slate-900 mb-2">Поддержка</h3>
-                <p className="text-slate-600">Быстрая поддержка и обновления функций нашей командой</p>
+                <h3 className="text-lg font-bold text-slate-900 mb-2">{t('advantages.supporttitle')}</h3>
+                <p className="text-slate-600">{t('advantages.supportdescr')}</p>
               </div>
             </div>
 
@@ -260,8 +316,8 @@ export default function Home() {
                 </div>
               </div>
               <div>
-                <h3 className="text-lg font-bold text-slate-900 mb-2">Платежи</h3>
-                <p className="text-slate-600">Интегрированная система для выставления и отслеживания платежей</p>
+                <h3 className="text-lg font-bold text-slate-900 mb-2">{t('advantages.paymentstitle')}</h3>
+                <p className="text-slate-600">{t('advantages.paymentsdescr')}</p>
               </div>
             </div>
           </div>
@@ -273,10 +329,10 @@ export default function Home() {
         <div className="max-w-3xl mx-auto px-6">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-slate-900 mb-4">
-              Часто задаваемые вопросы
+              {t('faq.title') }
             </h2>
             <p className="text-xl text-slate-600">
-              Найдите ответы на основные вопросы о нашей платформе
+              {t('faq.description')}
             </p>
           </div>
 
@@ -307,18 +363,18 @@ export default function Home() {
       <section className="py-20 bg-gradient-to-r from-blue-600 to-indigo-600">
         <div className="max-w-4xl mx-auto px-6 text-center">
           <h2 className="text-5xl font-bold text-white mb-6">
-            {t('home.readyToStart') || 'Готовы начать?'}
+            {t('readyToStart')}
           </h2>
           <p className="text-xl text-blue-100 mb-10 max-w-2xl mx-auto">
-            {t('home.createManagerAccountOrRequestInvite') || 'Создайте аккаунт менеджера или запросите приглашение для жильцов'}
+            {t('createManagerAccountOrRequestInvite')}
           </p>
           <div className="flex flex-wrap gap-4 justify-center">
             <Link href="/register" className="inline-flex items-center gap-2 bg-white text-blue-600 px-8 py-4 rounded-lg hover:shadow-xl transition duration-300 font-semibold text-lg">
-              {t('home.register') || 'Зарегистрироваться'}
+              {ts('button.register')}
               <span>→</span>
             </Link>
             <Link href="/login" className="inline-flex items-center gap-2 border-2 border-white text-white px-8 py-4 rounded-lg hover:bg-white hover:text-blue-600 transition duration-300 font-semibold text-lg">
-              {t('home.login') || 'Войти в аккаунт'}
+              {ts('button.login')}
             </Link>
           </div>
         </div>
@@ -327,8 +383,8 @@ export default function Home() {
       {/* Footer */}
       <footer className="bg-slate-900 text-slate-300 py-12">
         <div className="max-w-7xl mx-auto px-6 text-center">
-          <p className="text-lg font-semibold text-white mb-2">© 2026 Domera. {t('home.allRightsReserved') || 'Все права защищены'}</p>
-          <p className="text-sm">{t('home.saasPlatformForApartmentManagement') || 'SaaS платформа для управления жилыми комплексами'}</p>
+          <p className="text-lg font-semibold text-white mb-2">© 2026 Domera. {t('allRightsReserved')}</p>
+          <p className="text-sm">{t('saasPlatformForApartmentManagement')}</p>
         </div>
       </footer>
     </div>

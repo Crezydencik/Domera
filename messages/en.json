@@ -7,10 +7,69 @@
   "system": {
     "loading": "Processing...",
     "noAccess": "No access",
+    "permissionDenied": "No database access. Check Firebase security rules.",
+    "dbError": "Error connecting to the database. Try again.",
+    "rememberPassword" : "Remember your password?",
     "notifications": {
       "noNewNotifications": "No new notifications",
       "allEventsViewed": "All events viewed"
+    },
+    "button": {
+      "next": "Next",
+      "back": "Back",
+      "save": "Save",
+      "cancel": "Cancel",
+      "delete": "Delete",
+      "confirm": "Confirm",
+      "login": "Log in",
+      "register": "Register",
+      "registering": "Registering...",
+      "sending": "Sending...",
+      "loggingIn": "Logging in...",
+      "showPassword": "Show password",
+      "hidePassword": "Hide password",
+      "backToLogin": "Back to login",
+      "backHome": "← Return to home",
+      "alreadyHaveAccount": "I already have an account",
+      "forgotPassword": "Forgot password?",
+      "sendResetLink": "Send reset link",
+      "saveNewPassword": "Save new password",
+      "acceptInvitation": "Accept invitation",
+      "accepting": "Accepting...",
+      "confirmAccess": "Confirm access"
+
+    },
+    "form": {
+      "email": "Email",
+      "password": "Password",
+      "confirmPassword": "Confirm password",
+      "companyName": "Company name",
+      "firstName": "First name",
+      "lastName": "Last name",
+      "phone": "Phone number",
+      "address": "Address",
+      "passwordHint": "Minimum 6 characters",
+      "emailFixedByInvite": "Email is fixed by the invitation"
+    }, 
+    "placeholder":{
+      "search": "Search...",
+      "apartmentNumber": "Enter apartment number",
+      "companyName": "Enter company name",
+      "firstName": "Enter first name",
+      "lastName": "Enter last name",
+      "phone": "Enter phone number",
+      "address": "Enter address",
+      "email": "Enter email"
+    },
+    "steps": {
+      "steps": "Steps",
+      "from": "from",
+      "accountType": "Select account type",
+      "companyInfo": "Company information",
+      "personalInfo": "Personal information",
+      "confirmation": "Confirmation"
     }
+
   },
   "home": {
     "subtitleManagement": "Manage houses, apartments, and payments in one place",
@@ -22,22 +81,41 @@
     "feature4": "Resident invitation",
     "startFree": "Start for free",
     "alreadyHaveAccount": "I already have an account",
+    "about":{
+        "title": "About platform",
+        "description": "Domera is a modern SaaS platform designed to simplify the management of houses, apartments, and payments. It provides a convenient interface for both managers and residents, allowing them to easily communicate and manage their properties. With Domera, you can streamline your operations and improve the living experience for your residents.",
+        "forManagers": "For Managers",
+        "forResidents": "For Residents",
+        "residentsFeatures": "Submit meter readings, view invoices, and download documents online.",
+        "readyForExpansion": "Ready for expansion",
+        "modularArchitecture": "Modular architecture allows for fast and secure addition of new features."
+      },
+    "advantages":{
+      "title": "Advantages of ",
+      "description": "Everything you need for effective apartment management",
+      "analyticsReptitle": "Analytics and reports",
+      "analyticsRepdescr": "Get detailed reports on your property status and income",
+      "automationtitle": "Automation",
+      "automationdescr": "Automate routine tasks and save time",
+      "communicationtitle": "Communication",
+      "communicationdescr": "Communicate with residents directly through the platform",
+      "accessibilitytitle": "Accessibility",
+      "accessibilitydescr": "Manage from anywhere, on any device",
+      "supporttitle": "Support",
+      "supportdescr": "Fast support and feature updates from our team",
+      "paymentstitle": "Payments",
+      "paymentsdescr": "Integrated system for issuing and tracking payments"
+      
+    },
     "scalability": "Scalability",
     "growWithoutLimits": "Grow without limits",
     "security": "Security",
     "multiTenantArchitecture": "Multi-tenant architecture",
     "performance": "Performance",
     "cloudFirestoreSupport": "Cloud Firestore support",
-    "forManagers": "For Managers",
     "manageHomesAndApartments": "Manage houses, apartments, and residents. View all readings and invoices in one place.",
-    "forResidents": "For Residents",
-    "residentsFeatures": "Submit meter readings, view invoices, and download documents online.",
-    "readyForExpansion": "Ready for expansion",
-    "modularArchitecture": "Modular architecture allows for fast and secure addition of new features.",
     "readyToStart": "Ready to start?",
     "createManagerAccountOrRequestInvite": "Create a manager account or request an invitation as a resident",
-    "register": "Register",
-    "login": "Login",
     "allRightsReserved": "All rights reserved.",
     "saasPlatformForApartmentManagement": "SaaS platform for apartment management",
     "loginRequired": "Login required",
@@ -46,21 +124,24 @@
     "noAccessDescription": "You do not have permission to access this resource. Please contact the administrator.",
     "needHelp": "Need help?",
     "contactSupport": "Contact support",
-    "backButton": "Back",
     "myApartmentTitle": "My Apartment",
     "apartmentLabel": "Apartment",
     "buildingLabel": "Building",
     "managementCompanyLabel": "Management company",
     "residentPageMetersHint": "Here you can add readings, documents, etc.",
     "newWayToManage": "A new way to manage",
-    "faq1Question": "How to get started with the platform?",
-    "faq1Answer": "Create a manager account in a few minutes and manage your buildings and apartments.",
-    "faq2Question": "What features are available?",
-    "faq2Answer": "Apartment management, meter reading tracking, invoicing, and communication with residents.",
-    "faq3Question": "Are my data secure?",
-    "faq3Answer": "Yes, we use multi-level security architecture and data is stored in secure cloud databases.",
-    "faq4Question": "Is there a trial period?",
-    "faq4Answer": "Yes, you can try the platform for free before any payments."
+    "faq":{
+      "title": "Frequently Asked Questions",
+      "description": "Find answers to common questions about our platform",
+      "faq1Question": "How to get started with the platform?",
+      "faq1Answer": "Create a manager account in a few minutes and manage your buildings and apartments.",
+      "faq2Question": "What features are available?",
+      "faq2Answer": "Apartment management, meter reading tracking, invoicing, and communication with residents.",
+      "faq3Question": "Are my data secure?",
+      "faq3Answer": "Yes, we use multi-level security architecture and data is stored in secure cloud databases.",
+      "faq4Question": "Is there a trial period?",
+      "faq4Answer": "Yes, you can try the platform for free before any payments."
+    }
   },
     "dashboard": {
       "loading": "Loading...",
@@ -139,18 +220,10 @@
           "errorAddRenter": "Error adding renter.",
         "loading": "Loading...",
         "noApartments": "No apartments assigned. Contact your manager.",
-        "apartmentNumber": "Apartment number",
-        "building": "Building",
-        "company": "Management company",
-        "actions": "Actions",
         "viewReadings": "View readings",
         "viewInvoices": "View invoices"
       },
       "meterReadings": {
-            "apartment": "Apartment",
-            "building": "Building",
-            "meter": "Meter",
-            "period": "Period",
             "submittedAt": "Submitted at",
             "previousValue": "Previous",
             "currentValue": "Current",
@@ -164,7 +237,6 @@
             "to": "to",
             "openDate": "Open date",
             "closeDate": "Close date",
-            "saving": "Saving...",
             "save": "Save",
             "selectBuildingToSave": "Select a building to save the period!",
           "hotWater": "Hot water",
@@ -265,40 +337,43 @@
   "auth": {
     "welcome": "Welcome to Domera",
     "subtitle": "Manage your apartments and payments with ease",
+    "layout": {
+      "badge": "Domera Platform",
+      "title": "Manage apartments, residents, and payments in one place.",
+      "subtitle": "Sign in to your workspace, track key metrics, and keep communication with residents clear and fast.",
+      "feature1": "Real-time dashboard for buildings, apartments, and invoices",
+      "feature2": "Secure access with role-based views for managers and residents",
+      "feature3": "Automated reminders and simple payment tracking"
+    },
     "or": "or",
     "common": {
-      "email": "Email",
       "emailPlaceholder": "example@mail.com",
-      "password": "Password",
       "passwordPlaceholder": "••••••••",
       "confirmPassword": "Repeat password",
-      "showPassword": "Show password",
-      "hidePassword": "Hide password",
-      "backToLogin": "Back to login",
-      "backHome": "← Return to home",
-      "minPasswordLength": "Minimum 6 characters",
+
       "sending": "Sending..."
     },
     "login": {
       "title": "Login",
       "subtitle": "Enter your email and password to log in",
-      "submit": "Log in",
       "inProgress": "Logging in...",
       "noAccount": "No account?",
       "forgotPassword": "Forgot password?"
     },
     "register": {
       "title": "Registration",
-      "submit": "Register",
+      "description": "Create an account to manage your apartments and payments",
       "inProgress": "Registration in progress...",
       "alreadyHaveAccount": "Already have an account?",
       "termsLabel": "I agree to the terms of use",
       "company": {
+        "title": "Company registration",
         "nameLabel": "Company name",
         "namePlaceholder": "Management Company LLC",
         "creating": "Creating company..."
       },
       "resident": {
+        "title" : "Resident registration",
         "creatingAccount": "Creating account..."
       },
       "status": {
@@ -309,6 +384,7 @@
     "resetPassword": {
       "title": "Password Reset",
       "subtitle": "Enter your email and we will send a reset link",
+      
       "submit": "Send reset link",
       "success": "An email with a password reset link has been sent to {email}",
       "error": "Error resetting password. Please try again.",

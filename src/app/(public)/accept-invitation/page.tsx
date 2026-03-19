@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/shared/hooks/useAuth';
 import { useTranslations } from 'next-intl';
+import { CheckCircle2, Mail, ShieldCheck } from 'lucide-react';
 
 export default function AcceptInvitationPage() {
   const router = useRouter();
@@ -17,7 +18,6 @@ export default function AcceptInvitationPage() {
   const [email, setEmail] = useState('');
   const [existingAccountDetected, setExistingAccountDetected] = useState(false);
   const [shouldLoginInstead, setShouldLoginInstead] = useState(false);
-  const [emailExistsInSystem, setEmailExistsInSystem] = useState(false);
   const [formData, setFormData] = useState({
     password: '',
     confirmPassword: '',
@@ -88,12 +88,12 @@ export default function AcceptInvitationPage() {
           router.push(`/login?redirect=${encodeURIComponent(`/accept-invitation?token=${token}`)}`);
         } else {
           // Новый пользователь - показываем форму регистрации
-          setEmailExistsInSystem(false);
           setLoading(false);
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('[AcceptInvitationPage] Error:', err);
-        setError(t('invitation.invitationError') + ': ' + (err?.message || err));
+        const message = err instanceof Error ? err.message : String(err);
+        setError(`${t('invitation.invitationError')}: ${message}`);
         setLoading(false);
       }
     };
@@ -193,120 +193,148 @@ export default function AcceptInvitationPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-linear-to-br from-slate-900 to-slate-800 flex items-center justify-center text-white">
-        {t('invitation.validatingInvitation')}
+      <div className="relative min-h-screen overflow-hidden bg-linear-to-br from-slate-950 via-slate-900 to-indigo-950 flex items-center justify-center px-4 text-white">
+        <div className="pointer-events-none absolute -left-24 top-8 h-64 w-64 rounded-full bg-indigo-500/25 blur-3xl" />
+        <div className="pointer-events-none absolute -right-24 bottom-8 h-64 w-64 rounded-full bg-cyan-400/20 blur-3xl" />
+        <div className="z-10 rounded-2xl border border-white/15 bg-white/10 px-6 py-5 text-sm backdrop-blur-md">
+          {t('invitation.validatingInvitation')}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-slate-900 to-slate-800 flex items-center justify-center px-4 py-8">
-      <div className="w-full max-w-md bg-slate-800 border border-slate-700 rounded-lg p-6">
-        <h1 className="text-2xl font-bold text-white mb-2">{t('invitation.acceptInvitation')}</h1>
-        <p className="text-gray-400 text-sm mb-6">
-          {t('invitation.invitedAsResident')}: <span className="text-white">{email || '—'}</span>
-        </p>
+    <div className="relative min-h-screen overflow-hidden bg-linear-to-br from-slate-950 via-slate-900 to-indigo-950 px-4 py-8">
+      <div className="pointer-events-none absolute -left-24 top-10 h-72 w-72 rounded-full bg-indigo-500/20 blur-3xl" />
+      <div className="pointer-events-none absolute -right-24 bottom-10 h-72 w-72 rounded-full bg-cyan-400/20 blur-3xl" />
 
-        {error && (
-          <div className="mb-4 text-sm text-red-300 bg-red-900/30 border border-red-700 rounded-md px-3 py-2">
-            {error}
-          </div>
-        )}
-
-        {existingAccountDetected ? (
-          <div className="space-y-4">
-            <div className="rounded-md border border-blue-700 bg-blue-900/25 px-3 py-2 text-sm text-blue-200">
-              {t('invitation.emailInUse')}
-            </div>
-
-            <label className="flex items-start gap-2 text-sm text-gray-300">
-              <input
-                type="checkbox"
-                checked={formData.gdprConsent}
-                onChange={(e) => setFormData((prev) => ({ ...prev, gdprConsent: e.target.checked }))}
-                className="mt-1"
-                required
-              />
-              {t('invitation.gdprConsent')}
-            </label>
-
-            <button
-              type="button"
-              onClick={handleAcceptForExistingAccount}
-              disabled={submitting || authLoading}
-              className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
-            >
-              {submitting ? t('invitation.acceptingInvitation') : t('invitation.acceptAccess')}
-            </button>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="relative mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-lg items-center justify-center">
+        <div className="w-full rounded-2xl border border-white/15 bg-white/10 p-6 shadow-2xl backdrop-blur-xl sm:p-8">
+          <div className="mb-6 flex items-start justify-between gap-4">
             <div>
-              <label className="block text-sm text-gray-300 mb-2">{t('invitation.newPasswordLabel')}</label>
-              <input
-                type="password"
-                value={formData.password}
-                onChange={(e) => setFormData((prev) => ({ ...prev, password: e.target.value }))}
-                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white"
-                required
-              />
+              <h1 className="text-2xl font-bold text-white sm:text-3xl">{t('invitation.acceptInvitation')}</h1>
+              <p className="mt-2 text-sm text-slate-200/90">{t('invitation.invitedAsResident')}</p>
             </div>
+            <span className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-emerald-300/30 bg-emerald-400/15 text-emerald-100">
+              <CheckCircle2 className="h-5 w-5" />
+            </span>
+          </div>
 
+          <div className="mb-6 rounded-xl border border-white/15 bg-slate-900/30 px-3 py-3 text-sm text-slate-100">
+            <div className="mb-1 inline-flex items-center gap-2 text-xs uppercase tracking-wide text-slate-300">
+              <Mail className="h-3.5 w-3.5" />
+              Email
+            </div>
+            <div className="font-medium break-all">{email || '—'}</div>
+          </div>
+
+          {error && (
+            <div className="mb-5 rounded-xl border border-red-500/40 bg-red-500/15 px-3 py-2 text-sm text-red-100">
+              {error}
+            </div>
+          )}
+
+          {existingAccountDetected ? (
+            <div className="space-y-4">
+              <div className="rounded-xl border border-blue-500/30 bg-blue-500/15 px-3 py-2 text-sm text-blue-100">
+                {t('invitation.emailInUse')}
+              </div>
+
+              <label className="flex items-start gap-2 text-sm text-slate-100">
+                <input
+                  type="checkbox"
+                  checked={formData.gdprConsent}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, gdprConsent: e.target.checked }))}
+                  className="mt-1 h-4 w-4 rounded border-slate-500 bg-slate-800 text-blue-500"
+                  required
+                />
+                {t('invitation.gdprConsent')}
+              </label>
+
+              <button
+                type="button"
+                onClick={handleAcceptForExistingAccount}
+                disabled={submitting || authLoading}
+                className="w-full rounded-xl bg-blue-600 px-4 py-2.5 text-white transition hover:bg-blue-500 disabled:opacity-50"
+              >
+                {submitting ? t('invitation.acceptingInvitation') : t('invitation.acceptAccess')}
+              </button>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="mb-2 block text-sm text-slate-100">{t('invitation.newPasswordLabel')}</label>
+                <input
+                  type="password"
+                  value={formData.password}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, password: e.target.value }))}
+                  className="w-full rounded-xl border border-slate-500/60 bg-slate-900/50 px-3 py-2.5 text-white outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/30"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm text-slate-100">{t('common.confirmPassword')}</label>
+                <input
+                  type="password"
+                  value={formData.confirmPassword}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, confirmPassword: e.target.value }))}
+                  className="w-full rounded-xl border border-slate-500/60 bg-slate-900/50 px-3 py-2.5 text-white outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/30"
+                  required
+                />
+              </div>
+
+              <label className="flex items-start gap-2 text-sm text-slate-100">
+                <input
+                  type="checkbox"
+                  checked={formData.gdprConsent}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, gdprConsent: e.target.checked }))}
+                  className="mt-1 h-4 w-4 rounded border-slate-500 bg-slate-800 text-blue-500"
+                  required
+                />
+                {t('invitation.gdprConsent')}
+              </label>
+
+              <button
+                type="submit"
+                disabled={submitting}
+                className="w-full rounded-xl bg-blue-600 px-4 py-2.5 text-white transition hover:bg-blue-500 disabled:opacity-50"
+              >
+                {submitting ? t('invitation.registrationInProgress') : t('invitation.acceptInvitation')}
+              </button>
+            </form>
+          )}
+
+          {!existingAccountDetected && (
+            <div className="mt-4 rounded-xl border border-slate-500/40 bg-slate-900/40 px-3 py-2 text-xs text-slate-200">
+              {t('register.alreadyHaveAccount')}{' '}
+              <Link href={`/login?redirect=${encodeURIComponent(`/accept-invitation?token=${token}`)}`} className="text-blue-300 underline hover:text-blue-200">
+                {t('login.submit')}
+              </Link>{' '}
+              {t('invitation.andAcceptAccessWithoutCreatingNewPassword')}
+            </div>
+          )}
+
+          {shouldLoginInstead && (
+            <div className="mt-3 rounded-xl border border-blue-500/30 bg-blue-500/15 px-3 py-2 text-xs text-blue-100">
+              {t('invitation.loginInstead')}{' '}
+              <Link href={`/login?redirect=${encodeURIComponent(`/accept-invitation?token=${token}`)}`} className="text-blue-200 underline hover:text-blue-100">
+                {t('invitation.loginAndAcceptAccess')}
+              </Link>
+            </div>
+          )}
+
+          <div className="mt-5 border-t border-white/15 pt-4 text-center">
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-400/10 px-3 py-1 text-xs text-emerald-100">
+              <ShieldCheck className="h-3.5 w-3.5" />
+              {t('invitation.gdprConsentRequired')}
+            </div>
             <div>
-              <label className="block text-sm text-gray-300 mb-2">{t('auth.repeatPasswordLabel')}</label>
-              <input
-                type="password"
-                value={formData.confirmPassword}
-                onChange={(e) => setFormData((prev) => ({ ...prev, confirmPassword: e.target.value }))}
-                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white"
-                required
-              />
+              <Link href="/login" className="text-sm text-blue-300 hover:text-blue-200">
+                {t('common.backToLogin')}
+              </Link>
             </div>
-
-            <label className="flex items-start gap-2 text-sm text-gray-300">
-              <input
-                type="checkbox"
-                checked={formData.gdprConsent}
-                onChange={(e) => setFormData((prev) => ({ ...prev, gdprConsent: e.target.checked }))}
-                className="mt-1"
-                required
-              />
-              {t('invitation.gdprConsent')}
-            </label>
-
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
-            >
-              {submitting ? t('invitation.registrationInProgress') : t('invitation.acceptInvitation')}
-            </button>
-          </form>
-        )}
-
-        {!existingAccountDetected && (
-          <div className="mt-4 rounded-md border border-slate-700 bg-slate-900/50 px-3 py-2 text-xs text-slate-300">
-            {t('auth.alreadyHaveAccount')}{' '}
-            <Link href={`/login?redirect=${encodeURIComponent(`/accept-invitation?token=${token}`)}`} className="text-blue-300 underline">
-              {t('auth.login')}
-            </Link>{' '}
-            {t('invitation.andAcceptAccessWithoutCreatingNewPassword')}
           </div>
-        )}
-
-        {shouldLoginInstead && (
-          <div className="mt-3 rounded-md border border-blue-700 bg-blue-900/25 px-3 py-2 text-xs text-blue-200">
-            {t('invitation.loginInstead')}{' '}
-            <Link href={`/login?redirect=${encodeURIComponent(`/accept-invitation?token=${token}`)}`} className="underline text-blue-100">
-              {t('invitation.loginAndAcceptAccess')}
-            </Link>
-          </div>
-        )}
-
-        <div className="mt-4 text-center">
-          <Link href="/login" className="text-sm text-blue-300 hover:text-blue-200">
-            {t('auth.backToLogin')}
-          </Link>
         </div>
       </div>
     </div>
