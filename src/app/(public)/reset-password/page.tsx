@@ -16,7 +16,6 @@ export default function ResetPasswordPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const t = useTranslations('auth');
-  const ts = useTranslations('system');
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -26,12 +25,12 @@ export default function ResetPasswordPage() {
     const normalizedEmail = email.trim().toLowerCase();
 
     if (!normalizedEmail) {
-      setError(t('resetPasswordEmailPlaceholder'));
+      setError(t('alert.resetPasswordEmailPlaceholder'));
       return;
     }
 
     if (!isValidEmail(normalizedEmail)) {
-      setError(t('resetPasswordInvalidEmail'));
+      setError(t('alert.resetPasswordInvalidEmail'));
       return;
     }
 
@@ -39,12 +38,12 @@ export default function ResetPasswordPage() {
 
     try {
       await sendPasswordResetEmail(normalizedEmail);
-      setSuccess(t('resetPasswordSuccess', { email: normalizedEmail }));
+      setSuccess(t('alert.resetPasswordSuccess', { email: normalizedEmail }));
     } catch (submitError: unknown) {
       setError(
         submitError instanceof Error
           ? submitError.message
-          : t('resetPasswordError')
+          : t('alert.resetPasswordError')
       );
     } finally {
       setLoading(false);
@@ -74,12 +73,12 @@ export default function ResetPasswordPage() {
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">{ts('form.email')}</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('resetPassword.emailLabel')}</label>
               <input
                 type="email"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
-                placeholder={ts('placeholder.email')}
+                placeholder={t('resetPassword.emailPlaceholder')}
                 className="w-full px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:border-indigo-500 transition"
                 required
               />
@@ -90,14 +89,14 @@ export default function ResetPasswordPage() {
               disabled={loading}
               className="w-full bg-indigo-600 text-white py-2 rounded-lg font-semibold hover:bg-indigo-700 disabled:bg-gray-400 transition-all duration-150"
             >
-              {loading ? ts('button.sending') : ts('button.sendResetLink')}
+              {loading ? t('resetPassword.sending') : t('resetPassword.submit')}
             </button>
           </form>
 
           <p className="text-center text-gray-500 mt-6 text-sm">
-            {ts('rememberPassword')}{' '}
+            {t('resetPassword.remembered')}{' '}
             <Link href="/login" className="text-indigo-600 hover:underline">
-              {ts('button.backToLogin')}
+              {t('resetPassword.backToLogin')}
             </Link>
           </p>
         </div>

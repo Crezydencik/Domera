@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { confirmPasswordReset, verifyPasswordResetCode } from 'firebase/auth';
 import { auth } from '@/firebase/config';
-import { useTranslations } from 'use-intl';
+import { useTranslations } from 'next-intl';
 import AuthLayout from '@/shared/components/layout/AuthLayout';
 
 function EyeIcon({ crossed = false }: { crossed?: boolean }) {
@@ -52,9 +52,9 @@ function EyeIcon({ crossed = false }: { crossed?: boolean }) {
   );
 }
 
-const validateNewPassword = (value: string): string | null => {
-  if (!value) return 'Введите новый пароль';
-  if (value.length < 6) return 'Пароль должен быть не менее 6 символов';
+const validateNewPassword = (value: string, t: (key: string) => string): string | null => {
+  if (!value) return t('alert.resetPasswordEnterNewPassword');
+  if (value.length < 6) return t('alert.resetPasswordPasswordTooShort');
   return null;
 };
 
@@ -72,6 +72,7 @@ export default function ResetPasswordConfirmPage() {
 
   const [loadingCode, setLoadingCode] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [invalidLink, setInvalidLink] = useState(false);
 
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -80,7 +81,8 @@ export default function ResetPasswordConfirmPage() {
   useEffect(() => {
     const verifyCode = async () => {
       if (!oobCode) {
-        setError(t('resetPasswordInvalidLink'));
+        setError(t('alert.resetPasswordInvalidLink'));
+        setInvalidLink(true);
 
         setLoadingCode(false);
         return;
@@ -89,34 +91,37 @@ export default function ResetPasswordConfirmPage() {
       try {
         const resolvedEmail = await verifyPasswordResetCode(auth, oobCode);
         setEmail(resolvedEmail);
+        setInvalidLink(false);
       } catch {
-        setError(t('resetPasswordInvalidLink')) ;
+        setError(t('alert.resetPasswordInvalidLink'));
+        setInvalidLink(true);
       } finally {
         setLoadingCode(false);
       }
     };
 
     verifyCode();
-  }, [oobCode]);
+  }, [oobCode, t]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError('');
     setSuccess('');
 
-    const passwordError = validateNewPassword(newPassword);
+    const passwordError = validateNewPassword(newPassword, t);
     if (passwordError) {
       setError(passwordError);
       return;
     }
 
     if (newPassword !== confirmNewPassword) {
-      setError(t('resetPasswordPasswordsDoNotMatch'));
+      setError(t('alert.resetPasswordPasswordsDoNotMatch'));
       return;
     }
 
     if (!oobCode) {
-      setError(t('resetPasswordInvalidLink'));
+      setError(t('alert.resetPasswordInvalidLink'));
+      setInvalidLink(true);
       return;
     }
 
@@ -124,10 +129,11 @@ export default function ResetPasswordConfirmPage() {
 
     try {
       await confirmPasswordReset(auth, oobCode, newPassword);
-      setSuccess(t('resetPasswordSuccess'));
+      setSuccess(t('alert.resetPasswordChangedSuccess'));
+      setInvalidLink(false);
       setTimeout(() => router.push('/login'), 1400);
     } catch {
-      setError(t('resetPasswordError'));
+      setError(t('alert.resetPasswordError'));
     } finally {
       setSubmitting(false);
     }
@@ -137,8 +143,8 @@ export default function ResetPasswordConfirmPage() {
     <AuthLayout>
       <div className="w-full max-w-md mx-auto">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2 text-center">Сброс пароля</h1>
-          <p className="text-gray-500 text-center">Введите новый пароль для аккаунта</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2 text-center">{t('resetPassword.title')}</h1>
+          <p className="text-gray-500 text-center">{t('resetPassword.subtitle2')}</p>
         </div>
 
         <div className="bg-white rounded-lg p-8 border border-gray-200 shadow">
@@ -148,7 +154,7 @@ export default function ResetPasswordConfirmPage() {
             <>
               {email && (
                 <p className="mb-4 text-sm text-gray-700">
-                  {t('resetPasswordAccount')}: <span className="font-medium text-gray-900">{email}</span>
+                  {t('resetPassword.accountLabel')}: <span className="font-medium text-gray-900">{email}</span>
                 </p>
               )}
 
@@ -164,10 +170,10 @@ export default function ResetPasswordConfirmPage() {
                 </div>
               )}
 
-              {!success && !error.includes('недействительна') && !error.includes('истекла') && (
+              {!success && !invalidLink && (
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">{t('newPasswordLabel')}</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">{t('resetPassword.newPasswordLabel')}</label>
                     <div className="relative">
                       <input
                         type={showNewPassword ? 'text' : 'password'}
@@ -181,8 +187,8 @@ export default function ResetPasswordConfirmPage() {
                         type="button"
                         onClick={() => setShowNewPassword((prev) => !prev)}
                         className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md border border-gray-300 p-1.5 text-gray-700 hover:bg-gray-200"
-                        aria-label={showNewPassword ? t('resetPasswordHidePassword') : t('resetPasswordShowPassword')}
-                        title={showNewPassword ? t('resetPasswordHidePassword') : t('resetPasswordShowPassword')}
+                        aria-label={showNewPassword ? t('resetPassword.hidePassword') : t('resetPassword.showPassword')}
+                        title={showNewPassword ? t('resetPassword.hidePassword') : t('resetPassword.showPassword')}
                       >
                         <EyeIcon crossed={showNewPassword} />
                       </button>
@@ -190,7 +196,7 @@ export default function ResetPasswordConfirmPage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">{t('repeatPasswordLabel')}</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">{t('resetPassword.repeatPasswordLabel')}</label>
                     <div className="relative">
                       <input
                         type={showConfirmPassword ? 'text' : 'password'}
@@ -204,8 +210,8 @@ export default function ResetPasswordConfirmPage() {
                         type="button"
                         onClick={() => setShowConfirmPassword((prev) => !prev)}
                         className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md border border-gray-300 p-1.5 text-gray-700 hover:bg-gray-200"
-                        aria-label={showConfirmPassword ? t('resetPasswordHidePassword') : t('resetPasswordShowPassword')}
-                        title={showConfirmPassword ? t('resetPasswordHidePassword') : t('resetPasswordShowPassword')}
+                        aria-label={showConfirmPassword ? t('resetPassword.hidePassword') : t('resetPassword.showPassword')}
+                        title={showConfirmPassword ? t('resetPassword.hidePassword') : t('resetPassword.showPassword')}
                       >
                         <EyeIcon crossed={showConfirmPassword} />
                       </button>
@@ -217,14 +223,14 @@ export default function ResetPasswordConfirmPage() {
                     disabled={submitting}
                     className="w-full bg-indigo-600 text-white py-2 rounded-lg font-semibold hover:bg-indigo-700 disabled:bg-gray-400 transition-all duration-150"
                   >
-                    {submitting ? t('savingNewPassword') : t('saveNewPassword')}
+                    {submitting ? t('resetPassword.saving') : t('resetPassword.saveNew')}
                   </button>
                 </form>
               )}
 
               <p className="text-center text-gray-500 mt-6 text-sm">
                 <Link href="/login" className="text-indigo-600 hover:underline">
-                  {t('backToLogin')}
+                  {t('resetPassword.backToLogin')}
                 </Link>
               </p>
             </>

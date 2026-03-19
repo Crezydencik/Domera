@@ -2,16 +2,19 @@
 
 import { useState } from 'react';
 import { toast } from 'react-toastify';
-import { getAuth, fetchSignInMethodsForEmail } from 'firebase/auth';
+import { fetchSignInMethodsForEmail } from 'firebase/auth';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { registerUser } from '@/modules/auth/services/authService';
 import AuthLayout from '@/shared/components/layout/AuthLayout';
 import { useTranslations } from 'next-intl';
+import { auth } from '@/firebase/config';
+import { useLanguage } from '@/shared/providers/LanguageProvider';
 
 export default function RegisterPage() {
   const t = useTranslations('auth');
   const ts = useTranslations('system');
+  const { locale } = useLanguage();
 
   const searchParams = useSearchParams();
   const invitedRoleParam = searchParams.get('inviteRole');
@@ -34,9 +37,15 @@ export default function RegisterPage() {
     lastName: '',
     phone: '',
   });
-  const [emailExists, setEmailExists] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [verificationCode, setVerificationCode] = useState('');
+  const [verificationToken, setVerificationToken] = useState('');
+  const [codeExpiresInSeconds, setCodeExpiresInSeconds] = useState(3600);
+  const [sendingCode, setSendingCode] = useState(false);
+  const [verifyingCode, setVerifyingCode] = useState(false);
   const router = useRouter();
+
+  const totalSteps = isCompanyInvite ? 2 : 3;
 
   const PHONE_CODES = [
     { code: '+371', country: '🇱🇻' },
@@ -50,45 +59,36 @@ export default function RegisterPage() {
       setStep(1);
     }
     if (name === 'email') {
-      setEmailExists(false);
+      // no-op: kept for possible future inline email status
     }
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Проверка email при потере фокуса
-  const handleEmailBlur = async () => {
-    if (!formData.email.trim()) return;
-    setLoading(true);
-    const exists = await checkEmailExists(formData.email);
-    if (exists) {
-      setEmailExists(true);
-      toast.info(
-        <div>
-          <div>Email уже используется.</div>
-          <div className="mt-2 flex gap-2">
-            <button
-              className="px-3 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700"
-              onClick={() => router.push('/login')}
-            >Войти</button>
-            <button
-              className="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
-              onClick={() => router.push('/reset-password')}
-            >Сменить пароль</button>
-          </div>
-        </div>,
-        { autoClose: false }
-      );
-    } else {
-      setEmailExists(false);
-    }
-    setLoading(false);
+  const showEmailExistsToast = () => {
+    toast.info(
+      <div>
+        <div>{t('validation.emailInUse')}</div>
+        <div className="mt-2 flex gap-2">
+          <button
+            className="px-3 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700"
+            onClick={() => router.push('/login')}
+          >
+            {t('login.submit')}
+          </button>
+          <button
+            className="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+            onClick={() => router.push('/reset-password')}
+          >
+            {t('login.forgotPassword')}
+          </button>
+        </div>
+      </div>,
+      { autoClose: false }
+    );
   };
 
   async function checkEmailExists(email: string): Promise<boolean> {
-    // Используем singleton auth из '@/firebase/config'
     try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { auth } = require('../../../firebase/config');
       const methods = await fetchSignInMethodsForEmail(auth, email);
       return methods && methods.length > 0;
     } catch (err) {
@@ -97,41 +97,90 @@ export default function RegisterPage() {
     }
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const requestEmailCode = async (): Promise<boolean> => {
+    setSendingCode(true);
+    try {
+      const response = await fetch('/api/auth/register-email-code/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: formData.email, locale }),
+      });
 
-    // Общая валидация для 1 шага
-    if (!formData.email.trim()) return toast.error('Введите email');
-    if (formData.password !== formData.confirmPassword) return toast.error('Пароли не совпадают');
-    if (formData.password.length < 6) return toast.error('Пароль должен быть не менее 6 символов');
-
-    if (step === 1) {
-      setLoading(true);
-      try {
-        const exists = await checkEmailExists(formData.email);
-        if (exists) {
-          setEmailExists(true);
-          toast.info(
-            <div>
-              <div>Email уже используется.</div>
-              <div className="mt-2 flex gap-2">
-                <button
-                  className="px-3 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700"
-                  onClick={() => router.push('/login')}
-                >Войти</button>
-                <button
-                  className="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
-                  onClick={() => router.push('/reset-password')}
-                >Сменить пароль</button>
-              </div>
-            </div>,
-            { autoClose: false }
-          );
-          setLoading(false);
-          return; // Блокируем переход на второй этап
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        if (response.status === 409) {
+          showEmailExistsToast();
+          return false;
         }
 
-        if (isCompanyInvite && invitedCompanyId && isInvitedRole) {
+        toast.error(data?.error || t('register.verification.requestError'));
+        return false;
+      }
+
+      setCodeExpiresInSeconds(Number(data?.expiresInSeconds ?? 3600));
+      toast.success(t('register.verification.codeSent'));
+      return true;
+    } catch (error) {
+      console.error('Code request error:', error);
+      toast.error(t('register.verification.requestError'));
+      return false;
+    } finally {
+      setSendingCode(false);
+    }
+  };
+
+  const handleNextFromCredentials = async () => {
+    if (!formData.email.trim()) return toast.error(ts('validation.requiredEmail'));
+    if (formData.password !== formData.confirmPassword) return toast.error(ts('validation.passwordsDoNotMatch'));
+    if (formData.password.length < 6) return toast.error(ts('validation.passwordTooShort'));
+
+    setLoading(true);
+    try {
+      const exists = await checkEmailExists(formData.email);
+      if (exists) {
+        showEmailExistsToast();
+        return;
+      }
+
+      const sent = await requestEmailCode();
+      if (!sent) return;
+
+      setStep(2);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyCode = async () => {
+    if (!verificationCode.trim()) {
+      toast.error(t('register.verification.required'));
+      return;
+    }
+
+    setVerifyingCode(true);
+    try {
+      const response = await fetch('/api/auth/register-email-code/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: formData.email, code: verificationCode }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        if (response.status === 410) {
+          toast.error(t('register.verification.codeExpired'));
+          return;
+        }
+        toast.error(data?.error || t('register.verification.invalidCode'));
+        return;
+      }
+
+      setVerificationToken(String(data?.verificationToken ?? ''));
+      toast.success(t('register.verification.codeVerified'));
+
+      if (isCompanyInvite && invitedCompanyId && isInvitedRole) {
+        setLoading(true);
+        try {
           const user = await registerUser(
             {
               email: formData.email,
@@ -143,8 +192,7 @@ export default function RegisterPage() {
           );
 
           if (!user || !user.uid) {
-            toast.error('Ошибка регистрации');
-            setLoading(false);
+            toast.error(t('register.status.error'));
             return;
           }
 
@@ -156,34 +204,43 @@ export default function RegisterPage() {
             });
           }
 
-          toast.success('Регистрация по приглашению успешна!');
+          toast.success(t('register.status.complete'));
           setTimeout(() => {
             router.push('/dashboard');
           }, 500);
+        } finally {
           setLoading(false);
-          return;
         }
-
-        setStep(2);
-      } catch {
-              setEmailExists(true);
-        toast.error('Ошибка проверки email');
-      } finally {
-        setLoading(false);
+        return;
       }
+
+      setStep(3);
+    } catch (error) {
+      console.error('Code verify error:', error);
+      toast.error(t('register.verification.verifyError'));
+    } finally {
+      setVerifyingCode(false);
+    }
+  };
+
+  const handleFinalRegistration = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!verificationToken) {
+      toast.error(t('register.verification.requiredBeforeContinue'));
       return;
     }
 
-    // Валидация для 2 шага
-    if (role === 'uk' && step === 2) {
-      if (!formData.companyName.trim()) return toast.error('Введите название компании');
-      if (!formData.companyAddress.trim()) return toast.error('Введите адрес');
-      if (!formData.companyPhone.trim()) return toast.error('Введите телефон');
+    if (role === 'uk') {
+      if (!formData.companyName.trim()) return toast.error(ts('validation.requiredCompanyName'));
+      if (!formData.companyAddress.trim()) return toast.error(ts('placeholder.address'));
+      if (!formData.companyPhone.trim()) return toast.error(ts('placeholder.phone'));
     }
-    if (role === 'resident' && step === 2) {
-      if (!formData.firstName.trim()) return toast.error('Введите имя');
-      if (!formData.lastName.trim()) return toast.error('Введите фамилию');
-      if (!formData.phone.trim()) return toast.error('Введите телефон');
+
+    if (role === 'resident') {
+      if (!formData.firstName.trim()) return toast.error(ts('placeholder.firstName'));
+      if (!formData.lastName.trim()) return toast.error(ts('placeholder.lastName'));
+      if (!formData.phone.trim()) return toast.error(ts('placeholder.phone'));
     }
 
     setLoading(true);
@@ -197,39 +254,26 @@ export default function RegisterPage() {
         role === 'uk' ? 'ManagementCompany' : 'Resident',
         ''
       );
+
       if (!user || !user.uid) {
-        toast.error('Ошибка регистрации');
-        setLoading(false);
+        toast.error(t('register.status.error'));
         return;
       }
-      toast.success('Регистрация успешна!');
+
+      toast.success(t('register.status.complete'));
       setTimeout(() => {
-        router.push(role === 'uk' ? '/dashboard' : '/choose-company');
+        router.push('/dashboard');
       }, 500);
-    } catch (err: any) {
-      if (err.code === 'auth/email-already-in-use') {
-        toast.info(
-          <div>
-            <div>Email уже используется.</div>
-            <div className="mt-2 flex gap-2">
-              <button
-                className="px-3 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700"
-                onClick={() => router.push('/login')}
-              >Войти</button>
-              <button
-                className="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
-                onClick={() => router.push('/reset-password')}
-              >Сменить пароль</button>
-            </div>
-          </div>,
-          { autoClose: false }
-        );
-      } else if (err.code === 'auth/weak-password') {
-        toast.error('Слабый пароль');
-      } else if (err.code === 'auth/invalid-email') {
-        toast.error('Некорректный email');
+    } catch (err: unknown) {
+      const authErr = err as { code?: string; message?: string };
+      if (authErr.code === 'auth/email-already-in-use') {
+        showEmailExistsToast();
+      } else if (authErr.code === 'auth/weak-password') {
+        toast.error(ts('validation.passwordTooShort'));
+      } else if (authErr.code === 'auth/invalid-email') {
+        toast.error(ts('validation.invalidEmail'));
       } else {
-        toast.error(err.message || 'Ошибка регистрации');
+        toast.error(authErr.message || t('register.status.error'));
       }
     } finally {
       setLoading(false);
@@ -246,14 +290,17 @@ export default function RegisterPage() {
 
         {/* Индикатор шагов */}
         <div className="flex flex-col items-center mb-6 select-none">
-          <span className="text-sm text-gray-500 mb-2">{ts('steps.steps')} {step} {ts('steps.from')} 2</span>
+          <span className="text-sm text-gray-500 mb-2">{ts('steps.steps')} {step} {ts('steps.from')} {totalSteps}</span>
           <div className="flex gap-2">
             <div className={`w-8 h-2 rounded-full transition-all duration-200 ${step === 1 ? 'bg-indigo-600' : 'bg-gray-200'}`}></div>
             <div className={`w-8 h-2 rounded-full transition-all duration-200 ${step === 2 ? 'bg-indigo-600' : 'bg-gray-200'}`}></div>
+            {!isCompanyInvite && (
+              <div className={`w-8 h-2 rounded-full transition-all duration-200 ${step === 3 ? 'bg-indigo-600' : 'bg-gray-200'}`}></div>
+            )}
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleFinalRegistration} className="space-y-6">
           {/* Шаг 1: Email и пароль */}
           {step === 1 && (
             <>
@@ -264,7 +311,6 @@ export default function RegisterPage() {
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
-                  onBlur={handleEmailBlur}
                   placeholder="example@mail.com"
                   className="w-full px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:border-indigo-500 transition"
                   autoComplete="email"
@@ -322,47 +368,66 @@ export default function RegisterPage() {
               <div className="flex gap-3 mt-6">
                 <button
                   type="button"
-                  disabled={loading}
+                  disabled={loading || sendingCode}
                   className="w-full bg-indigo-600 text-white py-2 rounded-lg font-semibold hover:bg-indigo-700 disabled:bg-gray-400 transition-all duration-150"
-                  onClick={async () => {
-                    if (!formData.email.trim()) return toast.error('Введите email');
-                    if (formData.password !== formData.confirmPassword) return toast.error('Пароли не совпадают');
-                    if (formData.password.length < 6) return toast.error('Пароль должен быть не менее 6 символов');
-                    setLoading(true);
-                    const exists = await checkEmailExists(formData.email);
-                    if (exists) {
-                      setEmailExists(true);
-                      toast.info(
-                        <div>
-                          <div>Email уже используется.</div>
-                          <div className="mt-2 flex gap-2">
-                            <button
-                              className="px-3 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700"
-                              onClick={() => router.push('/login')}
-                            >Войти</button>
-                            <button
-                              className="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
-                              onClick={() => router.push('/reset-password')}
-                            >Сменить пароль</button>
-                          </div>
-                        </div>,
-                        { autoClose: false }
-                      );
-                      setLoading(false);
-                      return;
-                    }
-                    setStep(2);
-                    setLoading(false);
-                  }}
+                  onClick={handleNextFromCredentials}
                 >
-                  {ts('button.next')}
+                  {sendingCode ? t('register.verification.sendingCode') : ts('button.next')}
+                </button>
+              </div>
+            </>
+          )}
+
+          {/* Шаг 2: подтверждение кода */}
+          {step === 2 && (
+            <>
+              <div className="rounded-lg border border-indigo-100 bg-indigo-50 p-3 text-sm text-indigo-800">
+                {t('register.verification.description')} <b>{formData.email}</b>. {t('register.verification.expiresHint')}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t('register.verification.codeLabel')}</label>
+                <input
+                  type="text"
+                  name="verificationCode"
+                  value={verificationCode}
+                  onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  placeholder={t('register.verification.codePlaceholder')}
+                  className="w-full px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:border-indigo-500 transition tracking-[0.2em] text-center"
+                  required
+                />
+                <p className="text-xs text-gray-500 mt-1">{t('register.verification.ttlHint')}: {Math.ceil(codeExpiresInSeconds / 60)}m</p>
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <button
+                  type="button"
+                  onClick={() => setStep(1)}
+                  className="flex-1 px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg font-semibold hover:bg-gray-50 transition duration-150"
+                >
+                  {ts('button.back')}
+                </button>
+                <button
+                  type="button"
+                  onClick={requestEmailCode}
+                  disabled={sendingCode}
+                  className="flex-1 px-4 py-2 bg-white text-indigo-700 border border-indigo-300 rounded-lg font-semibold hover:bg-indigo-50 disabled:opacity-60 transition duration-150"
+                >
+                  {sendingCode ? t('register.verification.sendingCode') : t('register.verification.resendCode')}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleVerifyCode}
+                  disabled={verifyingCode || loading}
+                  className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700 disabled:bg-gray-400 transition duration-150"
+                >
+                  {verifyingCode ? t('register.verification.verifyingCode') : t('register.verification.verifyCode')}
                 </button>
               </div>
             </>
           )}
 
           {/* Шаг 2: УК */}
-          {role === 'uk' && step === 2 && (
+          {role === 'uk' && step === 3 && (
             <>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">{t('register.company.nameLabel')}</label>
@@ -415,7 +480,7 @@ export default function RegisterPage() {
           )}
 
           {/* Шаг 2: Жилец */}
-          {role === 'resident' && step === 2 && (
+          {role === 'resident' && step === 3 && (
             <>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">{ts('form.firstName')}</label>
@@ -463,27 +528,29 @@ export default function RegisterPage() {
                     required
                   />
                 </div>
+
+              </div>
+            </>
+
+          )}
+
+          {!isCompanyInvite && step === 3 && (
             <div className="flex gap-3 mt-6">
-              {step === 2 && (
-                <button
-                  type="button"
-                  onClick={() => setStep(1)}
-                  className="flex-1 px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg font-semibold hover:bg-gray-50 transition duration-150"
-                >
-                  {ts('button.back')}
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => setStep(2)}
+                className="flex-1 px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg font-semibold hover:bg-gray-50 transition duration-150"
+              >
+                {ts('button.back')}
+              </button>
               <button
                 type="submit"
                 disabled={loading}
-                className="flex-2 bg-indigo-600 text-white py-2 rounded-lg font-semibold hover:bg-indigo-700 disabled:bg-gray-400 transition-all duration-150"
+                className="flex-1 bg-indigo-600 text-white py-2 rounded-lg font-semibold hover:bg-indigo-700 disabled:bg-gray-400 transition-all duration-150"
               >
                 {loading ? ts('button.registering') : ts('button.register')}
               </button>
             </div>
-              </div>
-            </>
-
           )}
 
                 </form>

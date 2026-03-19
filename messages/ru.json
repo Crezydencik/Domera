@@ -301,6 +301,25 @@
       "status": {
         "complete": "✓ Регистрация завершена! Перенаправление...",
         "error": "Ошибка регистрации"
+      },
+      "verification": {
+        "description": "Мы отправили код подтверждения на",
+        "expiresHint": "Код действует 1 час",
+        "codeLabel": "Код подтверждения",
+        "codePlaceholder": "Введите 6-значный код",
+        "ttlHint": "Код истекает через",
+        "required": "Введите код подтверждения",
+        "requiredBeforeContinue": "Подтвердите код из email перед продолжением",
+        "sendingCode": "Отправка кода...",
+        "resendCode": "Отправить код повторно",
+        "verifyCode": "Проверить код",
+        "verifyingCode": "Проверяем...",
+        "codeSent": "Код подтверждения отправлен",
+        "codeVerified": "Код подтверждён",
+        "invalidCode": "Неверный код подтверждения",
+        "codeExpired": "Срок действия кода истёк",
+        "requestError": "Не удалось отправить код подтверждения",
+        "verifyError": "Не удалось проверить код"
       }
     },
     "common": {
@@ -320,8 +339,30 @@
       "title": "Сброс пароля",
       "subtitle": "Введите ваш email, и мы отправим ссылку для сброса",
       "submit": "Отправить ссылку",
-      "success": "Ссылка для сброса пароля отправлена на {email}",
-      "error": "Ошибка сброса пароля. Попробуйте еще раз."
+      "subtitle2": "Введите новый пароль",
+      "accountLabel": "Сброс пароля для",
+      "emailLabel": "Email",
+      "emailPlaceholder": "example@mail.com",
+      "saveNew": "Сохранить новый пароль",
+      "saving": "Сохранение...",
+      "remembered": "Вспомнили пароль?",
+      "showPassword": "Показать пароль",
+      "hidePassword": "Скрыть пароль",
+      "backToLogin": "Вернуться к входу",
+      "newPasswordLabel": "Новый пароль",
+      "repeatPasswordLabel": "Повторите пароль",
+      "sending": "Отправка..."
+    },
+    "alert": {
+      "resetPasswordSuccess": "Ссылка для сброса пароля отправлена на {email}",
+      "resetPasswordChangedSuccess": "Пароль успешно изменен",
+      "resetPasswordError": "Ошибка сброса пароля. Попробуйте еще раз.",
+      "resetPasswordEmailPlaceholder": "Введите email для получения инструкций по сбросу",
+      "resetPasswordInvalidEmail": "Введите корректный email адрес",
+      "resetPasswordEnterNewPassword": "Введите новый пароль",
+      "resetPasswordPasswordTooShort": "Пароль должен быть не менее 6 символов",
+      "resetPasswordPasswordsDoNotMatch": "Пароли не совпадают",
+      "resetPasswordInvalidLink": "Недействительная или истекшая ссылка для сброса пароля"
     },
   "input": {
     "hidePassword": "Скрыть пароль",

@@ -10,6 +10,9 @@
     "permissionDenied": "No database access. Check Firebase security rules.",
     "dbError": "Error connecting to the database. Try again.",
     "rememberPassword" : "Remember your password?",
+    "alert":{
+      
+    },
     "notifications": {
       "noNewNotifications": "No new notifications",
       "allEventsViewed": "All events viewed"
@@ -379,18 +382,44 @@
       "status": {
         "complete": "✓ Registration complete! Redirecting...",
         "error": "Registration error"
+      },
+      "verification": {
+        "description": "We sent a confirmation code to",
+        "expiresHint": "The code is valid for 1 hour",
+        "codeLabel": "Verification code",
+        "codePlaceholder": "Enter 6-digit code",
+        "ttlHint": "Code expires in",
+        "required": "Enter the confirmation code",
+        "requiredBeforeContinue": "Verify your email code before continuing",
+        "sendingCode": "Sending code...",
+        "resendCode": "Resend code",
+        "verifyCode": "Verify code",
+        "verifyingCode": "Verifying...",
+        "codeSent": "Verification code sent",
+        "codeVerified": "Code verified successfully",
+        "invalidCode": "Invalid verification code",
+        "codeExpired": "Verification code has expired",
+        "requestError": "Failed to send verification code",
+        "verifyError": "Failed to verify code"
       }
     },
     "resetPassword": {
       "title": "Password Reset",
       "subtitle": "Enter your email and we will send a reset link",
-      
+      "subtitle2": "Enter new password",
+      "accountLabel": "Reset password for",
+      "emailLabel": "Email",
+      "emailPlaceholder": "example@mail.com",
       "submit": "Send reset link",
-      "success": "An email with a password reset link has been sent to {email}",
-      "error": "Error resetting password. Please try again.",
       "saveNew": "Save new password",
       "saving": "Saving...",
-      "remembered": "Remember your password?"
+      "remembered": "Remember your password?",
+      "showPassword": "Show password",
+      "hidePassword": "Hide password",
+      "backToLogin": "Back to login",
+      "newPasswordLabel": "New password",
+      "repeatPasswordLabel": "Repeat password",
+      "sending": "Sending..."
     },
     "validation": {
       "invalidEmail": "Invalid email format",
@@ -438,6 +467,17 @@
       "saving": "Saving...",
       "remembered": "Remembered your password?",
       "gdprNotice": "GDPR: Send the invitation only if you have a legal basis and have informed the data subject."
+      },
+      "alert":{
+        "resetPasswordSuccess": "An email with a password reset link has been sent to {email}",
+        "resetPasswordChangedSuccess": "Password changed successfully",
+        "resetPasswordError": "Error resetting password. Please try again.",
+        "resetPasswordEmailPlaceholder": "Enter your email to receive reset instructions",
+        "resetPasswordInvalidEmail": "Please enter a valid email address",
+        "resetPasswordEnterNewPassword": "Enter new password",
+        "resetPasswordPasswordTooShort": "Password must be at least 6 characters",
+        "resetPasswordPasswordsDoNotMatch": "Passwords do not match",
+        "resetPasswordInvalidLink": "Invalid password reset link"
       }
   }, 
 

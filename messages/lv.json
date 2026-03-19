@@ -300,17 +300,55 @@
       "status": {
         "complete": "✓ Reģistrācija pabeigta! Pāradresējam...",
         "error": "Reģistrācijas kļūda. Lūdzu, mēģiniet vēlreiz."
+      },
+      "verification": {
+        "description": "Mēs nosūtījām apstiprinājuma kodu uz",
+        "expiresHint": "Kods ir derīgs 1 stundu",
+        "codeLabel": "Apstiprinājuma kods",
+        "codePlaceholder": "Ievadiet 6 ciparu kodu",
+        "ttlHint": "Kods beidzas pēc",
+        "required": "Ievadiet apstiprinājuma kodu",
+        "requiredBeforeContinue": "Pirms turpināt, apstipriniet kodu no e-pasta",
+        "sendingCode": "Nosūta kodu...",
+        "resendCode": "Nosūtīt kodu vēlreiz",
+        "verifyCode": "Pārbaudīt kodu",
+        "verifyingCode": "Pārbauda...",
+        "codeSent": "Apstiprinājuma kods ir nosūtīts",
+        "codeVerified": "Kods apstiprināts",
+        "invalidCode": "Nederīgs apstiprinājuma kods",
+        "codeExpired": "Koda derīguma termiņš ir beidzies",
+        "requestError": "Neizdevās nosūtīt apstiprinājuma kodu",
+        "verifyError": "Neizdevās pārbaudīt kodu"
       }
     },
     "resetPassword": {
       "title": "Paroles atiestatīšana",
       "subtitle": "Ievadiet savu e-pastu, un mēs nosūtīsim saiti paroles atiestatīšanai", 
+      "subtitle2": "Ievadiet jaunu paroli",
+      "accountLabel": "Paroles atiestatīšana kontam",
+      "emailLabel": "E-pasts",
+      "emailPlaceholder": "example@mail.com",
       "submit": "Nosūtīt saiti",
-      "success": "Saiti paroles atiestatīšanai nosūtīta uz {email}",
-      "error": "Kļūda paroles atiestatīšanā. Lūdzu, mēģiniet vēlreiz.",
       "saveNew": "Saglabāt jauno paroli",
       "saving": "Saglabāšana...",
-      "remembered": "Atcerējāties paroli?"
+      "remembered": "Atcerējāties paroli?",
+      "showPassword": "Rādīt paroli",
+      "hidePassword": "Slēpt paroli",
+      "backToLogin": "Atpakaļ uz ievadi",
+      "newPasswordLabel": "Jaunā parole",
+      "repeatPasswordLabel": "Atkārtojiet paroli",
+      "sending": "Sūtīšana..."
+    },
+    "alert": {
+      "resetPasswordSuccess": "Saiti paroles atiestatīšanai nosūtīta uz {email}",
+      "resetPasswordChangedSuccess": "Parole veiksmīgi nomainīta",
+      "resetPasswordError": "Kļūda paroles atiestatīšanā. Lūdzu, mēģiniet vēlreiz.",
+      "resetPasswordEmailPlaceholder": "Ievadiet e-pastu, lai saņemtu atiestatīšanas norādījumus",
+      "resetPasswordInvalidEmail": "Lūdzu, ievadiet derīgu e-pasta adresi",
+      "resetPasswordEnterNewPassword": "Ievadiet jaunu paroli",
+      "resetPasswordPasswordTooShort": "Parolei jābūt vismaz 6 simbolus garai",
+      "resetPasswordPasswordsDoNotMatch": "Paroles nesakrīt",
+      "resetPasswordInvalidLink": "Nederīga vai beigusies paroles atiestatīšanas saite"
     },
     "validation": {
       "invalidEmail": "Nederīgs e-pasta formāts",
