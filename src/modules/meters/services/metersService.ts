@@ -282,7 +282,7 @@ export const deleteMeter = async (meterId: string): Promise<void> => {
  * Submit meter reading
  */
 export const submitMeterReading = async (
-  data: Omit<MeterReading, 'id'>
+  data: Omit<MeterReading, 'id'> & { meterKey?: 'coldmeterwater' | 'hotmeterwater' }
 ): Promise<MeterReading> => {
   if (typeof window !== 'undefined') {
     const response = await fetch('/api/meter-readings', {

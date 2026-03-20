@@ -34,6 +34,55 @@ export const validatePassword = (password: string): {
   };
 };
 
+export type PasswordStrengthLevel = 'weak' | 'medium' | 'strong';
+
+/**
+ * Password strength evaluation.
+ *
+ * Scoring criteria (0..4):
+ * - length >= 8
+ * - has lowercase letters
+ * - has uppercase letters
+ * - has digits
+ * - has special chars
+ *
+ * Weak  : score <= 2 or length < minimum
+ * Medium: score = 3
+ * Strong: score >= 4
+ */
+export const getPasswordStrength = (password: string): {
+  score: number;
+  level: PasswordStrengthLevel;
+  isStrongEnoughToSave: boolean;
+} => {
+  if (!password) {
+    return { score: 0, level: 'weak', isStrongEnoughToSave: false };
+  }
+
+  let score = 0;
+
+  if (password.length >= 8) score += 1;
+  if (/[a-z]/.test(password)) score += 1;
+  if (/[A-Z]/.test(password)) score += 1;
+  if (/\d/.test(password)) score += 1;
+  if (/[^A-Za-z0-9]/.test(password)) score += 1;
+
+  const normalizedScore = Math.min(score, 4);
+
+  const level: PasswordStrengthLevel =
+    password.length < VALIDATION.PASSWORD_MIN_LENGTH || normalizedScore <= 2
+      ? 'weak'
+      : normalizedScore === 3
+        ? 'medium'
+        : 'strong';
+
+  return {
+    score: normalizedScore,
+    level,
+    isStrongEnoughToSave: level !== 'weak',
+  };
+};
+
 /**
  * Building name validation
  */

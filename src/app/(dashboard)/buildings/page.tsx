@@ -425,45 +425,45 @@ export default function BuildingsPage() {
         )}
 
         {showCreateForm && canCreateBuilding && (
-          <div className="bg-slate-800 border border-slate-700 rounded-lg p-6 mb-8">
-            <h2 className="text-xl font-bold text-white mb-4">Новый дом</h2>
+          <div className="mb-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 className="mb-5 text-2xl font-bold text-slate-900">Новый дом</h2>
             <form onSubmit={handleCreateBuilding} className="space-y-4">
               <div>
-                <label className="block text-sm text-gray-300 mb-2">Название дома</label>
+                <label className="mb-2 block text-sm font-medium text-slate-700">Название дома</label>
                 <input
                   type="text"
                   value={buildingName}
                   onChange={(e) => setBuildingName(e.target.value)}
-                  placeholder="Например: Дом на Ленина"
-                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white"
+                  placeholder="Majas nosaukums"
+                  className="h-12 w-full rounded-xl border border-slate-300 bg-slate-50 px-4 text-base text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:bg-white"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm text-gray-300 mb-2">Адрес</label>
+                <label className="mb-2 block text-sm font-medium text-slate-700">Адрес</label>
                 <input
                   type="text"
                   value={buildingAddress}
                   onChange={(e) => setBuildingAddress(e.target.value)}
-                  placeholder="г. Москва, ул. Ленина, 10"
-                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white"
+                  placeholder="A.ČAKA IELA 123, RĪGA, LV-1010"
+                  className="h-12 w-full rounded-xl border border-slate-300 bg-slate-50 px-4 text-base text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:bg-white"
                   required
                 />
               </div>
 
-              <div className="flex gap-3">
+              <div className="flex flex-wrap gap-3 pt-1">
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+                  className="rounded-xl bg-blue-600 px-5 py-2.5 text-base font-medium text-white transition hover:bg-blue-700 disabled:opacity-50"
                 >
                   {submitting ? 'Сохранение...' : 'Сохранить дом'}
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowCreateForm(false)}
-                  className="px-4 py-2 bg-slate-700 text-white rounded-lg border border-slate-600 hover:bg-slate-600 transition"
+                  className="rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-base font-medium text-slate-700 transition hover:bg-slate-100"
                 >
                   Отмена
                 </button>

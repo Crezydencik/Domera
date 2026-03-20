@@ -1,95 +1,26 @@
 /**
  * useAuth hook
- * 
- * Custom hook for authentication state management
+ *
+ * Читает из общего AuthContext (AuthProvider).
+ * Данные загружаются один раз на уровне провайдера и доступны во всех компонентах.
  */
 
 'use client';
 
-import { useEffect, useState } from 'react';
-import { User } from '../types';
-import { onAuthStateChanged } from '../../firebase/services/authService';
-import { getCurrentUser } from '../../modules/auth/services/authService';
+import { useContext, useEffect } from 'react';
+import { AuthContext, UseAuthReturn } from '../providers/AuthProvider';
 
-
-export interface UseAuthReturn {
-  user: User | null;
-  uid: string | null;
-  loading: boolean;
-  isAuthenticated: boolean;
-  isManagementCompany: boolean;
-  isResident: boolean;
-  refreshUser: () => Promise<void>;
-}
-
+export type { UseAuthReturn };
 
 /**
  * Hook to get current user and auth status
  */
 export const useAuth = (): UseAuthReturn => {
-  const [uid, setUid] = useState<string | null>(null);
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  // Функция для ручного обновления пользователя
-  const refreshUser = async () => {
-    setLoading(true);
-    try {
-      const currentUser = await getCurrentUser();
-      setUser(currentUser);
-    } catch (error) {
-      setUser(null);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    let isMounted = true;
-
-    const unsubscribe = onAuthStateChanged(async (nextUid) => {
-      if (!isMounted) return;
-
-      setUid(nextUid);
-
-      if (!nextUid) {
-        setUser(null);
-        setLoading(false);
-        return;
-      }
-
-      setLoading(true);
-
-      try {
-        const currentUser = await getCurrentUser();
-        if (!isMounted) return;
-        setUser(currentUser);
-      } catch (error) {
-        console.error('Error fetching current user:', error);
-        if (!isMounted) return;
-        setUser(null);
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
-      }
-    });
-
-    return () => {
-      isMounted = false;
-      unsubscribe();
-    };
-  }, []);
-
-  return {
-    user,
-    uid,
-    loading,
-    isAuthenticated: !!user && !!uid,
-    isManagementCompany: user?.role === 'ManagementCompany',
-    isResident: user?.role === 'Resident',
-    refreshUser,
-  };
+  const ctx = useContext(AuthContext);
+  if (!ctx) {
+    throw new Error('useAuth must be used within <AuthProvider>');
+  }
+  return ctx;
 };
 
 /**

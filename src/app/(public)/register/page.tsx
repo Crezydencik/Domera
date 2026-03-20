@@ -5,11 +5,58 @@ import { toast } from 'react-toastify';
 import { fetchSignInMethodsForEmail } from 'firebase/auth';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { registerUser } from '@/modules/auth/services/authService';
+import { registerUser, updateUserProfile } from '@/modules/auth/services/authService';
+import { createCompany } from '@/modules/company/services/companyService';
 import AuthLayout from '@/shared/components/layout/AuthLayout';
 import { useTranslations } from 'next-intl';
 import { auth } from '@/firebase/config';
 import { useLanguage } from '@/shared/providers/LanguageProvider';
+import PasswordStrengthMeter from '@/shared/components/ui/PasswordStrengthMeter';
+import { getPasswordStrength } from '@/shared/validation';
+
+function EyeIcon({ crossed = false }: { crossed?: boolean }) {
+  if (crossed) {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" aria-hidden="true">
+        <path d="M3 3l18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        <path
+          d="M10.58 10.58A2 2 0 0012 14a2 2 0 001.42-.58"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M9.9 4.24A10.94 10.94 0 0112 4c5.05 0 9.27 3.11 10.5 8-1.05 4.15-4.32 7-8.24 7-1.05 0-2.05-.2-2.98-.57"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M6.61 6.61C4.67 7.85 3.31 9.73 2.5 12c.59 1.66 1.47 3.08 2.56 4.19"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" aria-hidden="true">
+      <path
+        d="M2.5 12C3.73 7.11 6.95 4 12 4s8.27 3.11 9.5 8c-1.23 4.89-4.45 8-9.5 8s-8.27-3.11-9.5-8z"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2" />
+    </svg>
+  );
+}
 
 export default function RegisterPage() {
   const t = useTranslations('auth');
@@ -43,7 +90,11 @@ export default function RegisterPage() {
   const [codeExpiresInSeconds, setCodeExpiresInSeconds] = useState(3600);
   const [sendingCode, setSendingCode] = useState(false);
   const [verifyingCode, setVerifyingCode] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const router = useRouter();
+  const passwordStrength = getPasswordStrength(formData.password);
+  const isWeakPassword = Boolean(formData.password) && !passwordStrength.isStrongEnoughToSave;
 
   const totalSteps = isCompanyInvite ? 2 : 3;
 
@@ -133,6 +184,7 @@ export default function RegisterPage() {
     if (!formData.email.trim()) return toast.error(ts('validation.requiredEmail'));
     if (formData.password !== formData.confirmPassword) return toast.error(ts('validation.passwordsDoNotMatch'));
     if (formData.password.length < 6) return toast.error(ts('validation.passwordTooShort'));
+    if (!passwordStrength.isStrongEnoughToSave) return toast.error(t('validation.weakPassword'));
 
     setLoading(true);
     try {
@@ -251,13 +303,27 @@ export default function RegisterPage() {
           password: formData.password,
           token: '',
         },
-        role === 'uk' ? 'ManagementCompany' : 'Resident',
-        ''
+        role === 'uk' ? 'ManagementCompany' : 'Resident'
       );
 
       if (!user || !user.uid) {
         toast.error(t('register.status.error'));
         return;
+      }
+
+      if (role === 'uk') {
+        const company = await createCompany(formData.companyName.trim(), user.uid, {
+          address: formData.companyAddress.trim(),
+          phone: `${phoneCode}${formData.companyPhone.trim()}`,
+          email: formData.email.trim().toLowerCase(),
+        });
+
+        await updateUserProfile(user.uid, {
+          companyId: company.id,
+          name: formData.companyName.trim(),
+          phone: `${phoneCode}${formData.companyPhone.trim()}`,
+          address: formData.companyAddress.trim(),
+        });
       }
 
       toast.success(t('register.status.complete'));
@@ -323,30 +389,58 @@ export default function RegisterPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">{ts('form.password')}</label>
-                <input
-                  type="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  placeholder="••••••••"
-                  className="w-full px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:border-indigo-500 transition"
-                  autoComplete="new-password"
-                  required
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    name="password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    placeholder="••••••••"
+                    className="w-full px-4 py-2 pr-24 bg-gray-100 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:border-indigo-500 transition"
+                    autoComplete="new-password"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md border border-gray-300 p-1.5 text-gray-700 hover:bg-gray-200"
+                    aria-label={showPassword ? t('common.hidePassword') : t('common.showPassword')}
+                    title={showPassword ? t('common.hidePassword') : t('common.showPassword')}
+                  >
+                    <EyeIcon crossed={showPassword} />
+                  </button>
+                </div>
+                <PasswordStrengthMeter
+                  password={formData.password}
+                  weakLabel={t('validation.weakPassword')}
+                  mediumLabel="Medium"
+                  strongLabel="Strong"
                 />
                 <p className="text-xs text-gray-500 mt-1">{ts('form.passwordHint')}</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">{ts('form.confirmPassword')}</label>
-                <input
-                  type="password"
-                  name="confirmPassword"
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  placeholder="••••••••"
-                  className="w-full px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:border-indigo-500 transition"
-                  autoComplete="new-password"
-                  required
-                />
+                <div className="relative">
+                  <input
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    name="confirmPassword"
+                    value={formData.confirmPassword}
+                    onChange={handleChange}
+                    placeholder="••••••••"
+                    className="w-full px-4 py-2 pr-24 bg-gray-100 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:border-indigo-500 transition"
+                    autoComplete="new-password"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword((prev) => !prev)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md border border-gray-300 p-1.5 text-gray-700 hover:bg-gray-200"
+                    aria-label={showConfirmPassword ? t('common.hidePassword') : t('common.showPassword')}
+                    title={showConfirmPassword ? t('common.hidePassword') : t('common.showPassword')}
+                  >
+                    <EyeIcon crossed={showConfirmPassword} />
+                  </button>
+                </div>
               </div>
                         {/* Выбор роли */}
           {!isCompanyInvite && (
@@ -368,7 +462,7 @@ export default function RegisterPage() {
               <div className="flex gap-3 mt-6">
                 <button
                   type="button"
-                  disabled={loading || sendingCode}
+                  disabled={loading || sendingCode || isWeakPassword}
                   className="w-full bg-indigo-600 text-white py-2 rounded-lg font-semibold hover:bg-indigo-700 disabled:bg-gray-400 transition-all duration-150"
                   onClick={handleNextFromCredentials}
                 >

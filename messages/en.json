@@ -21,8 +21,11 @@
       "next": "Next",
       "back": "Back",
       "save": "Save",
+      "change": "Change",
       "cancel": "Cancel",
       "delete": "Delete",
+      "edit": "Edit",
+      "update": "Update",
       "confirm": "Confirm",
       "login": "Log in",
       "register": "Register",
@@ -47,6 +50,7 @@
       "password": "Password",
       "confirmPassword": "Confirm password",
       "companyName": "Company name",
+      "fullname": "Name and surname",
       "firstName": "First name",
       "lastName": "Last name",
       "phone": "Phone number",
@@ -296,7 +300,9 @@
         "noApartmentsFound": "No readings found.",
         "notSpecified": "Not specified",
         "invalidDate": "Invalid date. Please enter a correct date.",
-        "noReadingsForApartment": "No readings for this apartment"
+        "noReadingsForApartment": "No readings for this apartment",
+        "history": "Meter history"
+
       },
       "profile": {
         "profileIncompleteTitle": "Profile incomplete",
@@ -304,7 +310,16 @@
         "loading": "Loading...",
         "tabs": {
           "profile": "Profile",
-          "notifications": "Notifications"
+          "notifications": "Notifications",
+          "company": "Company"
+        },
+        "company": {
+          "companyData": "Company information",
+          "name": "Company name",
+          "address": "Address",
+          "phone": "Phone",
+          "email": "Email",
+          "updated": "Company data updated"
         },
         "userAvatar": "User avatar",
         "clientNumber": "Client number",

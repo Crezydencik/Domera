@@ -47,6 +47,16 @@ const Header: React.FC<HeaderProps> = ({ userName = '',  userAvatarUrl = '', use
         linkLabel: 'Принять приглашение'
       });
     }
+    if (user && (!user.phone || !(user.displayName || user.name))) {
+      notifs.push({
+        id: 'profile-incomplete',
+        type: 'warning',
+        title: 'Профиль заполнен не полностью',
+        message: 'Добавьте имя и телефон в профиле, чтобы получать все уведомления корректно.',
+        link: '/profile',
+        linkLabel: 'Заполнить профиль'
+      });
+    }
     return notifs;
   }, [user, pendingInvitation]);
     // Check for pending invitation on mount or when userEmail changes

@@ -7,6 +7,8 @@ import { confirmPasswordReset, verifyPasswordResetCode } from 'firebase/auth';
 import { auth } from '@/firebase/config';
 import { useTranslations } from 'next-intl';
 import AuthLayout from '@/shared/components/layout/AuthLayout';
+import PasswordStrengthMeter from '@/shared/components/ui/PasswordStrengthMeter';
+import { getPasswordStrength } from '@/shared/validation';
 
 function EyeIcon({ crossed = false }: { crossed?: boolean }) {
   if (crossed) {
@@ -69,6 +71,8 @@ export default function ResetPasswordConfirmPage() {
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const passwordStrength = useMemo(() => getPasswordStrength(newPassword), [newPassword]);
+  const isWeakPassword = Boolean(newPassword) && !passwordStrength.isStrongEnoughToSave;
 
   const [loadingCode, setLoadingCode] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -111,6 +115,11 @@ export default function ResetPasswordConfirmPage() {
     const passwordError = validateNewPassword(newPassword, t);
     if (passwordError) {
       setError(passwordError);
+      return;
+    }
+
+    if (!passwordStrength.isStrongEnoughToSave) {
+      setError(t('validation.weakPassword'));
       return;
     }
 
@@ -193,6 +202,12 @@ export default function ResetPasswordConfirmPage() {
                         <EyeIcon crossed={showNewPassword} />
                       </button>
                     </div>
+                    <PasswordStrengthMeter
+                      password={newPassword}
+                      weakLabel={t('validation.weakPassword')}
+                      mediumLabel="Medium"
+                      strongLabel="Strong"
+                    />
                   </div>
 
                   <div>
@@ -220,7 +235,7 @@ export default function ResetPasswordConfirmPage() {
 
                   <button
                     type="submit"
-                    disabled={submitting}
+                    disabled={submitting || isWeakPassword}
                     className="w-full bg-indigo-600 text-white py-2 rounded-lg font-semibold hover:bg-indigo-700 disabled:bg-gray-400 transition-all duration-150"
                   >
                     {submitting ? t('resetPassword.saving') : t('resetPassword.saveNew')}

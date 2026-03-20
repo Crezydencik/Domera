@@ -1,42 +1,115 @@
 "use client";
 
-
 import { useAuth } from '@/shared/hooks/useAuth';
 import type { User } from '@/shared/types';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { getApartment } from '@/modules/apartments/services/apartmentsService';
 import { getBuilding } from '@/modules/invoices/services/buildings/services/buildingsService';
 import { updateUserProfile } from '@/modules/auth/services/authService';
+import { getCompany, updateCompany } from '@/modules/company/services/companyService';
+import type { Company } from '@/shared/types';
 import { showCustomToast } from '@/shared/components/ui/CustomToast';
 import { Switch } from '@/shared/components/ui/Switch';
 import Header from '../../../shared/components/layout/heder';
 import { useTranslations } from 'next-intl';
 import { FiCheck, FiX } from 'react-icons/fi';
-import { NotificationItem, NotificationsDropdown } from '../../../shared/components/ui/NotificationsDropdown';
 
+type EditableFieldRowProps = {
+  label: string;
+  isEditing: boolean;
+  inputValue: string;
+  displayValue: string;
+  isSaving: boolean;
+  onValueChange: (value: string) => void;
+  onSave: () => Promise<void>;
+  onCancel: () => void;
+  onStartEdit: () => void;
+};
+
+function EditableFieldRow({
+  label,
+  isEditing,
+  inputValue,
+  displayValue,
+  isSaving,
+  onValueChange,
+  onSave,
+  onCancel,
+  onStartEdit,
+}: EditableFieldRowProps) {
+  const ts = useTranslations('system');
+
+  return (
+    <div className="flex items-center justify-between py-3">
+      <span className="text-neutral-700">{label}</span>
+      <div className="flex items-center gap-4">
+        {isEditing ? (
+          <>
+            <input
+              className="border rounded px-2 py-1 text-black font-mono"
+              value={inputValue}
+              onChange={(e) => onValueChange(e.target.value)}
+              autoFocus
+            />
+            <button
+              className="text-blue-600 text-xl p-1 hover:bg-blue-50 rounded"
+              title={ts('button.save')}
+              onClick={onSave}
+              disabled={isSaving}
+            >
+              <FiCheck />
+            </button>
+            <button
+              className="text-blue-600 text-xl p-1 hover:bg-blue-50 rounded"
+              title={ts('button.cancel')}
+              onClick={onCancel}
+              disabled={isSaving}
+            >
+              <FiX />
+            </button>
+          </>
+        ) : (
+          <>
+            <span className="text-black font-mono">{displayValue}</span>
+            <button
+              className="text-black underline underline-offset-2 text-sm font-medium"
+              onClick={onStartEdit}
+            >
+              {ts('button.change')}
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function ProfilePage() {
   const { user, refreshUser } = useAuth();
-  // --- Header helpers ---
-  const getUserName = (u: User | null) => u?.displayName || u?.email || '';
-  // const getUserAvatar = (u: User | null) => u?.avatarUrl;
+  const getUserName = (u: User | null) => u?.displayName || u?.name || u?.email || '';
+  const getDisplayName = (u: User | null) => u?.displayName || u?.name || '';
+  const getFieldValue = (value?: string) => value?.trim() || '—';
   const handleLogout = () => { window.location.reload(); };
+
   const t = useTranslations('dashboard.profile');
   const th = useTranslations();
-  
-  // (Переехало в выпадающее меню уведомлений)
-  
-  
-  // --- Tabs for navigation ---
+  const ts = useTranslations('system');
+
   const tabs = [
     { label: t('tabs.profile'), key: 'profile' },
     { label: t('tabs.notifications'), key: 'notifications' },
+    ...(user?.role === 'ManagementCompany' ? [{ label: t('tabs.company'), key: 'company' }] : []),
   ];
+
   const [activeTab, setActiveTab] = useState('profile');
   const [editField, setEditField] = useState<null | 'displayName' | 'phone' | 'address'>(null);
   const [profileSaving, setProfileSaving] = useState(false);
-  
-  // --- Notification and privacy state ---
+
+  const [company, setCompany] = useState<Company | null>(null);
+  const [companyForm, setCompanyForm] = useState({ name: '', address: '', phone: '', email: '' });
+  const [editCompanyField, setEditCompanyField] = useState<null | 'name' | 'address' | 'phone' | 'email'>(null);
+  const [companySaving, setCompanySaving] = useState(false);
+
   const [notif, setNotif] = useState({
     email: user?.notifications?.email ?? true,
     meterReminder: user?.notifications?.meterReminder ?? true,
@@ -45,8 +118,7 @@ export default function ProfilePage() {
   });
   const [notifSaving, setNotifSaving] = useState(false);
   const [notifSaved, setNotifSaved] = useState(false);
-  const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const notificationsAnchorRef = useRef<HTMLDivElement>(null);
+
   const [formData, setFormData] = useState({
     email: user?.email || '',
     displayName: user?.displayName || '',
@@ -54,7 +126,17 @@ export default function ProfilePage() {
     address: user?.address || '',
   });
 
-  // Сохранять настройки уведомлений
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        email: user.email || '',
+        displayName: user.displayName || user.name || '',
+        phone: user.phone || '',
+        address: user.address || '',
+      });
+    }
+  }, [user]);
+
   const handleNotifChange = async (key: keyof typeof notif, value: boolean) => {
     setNotif((prev) => ({ ...prev, [key]: value }));
     setNotifSaving(true);
@@ -68,24 +150,24 @@ export default function ProfilePage() {
       setTimeout(() => setNotifSaved(false), 1200);
     }
   };
-  const [profileNotifications, setProfileNotifications] = useState<NotificationItem[]>([]);
-    
+
   useEffect(() => {
-    const notifs: NotificationItem[] = [];
-    if (user && (!user.phone || !user.displayName)) {
-      notifs.push({
-        id: 'profile-incomplete',
-        type: 'warning',
-        title: t('profileIncompleteTitle'),
-        message: t('profileIncompleteMessage')
+    if (user?.role === 'ManagementCompany' && user.companyId) {
+      getCompany(user.companyId).then((c) => {
+        if (c) {
+          setCompany(c);
+          setCompanyForm({
+            name: c.name || '',
+            address: c.address || '',
+            phone: c.phone || '',
+            email: c.email || '',
+          });
+        }
       });
     }
-    setProfileNotifications(notifs);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  // Информация о квартире и доме для жильца
-  const [_apartmentInfo, setApartmentInfo] = useState<{
+  const [, setApartmentInfo] = useState<{
     number?: string;
     buildingAddress?: string;
     companyName?: string;
@@ -107,7 +189,7 @@ export default function ProfilePage() {
           }
         } else if (!ignore) {
           setApartmentInfo(null);
-         }
+        }
       } else if (!ignore) {
         setApartmentInfo(null);
       }
@@ -123,49 +205,30 @@ export default function ProfilePage() {
       <Header
         userName={getUserName(user)}
         userEmail={user?.email}
-        // userAvatarUrl={getUserAvatar(user)}
         onLogout={handleLogout}
         pageTitle={th('dashboard.sidebar.profile')}
       />
+
       <main className="max-w-4xl mx-auto px-4 py-10">
-        {/* Tabs */}
         <div className="bg-white rounded-t-xl px-6 pt-4 border border-b-0 border-neutral-200">
           <nav className="flex gap-2 sm:gap-6 text-sm font-medium">
             {tabs.map((tab) => (
-                 <button
-                   key={tab.key}
-                   className={`pt-2 pb-3 px-1 sm:px-2 border-b-2 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 ${activeTab === tab.key ? 'border-black text-black font-bold' : 'border-transparent text-neutral-500 hover:text-black hover:border-gray-400'}`}
-                   onClick={() => setActiveTab(tab.key)}
-                   type="button"
-                   tabIndex={0}
-                 >
-                   {tab.label}
-                 </button>
+              <button
+                key={tab.key}
+                className={`pt-2 pb-3 px-1 sm:px-2 border-b-2 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 ${activeTab === tab.key ? 'border-black text-black font-bold' : 'border-transparent text-neutral-500 hover:text-black hover:border-gray-400'}`}
+                onClick={() => setActiveTab(tab.key)}
+                type="button"
+                tabIndex={0}
+              >
+                {tab.label}
+              </button>
             ))}
           </nav>
         </div>
-        {/* Notifications */}
-        {profileNotifications.length > 0 && (
-          <div ref={notificationsAnchorRef} className="relative mb-6">
-            <button 
-              onClick={() => setNotificationsOpen(!notificationsOpen)}
-              className="mb-2 px-4 py-2 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
-            >
-              {profileNotifications.length} notification{profileNotifications.length !== 1 ? 's' : ''}
-            </button>
-            <NotificationsDropdown 
-              notifications={profileNotifications} 
-              open={notificationsOpen} 
-              onClose={() => setNotificationsOpen(false)}
-              anchorRef={notificationsAnchorRef}
-            />
-          </div>
-        )}
-        {/* Card */}
+
         <div className="bg-white rounded-b-xl border border-t-0 border-neutral-200 p-0">
           {activeTab === 'profile' && (
             <>
-              {/* User header */}
               <div className="flex flex-col items-start sm:flex-row sm:items-center gap-4 px-6 pt-6 pb-2">
                 <div className="flex items-center gap-4">
                   <div className="w-14 h-14 rounded-full bg-neutral-200 flex items-center justify-center text-3xl text-neutral-500">
@@ -173,233 +236,233 @@ export default function ProfilePage() {
                     <span role="img" aria-label="user">👤</span>
                   </div>
                   <div>
-                        <div className="text-lg font-semibold text-black leading-tight">{user ? (user.displayName || user.email) : ''}</div>
-                            </div>
+                    <div className="text-lg font-semibold text-black leading-tight">
+                      {user ? (getDisplayName(user) || user.email) : ''}
+                    </div>
+                  </div>
                 </div>
               </div>
-              {/* Section: Person data */}
-              <div className="px-6 pt-4 pb-2">j
+
+              <div className="px-6 pt-4 pb-2">
                 <div className="text-lg font-semibold text-black mb-4">{t('personalData')}</div>
                 <div className="divide-y divide-neutral-200">
-                  {/* Name */}
-                  <div className="flex items-center justify-between py-3">
-                    <span className="text-neutral-700">{t('name')}</span>
-                    <div className="flex items-center gap-4">
-                      {editField === 'displayName' ? (
-                        <>
-                          <input
-                            className="border rounded px-2 py-1 text-black font-mono"
-                            value={formData.displayName}
-                            onChange={e => setFormData(f => ({ ...f, displayName: e.target.value }))}
-                            autoFocus
-                          />
-                          <button
-                            className="text-blue-600 text-xl p-1 hover:bg-blue-50 rounded"
-                            title={t('profile.save')}
-                            onClick={async () => {
-                              setProfileSaving(true);
-                              await updateUserProfile(user.uid, { displayName: formData.displayName });
-                              await refreshUser();
-                              setEditField(null);
-                              setProfileSaving(false);
-                              showCustomToast({ type: 'success', title: t('updated') });
-                              setFormData(f => ({ ...f, displayName: formData.displayName }));
-                            }}
-                            disabled={profileSaving}
-                          >
-                            <FiCheck />
-                          </button>
-                          <button
-                            className="text-blue-600 text-xl p-1 hover:bg-blue-50 rounded"
-                            title={t('profile.cancel')}
-                            onClick={() => { setEditField(null); setFormData(f => ({ ...f, displayName: user.displayName || '' })); }}
-                            disabled={profileSaving}
-                          >
-                            <FiX />
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <span className="text-black font-mono">{user ? user.displayName || '' : ''}</span>
-                          <button className="text-black underline underline-offset-2 text-sm font-medium" onClick={() => setEditField('displayName')}>Labot</button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                  {/* Phone */}
-                  <div className="flex items-center justify-between py-3">
-                    <span className="text-neutral-700">{t('phone')}</span>
-                    <div className="flex items-center gap-4">
-                      {editField === 'phone' ? (
-                        <>
-                          <input
-                            className="border rounded px-2 py-1 text-black font-mono"
-                            value={formData.phone}
-                            onChange={e => setFormData(f => ({ ...f, phone: e.target.value }))}
-                            autoFocus
-                          />
-                          <button
-                            className="text-blue-600 text-xl p-1 hover:bg-blue-50 rounded"
-                            title={t('save')}
-                            onClick={async () => {
-                              setProfileSaving(true);
-                              await updateUserProfile(user.uid, { phone: formData.phone });
-                              await refreshUser();
-                              setEditField(null);
-                              setProfileSaving(false);
-                              showCustomToast({ type: 'success', title: t('updated') });
-                              setFormData(f => ({ ...f, phone: formData.phone }));
-                            }}
-                            disabled={profileSaving}
-                          >
-                            <FiCheck />
-                          </button>
-                          <button
-                            className="text-blue-600 text-xl p-1 hover:bg-blue-50 rounded"
-                            title={t('cancel')}
-                            onClick={() => { setEditField(null); setFormData(f => ({ ...f, phone: user.phone || '' })); }}
-                            disabled={profileSaving}
-                          >
-                            <FiX />
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <span className="text-black font-mono">{user ? user.phone || '' : ''}</span>
-                          <button className="text-black underline underline-offset-2 text-sm font-medium" onClick={() => setEditField('phone')}>Labot</button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                  {/* Email */}
+                  <EditableFieldRow
+                    label={ts('form.name')}
+                    isEditing={editField === 'displayName'}
+                    inputValue={formData.displayName}
+                    displayValue={user ? getFieldValue(getDisplayName(user)) : '—'}
+                    isSaving={profileSaving}
+                    onValueChange={(value) => setFormData((f) => ({ ...f, displayName: value }))}
+                    onSave={async () => {
+                      setProfileSaving(true);
+                      await updateUserProfile(user.uid, { displayName: formData.displayName });
+                      await refreshUser();
+                      setEditField(null);
+                      setProfileSaving(false);
+                      showCustomToast({ type: 'success', title: ts('updated') });
+                      setFormData((f) => ({ ...f, displayName: formData.displayName }));
+                    }}
+                    onCancel={() => {
+                      setEditField(null);
+                      setFormData((f) => ({ ...f, displayName: user.displayName || '' }));
+                    }}
+                    onStartEdit={() => setEditField('displayName')}
+                  />
+
+                  <EditableFieldRow
+                    label={ts('form.phone')}
+                    isEditing={editField === 'phone'}
+                    inputValue={formData.phone}
+                    displayValue={user ? getFieldValue(user.phone) : '—'}
+                    isSaving={profileSaving}
+                    onValueChange={(value) => setFormData((f) => ({ ...f, phone: value }))}
+                    onSave={async () => {
+                      setProfileSaving(true);
+                      await updateUserProfile(user.uid, { phone: formData.phone });
+                      await refreshUser();
+                      setEditField(null);
+                      setProfileSaving(false);
+                      showCustomToast({ type: 'success', title: t('updated') });
+                      setFormData((f) => ({ ...f, phone: formData.phone }));
+                    }}
+                    onCancel={() => {
+                      setEditField(null);
+                      setFormData((f) => ({ ...f, phone: user.phone || '' }));
+                    }}
+                    onStartEdit={() => setEditField('phone')}
+                  />
+
                   <div className="flex items-center justify-between py-3">
                     <div className="flex items-center gap-2">
                       <span className="text-neutral-700">{t('email')}</span>
                     </div>
                     <div className="flex items-center gap-4">
-                      <span className="text-black font-mono">{user ? user.email : ''}</span>
-                      <button className="text-black underline underline-offset-2 text-sm font-medium">{t('edit')}</button>
+                      <span className="text-black font-mono">{user ? getFieldValue(user.email) : '—'}</span>
                     </div>
                   </div>
-                  {/* Address */}
-                  <div className="flex items-center justify-between py-3">
-                    <span className="text-neutral-700">{t('address')}</span>
-                    <div className="flex items-center gap-4">
-                      {editField === 'address' ? (
-                        <>
-                          <input
-                            className="border rounded px-2 py-1 text-black font-mono"
-                            value={formData.address || ''}
-                            onChange={e => setFormData(f => ({ ...f, address: e.target.value }))}
-                            autoFocus
-                          />
-                          <button
-                            className="text-blue-600 text-xl p-1 hover:bg-blue-50 rounded"
-                            title={t('save')}
-                            onClick={async () => {
-                              setProfileSaving(true);
-                              await updateUserProfile(user.uid, { address: formData.address });
-                              await refreshUser();
-                              setEditField(null);
-                              setProfileSaving(false);
-                              showCustomToast({ type: 'success', title: t('addressUpdated') });
-                              setFormData(f => ({ ...f, address: formData.address }));
-                            }}
-                            disabled={profileSaving}
-                          >
-                            <FiCheck />
-                          </button>
-                          <button
-                            className="text-blue-600 text-xl p-1 hover:bg-blue-50 rounded"
-                            title={t('cancel')}
-                            onClick={() => { setEditField(null); setFormData(f => ({ ...f, address: user.address || '' })); }}
-                            disabled={profileSaving}
-                          >
-                            <FiX />
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <span className="text-black font-mono">{user ? user.address || '' : ''}</span>
-                          <button className="text-black underline underline-offset-2 text-sm font-medium" onClick={() => setEditField('address')}>Labot</button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                    {/* Password */}
-                    <div className="flex items-center justify-between py-3">
-                      <span className="text-neutral-700">{t('password')}</span>
-                      <div className="flex items-center gap-4">
-                        <span className="text-black font-mono">******</span>
-                        <button className="text-black underline underline-offset-2 text-sm font-medium">{t('edit')}</button>
-                      </div>
-                    </div>
-                  </div>
-                  </div>
-                </>)}
-         {activeTab === 'notifications' && (
-                  <div className="px-6 py-8">
-                    <div className="text-lg font-semibold text-black mb-4">{t('notificationSettings')}</div>
-                    <div className="space-y-4 mx-auto">
-                      {/* <div className="flex items-center justify-between">
-                        <span className="text-neutral-700">{t('emailNotifications')}</span>
-                        <Switch
-                          checked={notif.email}
-                          onChange={val => handleNotifChange('email', val)}
-                          disabled={notifSaving}
-                        />
-                      </div> */}
-                      <div className="flex items-center justify-between">
-                        <span className="text-neutral-700">{t('notification.general')}</span>
-                        <Switch
-                          checked={notif.general}
-                          onChange={val => handleNotifChange('general', val)}
-                          disabled={notifSaving}
-                        />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-neutral-700">{t('notification.meterReminder')}</span>
-                        <Switch
-                          checked={notif.meterReminder}
-                          onChange={val => handleNotifChange('meterReminder', val)}
-                          disabled={notifSaving}
-                        />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-neutral-700">{t('notification.paymentReminder')}</span>
-                        <Switch
-                          checked={notif.paymentReminder}
-                          onChange={val => handleNotifChange('paymentReminder', val)}
-                          disabled={notifSaving}
-                        />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-neutral-700">{t('notification.lang')}</span>
-                        <select
-                          className="border rounded px-2 py-1 text-black bg-white"
-                          value={user?.preferredLang || 'ru'}
-                          onChange={async (e) => {
-                            setNotifSaving(true);
-                            setNotifSaved(false);
-                            await updateUserProfile(user.uid, { preferredLang: e.target.value as 'lv' | 'ru' });
-                            setNotifSaved(true);
-                            setNotifSaving(false);
-                          }}
-                          disabled={notifSaving}
-                        >
-                          <option value="ru">{t('notification.lang_ru')}</option>
-                          <option value="lv">{t('notification.lang_lv')}</option>
-                          <option value="en">{t('notification.lang_en')}</option>
-                        </select>
-                      </div>
-                      {notifSaved && (
-                        <div className="text-green-600 text-sm mt-2">{t('notificationSettingsSaved')}</div>
-                      )}
-                    </div>
-                  </div>
+
+                  <EditableFieldRow
+                    label={t('address')}
+                    isEditing={editField === 'address'}
+                    inputValue={formData.address || ''}
+                    displayValue={user ? getFieldValue(user.address) : '—'}
+                    isSaving={profileSaving}
+                    onValueChange={(value) => setFormData((f) => ({ ...f, address: value }))}
+                    onSave={async () => {
+                      setProfileSaving(true);
+                      await updateUserProfile(user.uid, { address: formData.address });
+                      await refreshUser();
+                      setEditField(null);
+                      setProfileSaving(false);
+                      showCustomToast({ type: 'success', title: t('addressUpdated') });
+                      setFormData((f) => ({ ...f, address: formData.address }));
+                    }}
+                    onCancel={() => {
+                      setEditField(null);
+                      setFormData((f) => ({ ...f, address: user.address || '' }));
+                    }}
+                    onStartEdit={() => setEditField('address')}
+                  />
+                </div>
+              </div>
+            </>
+          )}
+
+          {activeTab === 'company' && company && (
+            <div className="px-6 pt-6 pb-8">
+              <div className="text-lg font-semibold text-black mb-4">{t('company.companyData')}</div>
+              <div className="divide-y divide-neutral-200">
+                <EditableFieldRow
+                  label={t('company.name')}
+                  isEditing={editCompanyField === 'name'}
+                  inputValue={companyForm.name}
+                  displayValue={company.name || '—'}
+                  isSaving={companySaving}
+                  onValueChange={(v) => setCompanyForm((f) => ({ ...f, name: v }))}
+                  onSave={async () => {
+                    setCompanySaving(true);
+                    await updateCompany(company.id, { name: companyForm.name });
+                    setCompany((c) => c ? { ...c, name: companyForm.name } : c);
+                    setEditCompanyField(null);
+                    setCompanySaving(false);
+                    showCustomToast({ type: 'success', title: t('company.updated') });
+                  }}
+                  onCancel={() => { setEditCompanyField(null); setCompanyForm((f) => ({ ...f, name: company.name || '' })); }}
+                  onStartEdit={() => setEditCompanyField('name')}
+                />
+                <EditableFieldRow
+                  label={t('company.address')}
+                  isEditing={editCompanyField === 'address'}
+                  inputValue={companyForm.address}
+                  displayValue={company.address || '—'}
+                  isSaving={companySaving}
+                  onValueChange={(v) => setCompanyForm((f) => ({ ...f, address: v }))}
+                  onSave={async () => {
+                    setCompanySaving(true);
+                    await updateCompany(company.id, { address: companyForm.address });
+                    setCompany((c) => c ? { ...c, address: companyForm.address } : c);
+                    setEditCompanyField(null);
+                    setCompanySaving(false);
+                    showCustomToast({ type: 'success', title: t('company.updated') });
+                  }}
+                  onCancel={() => { setEditCompanyField(null); setCompanyForm((f) => ({ ...f, address: company.address || '' })); }}
+                  onStartEdit={() => setEditCompanyField('address')}
+                />
+                <EditableFieldRow
+                  label={t('company.phone')}
+                  isEditing={editCompanyField === 'phone'}
+                  inputValue={companyForm.phone}
+                  displayValue={company.phone || '—'}
+                  isSaving={companySaving}
+                  onValueChange={(v) => setCompanyForm((f) => ({ ...f, phone: v }))}
+                  onSave={async () => {
+                    setCompanySaving(true);
+                    await updateCompany(company.id, { phone: companyForm.phone });
+                    setCompany((c) => c ? { ...c, phone: companyForm.phone } : c);
+                    setEditCompanyField(null);
+                    setCompanySaving(false);
+                    showCustomToast({ type: 'success', title: t('company.updated') });
+                  }}
+                  onCancel={() => { setEditCompanyField(null); setCompanyForm((f) => ({ ...f, phone: company.phone || '' })); }}
+                  onStartEdit={() => setEditCompanyField('phone')}
+                />
+                <EditableFieldRow
+                  label={t('company.email')}
+                  isEditing={editCompanyField === 'email'}
+                  inputValue={companyForm.email}
+                  displayValue={company.email || '—'}
+                  isSaving={companySaving}
+                  onValueChange={(v) => setCompanyForm((f) => ({ ...f, email: v }))}
+                  onSave={async () => {
+                    setCompanySaving(true);
+                    await updateCompany(company.id, { email: companyForm.email });
+                    setCompany((c) => c ? { ...c, email: companyForm.email } : c);
+                    setEditCompanyField(null);
+                    setCompanySaving(false);
+                    showCustomToast({ type: 'success', title: t('company.updated') });
+                  }}
+                  onCancel={() => { setEditCompanyField(null); setCompanyForm((f) => ({ ...f, email: company.email || '' })); }}
+                  onStartEdit={() => setEditCompanyField('email')}
+                />
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'notifications' && (
+            <div className="px-6 py-8">
+              <div className="text-lg font-semibold text-black mb-4">{t('notificationSettings')}</div>
+              <div className="space-y-4 mx-auto">
+                <div className="flex items-center justify-between">
+                  <span className="text-neutral-700">{t('notification.general')}</span>
+                  <Switch
+                    checked={notif.general}
+                    onChange={val => handleNotifChange('general', val)}
+                    disabled={notifSaving}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-neutral-700">{t('notification.meterReminder')}</span>
+                  <Switch
+                    checked={notif.meterReminder}
+                    onChange={val => handleNotifChange('meterReminder', val)}
+                    disabled={notifSaving}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-neutral-700">{t('notification.paymentReminder')}</span>
+                  <Switch
+                    checked={notif.paymentReminder}
+                    onChange={val => handleNotifChange('paymentReminder', val)}
+                    disabled={notifSaving}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-neutral-700">{t('notification.lang')}</span>
+                  <select
+                    className="border rounded px-2 py-1 text-black bg-white"
+                    value={user?.preferredLang || 'ru'}
+                    onChange={async (e) => {
+                      setNotifSaving(true);
+                      setNotifSaved(false);
+                      await updateUserProfile(user.uid, { preferredLang: e.target.value as 'lv' | 'ru' });
+                      setNotifSaved(true);
+                      setNotifSaving(false);
+                    }}
+                    disabled={notifSaving}
+                  >
+                    <option value="ru">{t('notification.lang_ru')}</option>
+                    <option value="lv">{t('notification.lang_lv')}</option>
+                    <option value="en">{t('notification.lang_en')}</option>
+                  </select>
+                </div>
+                {notifSaved && (
+                  <div className="text-green-600 text-sm mt-2">{t('notificationSettingsSaved')}</div>
                 )}
               </div>
-            </main>
-          </div>
-          );
-        }
+            </div>
+          )}
+        </div>
+      </main>
+    </div>
+  );
+}

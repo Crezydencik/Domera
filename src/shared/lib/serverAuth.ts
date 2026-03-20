@@ -3,6 +3,8 @@ import { DecodedIdToken } from 'firebase-admin/auth';
 import { getFirebaseAdminAuth } from '@/firebase/admin';
 import type { UserRole } from '@/shared/types';
 import { SESSION_COOKIE_NAME } from '@/shared/lib/authSession';
+import { getFirebaseAdminDb } from '@/firebase/admin';
+import { FIRESTORE_COLLECTIONS } from '@/shared/constants';
 
 type AuthOptions = {
   allowedRoles?: UserRole[];
@@ -95,16 +97,45 @@ export const requireRequestAuth = async (
   const companyId = toOptionalString(decoded.companyId);
   const apartmentId = toOptionalString(decoded.apartmentId);
 
-  if (options.allowedRoles?.length && (!role || !options.allowedRoles.includes(role))) {
+  let resolvedRole = role;
+  let resolvedCompanyId = companyId;
+  let resolvedApartmentId = apartmentId;
+
+  if (!resolvedRole || !resolvedCompanyId) {
+    try {
+      const userDoc = await getFirebaseAdminDb()
+        .collection(FIRESTORE_COLLECTIONS.USERS)
+        .doc(decoded.uid)
+        .get();
+
+      if (userDoc.exists) {
+        const userData = userDoc.data() as Record<string, unknown>;
+        if (!resolvedRole) {
+          const firestoreRole = toOptionalString(userData.role) as UserRole | undefined;
+          resolvedRole = firestoreRole;
+        }
+        if (!resolvedCompanyId) {
+          resolvedCompanyId = toOptionalString(userData.companyId);
+        }
+        if (!resolvedApartmentId) {
+          resolvedApartmentId = toOptionalString(userData.apartmentId);
+        }
+      }
+    } catch {
+      // noop: keep claims-based values if profile lookup is unavailable
+    }
+  }
+
+  if (options.allowedRoles?.length && (!resolvedRole || !options.allowedRoles.includes(resolvedRole))) {
     throw new ApiAuthError('Insufficient permissions', 403);
   }
 
   return {
     uid: decoded.uid,
     email: decoded.email,
-    role,
-    companyId,
-    apartmentId,
+    role: resolvedRole,
+    companyId: resolvedCompanyId,
+    apartmentId: resolvedApartmentId,
     decodedToken: decoded,
   };
 };

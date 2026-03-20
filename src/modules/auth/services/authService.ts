@@ -24,13 +24,54 @@ import { validateEmail, validatePassword } from '@/shared/validation';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { toSafeErrorDetails } from '@/shared/lib/safeLog';
 
+const getNormalizedDate = (value: unknown): Date => {
+  if (value instanceof Date) return value;
+  if (typeof value === 'string' || typeof value === 'number') {
+    const parsed = new Date(value);
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed;
+    }
+  }
+  return new Date();
+};
+
+const normalizeUserData = (
+  rawUser: Record<string, unknown>,
+  fallback?: Partial<User>
+): User => {
+  const fallbackName = fallback?.displayName || fallback?.name || fallback?.email || '';
+  const rawDisplayName = typeof rawUser.displayName === 'string' ? rawUser.displayName.trim() : '';
+  const rawName = typeof rawUser.name === 'string' ? rawUser.name.trim() : '';
+  const rawEmail = typeof rawUser.email === 'string' ? rawUser.email.trim() : '';
+  const rawPhone = typeof rawUser.phone === 'string' ? rawUser.phone.trim() : '';
+  const rawAddress = typeof rawUser.address === 'string' ? rawUser.address.trim() : '';
+
+  const displayName = rawDisplayName || rawName || fallbackName;
+  const email = rawEmail || fallback?.email || auth.currentUser?.email || '';
+
+  return {
+    ...rawUser,
+    uid:
+      (typeof rawUser.uid === 'string' && rawUser.uid) ||
+      fallback?.uid ||
+      auth.currentUser?.uid ||
+      '',
+    email,
+    displayName,
+    name: rawName || displayName || email,
+    phone: rawPhone || fallback?.phone || '',
+    address: rawAddress || fallback?.address || '',
+    createdAt: getNormalizedDate(rawUser.createdAt ?? fallback?.createdAt),
+  } as User;
+};
+
 /**
  * Register new user with email and password
  */
 export const registerUser = async (
   registrationData: RegistrationData,
   role: 'ManagementCompany' | 'Resident' | 'Accountant',
-  companyId: string,
+  companyId?: string,
   apartmentId?: string
 ): Promise<User> => {
   try {
@@ -57,19 +98,25 @@ export const registerUser = async (
       name: '',
       email: registrationData.email,
       role: role as User['role'],
-      companyId,
       apartmentId,
       createdAt: new Date(),
     };
+
+    if (companyId) {
+      newUser.companyId = companyId;
+    }
 
     // Build user data object - exclude undefined fields
     const userData: Record<string, unknown> = {
       uid: userId,
       email: registrationData.email,
       role,
-      companyId,
       createdAt: newUser.createdAt.toISOString(),
     };
+
+    if (companyId) {
+      userData.companyId = companyId;
+    }
 
     // Only add apartmentId if it's provided
     if (apartmentId) {
@@ -175,7 +222,30 @@ export const getCurrentUser = async (): Promise<User | null> => {
     const userId = getCurrentUserId();
     if (!userId) return null;
 
-    return await getUserById(userId);
+    const firestoreUser = await getUserById(userId);
+    if (firestoreUser) {
+      return firestoreUser;
+    }
+
+    if (!auth.currentUser) {
+      return null;
+    }
+
+    return normalizeUserData(
+      {
+        uid: auth.currentUser.uid,
+        email: auth.currentUser.email,
+        displayName: auth.currentUser.displayName,
+        name: auth.currentUser.displayName || auth.currentUser.email || '',
+        role: 'Resident',
+        createdAt: new Date().toISOString(),
+      },
+      {
+        uid: auth.currentUser.uid,
+        email: auth.currentUser.email || '',
+        displayName: auth.currentUser.displayName || undefined,
+      }
+    );
   } catch (error) {
     console.error('Error getting current user:', toSafeErrorDetails(error));
     return null;
@@ -192,10 +262,16 @@ export const getUserById = async (userId: string | null): Promise<User | null> =
     const userDoc = await getDocument(FIRESTORE_COLLECTIONS.USERS, userId);
     if (!userDoc) return null;
 
-    return {
-      ...userDoc,
-      createdAt: new Date(userDoc.createdAt),
-    } as User;
+    const authFallback = auth.currentUser?.uid === userId
+      ? {
+          uid: auth.currentUser.uid,
+          email: auth.currentUser.email || '',
+          displayName: auth.currentUser.displayName || undefined,
+          name: auth.currentUser.displayName || auth.currentUser.email || '',
+        }
+      : { uid: userId };
+
+    return normalizeUserData(userDoc, authFallback);
   } catch (error) {
     console.error('Error getting user:', toSafeErrorDetails(error));
     return null;
@@ -216,10 +292,17 @@ export const getUserByEmail = async (email: string): Promise<User | null> => {
     if (querySnapshot.empty) return null;
 
     const userDoc = querySnapshot.docs[0];
-    return {
-      ...userDoc.data(),
-      createdAt: new Date(userDoc.data().createdAt),
-    } as User;
+    return normalizeUserData(
+      { id: userDoc.id, ...userDoc.data() },
+      auth.currentUser?.email === email
+        ? {
+            uid: auth.currentUser.uid,
+            email: auth.currentUser.email || email,
+            displayName: auth.currentUser.displayName || undefined,
+            name: auth.currentUser.displayName || auth.currentUser.email || '',
+          }
+        : { email }
+    );
   } catch (error) {
     console.error('Error getting user by email:', toSafeErrorDetails(error));
     return null;

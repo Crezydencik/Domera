@@ -20,7 +20,7 @@ import { validateConsumption, validateMeterReading } from '@/shared/validation';
 import { ConfirmationDialog } from '@/shared/components/ui/ConfirmationDialog';
 import { toast } from 'react-toastify';
 import type { Apartment, Building, Meter, MeterReading, WaterMeterData } from '@/shared/types';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { logout } from '../../../modules/auth/services/authService';
 import Header from '../../../shared/components/layout/heder';
@@ -74,7 +74,7 @@ const formatDateOnly = (value: string | Date | undefined | null): string => {
   try {
     const d = value instanceof Date ? value : new Date(String(value));
     if (Number.isNaN(d.getTime())) return '—';
-    return new Intl.DateTimeFormat('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(d);
+    return new Intl.DateTimeFormat(undefined, { day: '2-digit', month: '2-digit', year: 'numeric' }).format(d);
   } catch (e) {
     return '—';
   }
@@ -182,6 +182,7 @@ const downloadTextFile = (content: string, fileName: string, mimeType: string) =
 
 export default function MeterReadingsPage() {
   const { user, loading, isResident, isManagementCompany } = useAuth();
+  const locale = useLocale();
   
   const [apartments, setApartments] = useState<Apartment[]>([]);
   const [buildings, setBuildings] = useState<Building[]>([]);
@@ -201,6 +202,37 @@ export default function MeterReadingsPage() {
   const [meterCheckDateInputByMeterId, setMeterCheckDateInputByMeterId] = useState<Record<string, string>>({});
   const [editingCheckByMeterId, setEditingCheckByMeterId] = useState<Record<string, boolean>>({});
   const [forceSaveByMeterId, setForceSaveByMeterId] = useState<Record<string, boolean>>({});
+
+  const formatDateByLocale = useCallback((value: string | Date | undefined | null): string => {
+    if (!value) return '—';
+    try {
+      const date = value instanceof Date ? value : new Date(String(value));
+      if (Number.isNaN(date.getTime())) return '—';
+      return new Intl.DateTimeFormat(locale || undefined).format(date);
+    } catch {
+      return '—';
+    }
+  }, [locale]);
+
+  const formatMonthPeriodLabel = useCallback((year: number, month: number): string => {
+    const date = new Date(year, month - 1, 1);
+    const monthNameRaw = new Intl.DateTimeFormat(locale || undefined, {
+      month: 'long',
+    }).format(date);
+    const monthName = monthNameRaw
+      ? monthNameRaw.charAt(0).toLocaleUpperCase(locale || undefined) + monthNameRaw.slice(1)
+      : monthNameRaw;
+
+    const baseLocale = (locale || 'en').split('-')[0].toLowerCase();
+    const yearWordByLocale: Record<string, string> = {
+      lv: 'gads',
+      ru: 'год',
+      en: 'year',
+    };
+    const yearWord = yearWordByLocale[baseLocale] || 'year';
+
+    return `${year}. ${yearWord}. ${monthName}`;
+  }, [locale]);
 
   const setTimedSubmitError = (apartmentId: string, message: string, lockForMs: number = 15000) => {
     toast.error(message, {
@@ -789,7 +821,10 @@ export default function MeterReadingsPage() {
     const canSubmit = isMeterSubmissionAllowed(openDate, closeDate, fallbackOpenDay);
     if (!canSubmit) {
       let periodMsg = openDate && closeDate
-        ? `Подача показаний доступна с ${new Date(openDate).toLocaleDateString('ru-RU')} по ${new Date(closeDate).toLocaleDateString('ru-RU')}`
+        ? `${t('submissionPeriod', {
+            open: formatDateByLocale(openDate),
+            close: formatDateByLocale(closeDate),
+          })}`
         : t('submissionAvailableFrom', { day: fallbackOpenDay || 25 });
       setTimedSubmitError(apartment.id, periodMsg, 15000);
       return;
@@ -855,11 +890,16 @@ export default function MeterReadingsPage() {
             nextConsumption = consumptionValidation.consumption;
           }
 
+          const meterKey: 'coldmeterwater' | 'hotmeterwater' = isHotMeter(meter)
+            ? 'hotmeterwater'
+            : 'coldmeterwater';
+
           return {
             companyId: user?.companyId ?? (Array.isArray(apartment.companyIds) ? apartment.companyIds[0] : undefined),
             buildingId: apartment.buildingId,
             apartmentId: apartment.id,
             meterId: meter.id,
+            meterKey,
             previousValue,
             currentValue,
             consumption: nextConsumption,
@@ -946,8 +986,7 @@ export default function MeterReadingsPage() {
       <div className="rounded-lg border border-gray-200 bg-white">
         {sortedKeys.map((key) => {
           const [year, month] = key.split('-');
-          const monthName = new Date(Number(year), Number(month) - 1).toLocaleString('ru', { month: 'long' });
-          const monthLabel = `${year}. gads, ${monthName.charAt(0).toLowerCase() + monthName.slice(1)}`;
+          const monthLabel = formatMonthPeriodLabel(Number(year), Number(month));
           const monthReadings = grouped[key];
           // Для каждого месяца ищем холодный и горячий счетчик
           const cold = monthReadings.find(r => !isHotMeter(meterById[r.meterId]));
@@ -1047,7 +1086,7 @@ export default function MeterReadingsPage() {
                           <>
                             {openDate && closeDate ? (
                               <>
-                                {t('submissionPeriod', { open: new Date(openDate).toLocaleDateString(), close: new Date(closeDate).toLocaleDateString() })}
+                                {t('submissionPeriod', { open: formatDateByLocale(openDate), close: formatDateByLocale(closeDate) })}
                               </>
                             ) : (
                               <span>{t('submissionPeriodNotSet')}</span>

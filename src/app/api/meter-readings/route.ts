@@ -8,6 +8,7 @@ import { buildRateLimitKey, consumeRateLimit } from '@/shared/lib/rateLimit';
 interface SubmitMeterReadingPayload {
   apartmentId: string;
   meterId: string;
+  meterKey?: 'coldmeterwater' | 'hotmeterwater';
   previousValue: number;
   currentValue: number;
   consumption: number;
@@ -121,7 +122,12 @@ export async function POST(request: NextRequest) {
     const namedKey = (['coldmeterwater', 'hotmeterwater'] as const).find(
       (k) => (wr[k] as Record<string, unknown> | undefined)?.meterId === payload.meterId
     );
-    const key = namedKey ?? 'coldmeterwater';
+    const preferredKey = payload.meterKey;
+    const key = namedKey
+      ?? (preferredKey === 'coldmeterwater' || preferredKey === 'hotmeterwater' ? preferredKey : undefined)
+      ?? (/hwm|hot|gvs|гор/i.test(String(payload.meterId)) ? 'hotmeterwater' : undefined)
+      ?? (/cwm|cold|hvs|хол/i.test(String(payload.meterId)) ? 'coldmeterwater' : undefined)
+      ?? 'coldmeterwater';
     const meterGroup = (wr[key] as Record<string, unknown> | undefined) ?? { meterId: payload.meterId, history: [] };
     const history = Array.isArray(meterGroup.history) ? [...(meterGroup.history as Record<string, unknown>[])] : [];
 

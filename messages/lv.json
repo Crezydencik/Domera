@@ -197,6 +197,8 @@
       "periodEnd": "Perioda beigas",
       "lastReading": "Pēdējais rādījums",
       "noReadings": "Nav rādījumu",
+      "user": "Lietotājs",
+      "history": "Rādījumu vēsture",
         "noReadingsForPeriod": "Nav rādījumu šim periodam",
         "submit": "Nodot rādījumus",
         "submitting": "Nododam rādījumus...",
@@ -218,7 +220,16 @@
     "loading": "Ielāde...",
     "tabs": {
       "profile": "Profils",
-      "notifications": "Paziņojumi"
+      "notifications": "Paziņojumi",
+      "company": "Uzņēmums"
+    },
+    "company": {
+      "companyData": "Uzņēmuma informācija",
+      "name": "Uzņēmuma nosaukums",
+      "address": "Adrese",
+      "phone": "Tālrunis",
+      "email": "E-pasts",
+      "updated": "Uzņēmuma dati atjaunināti"
     },
     "userAvatar": "Lietotāja attēls",
     "clientNumber": "Klienta numurs",

@@ -6,6 +6,52 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/shared/hooks/useAuth';
 import { useTranslations } from 'next-intl';
 import { CheckCircle2, Mail, ShieldCheck } from 'lucide-react';
+import PasswordStrengthMeter from '@/shared/components/ui/PasswordStrengthMeter';
+import { getPasswordStrength } from '@/shared/validation';
+
+function EyeIcon({ crossed = false }: { crossed?: boolean }) {
+  if (crossed) {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" aria-hidden="true">
+        <path d="M3 3l18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        <path
+          d="M10.58 10.58A2 2 0 0012 14a2 2 0 001.42-.58"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M9.9 4.24A10.94 10.94 0 0112 4c5.05 0 9.27 3.11 10.5 8-1.05 4.15-4.32 7-8.24 7-1.05 0-2.05-.2-2.98-.57"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M6.61 6.61C4.67 7.85 3.31 9.73 2.5 12c.59 1.66 1.47 3.08 2.56 4.19"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" aria-hidden="true">
+      <path
+        d="M2.5 12C3.73 7.11 6.95 4 12 4s8.27 3.11 9.5 8c-1.23 4.89-4.45 8-9.5 8s-8.27-3.11-9.5-8z"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2" />
+    </svg>
+  );
+}
 
 export default function AcceptInvitationPage() {
   const router = useRouter();
@@ -23,8 +69,12 @@ export default function AcceptInvitationPage() {
     confirmPassword: '',
     gdprConsent: false,
   });
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const t = useTranslations('auth');
+  const passwordStrength = getPasswordStrength(formData.password);
+  const isWeakPassword = Boolean(formData.password) && !passwordStrength.isStrongEnoughToSave;
   useEffect(() => {
     const validateAndProceed = async () => {
       if (authLoading) return;
@@ -140,6 +190,11 @@ export default function AcceptInvitationPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    if (!passwordStrength.isStrongEnoughToSave) {
+      setError(t('validation.weakPassword'));
+      return;
+    }
 
     if (formData.password.length < 6) {
       setError(t('invitation.passwordTooShort'));
@@ -264,24 +319,52 @@ export default function AcceptInvitationPage() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="mb-2 block text-sm text-slate-100">{t('invitation.newPasswordLabel')}</label>
-                <input
-                  type="password"
-                  value={formData.password}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, password: e.target.value }))}
-                  className="w-full rounded-xl border border-slate-500/60 bg-slate-900/50 px-3 py-2.5 text-white outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/30"
-                  required
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={formData.password}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, password: e.target.value }))}
+                    className="w-full rounded-xl border border-slate-500/60 bg-slate-900/50 px-3 py-2.5 pr-24 text-white outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/30"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md border border-slate-400/50 p-1.5 text-slate-200 hover:bg-slate-700/40"
+                    aria-label={showPassword ? t('common.hidePassword') : t('common.showPassword')}
+                    title={showPassword ? t('common.hidePassword') : t('common.showPassword')}
+                  >
+                    <EyeIcon crossed={showPassword} />
+                  </button>
+                </div>
+                <PasswordStrengthMeter
+                  password={formData.password}
+                  weakLabel={t('validation.weakPassword')}
+                  mediumLabel="Medium"
+                  strongLabel="Strong"
                 />
               </div>
 
               <div>
                 <label className="mb-2 block text-sm text-slate-100">{t('common.confirmPassword')}</label>
-                <input
-                  type="password"
-                  value={formData.confirmPassword}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, confirmPassword: e.target.value }))}
-                  className="w-full rounded-xl border border-slate-500/60 bg-slate-900/50 px-3 py-2.5 text-white outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/30"
-                  required
-                />
+                <div className="relative">
+                  <input
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    value={formData.confirmPassword}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, confirmPassword: e.target.value }))}
+                    className="w-full rounded-xl border border-slate-500/60 bg-slate-900/50 px-3 py-2.5 pr-24 text-white outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/30"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword((prev) => !prev)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md border border-slate-400/50 p-1.5 text-slate-200 hover:bg-slate-700/40"
+                    aria-label={showConfirmPassword ? t('common.hidePassword') : t('common.showPassword')}
+                    title={showConfirmPassword ? t('common.hidePassword') : t('common.showPassword')}
+                  >
+                    <EyeIcon crossed={showConfirmPassword} />
+                  </button>
+                </div>
               </div>
 
               <label className="flex items-start gap-2 text-sm text-slate-100">
@@ -297,7 +380,7 @@ export default function AcceptInvitationPage() {
 
               <button
                 type="submit"
-                disabled={submitting}
+                disabled={submitting || isWeakPassword}
                 className="w-full rounded-xl bg-blue-600 px-4 py-2.5 text-white transition hover:bg-blue-500 disabled:opacity-50"
               >
                 {submitting ? t('invitation.registrationInProgress') : t('invitation.acceptInvitation')}

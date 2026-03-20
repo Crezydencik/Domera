@@ -227,7 +227,16 @@
   "loading": "Загрузка...",
   "tabs": {
     "profile": "Профиль",
-    "notifications": "Уведомления"
+    "notifications": "Уведомления",
+    "company": "Компания"
+  },
+  "company": {
+    "companyData": "Данные компании",
+    "name": "Название компании",
+    "address": "Адрес",
+    "phone": "Телефон",
+    "email": "Эл. почта",
+    "updated": "Данные компании обновлены"
   },
   "userAvatar": "Аватар пользователя",
   "clientNumber": "Номер клиента",
