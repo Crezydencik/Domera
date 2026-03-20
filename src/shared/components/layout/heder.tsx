@@ -12,6 +12,7 @@ import { useTranslations } from 'next-intl';
 
 const Header: React.FC<HeaderProps> = ({ userName = '',  userAvatarUrl = '', userEmail = '', pageTitle = 'Dashboard', onLogout, right }) => {
   const ts = useTranslations('system');
+  const tp = useTranslations('dashboard.profile');
   const { user, refreshUser } = useAuth();
   // Дефолтная функция выхода, если onLogout не передан
   const handleLogout = onLogout || (() => { window.location.href = '/login'; });
@@ -51,14 +52,14 @@ const Header: React.FC<HeaderProps> = ({ userName = '',  userAvatarUrl = '', use
       notifs.push({
         id: 'profile-incomplete',
         type: 'warning',
-        title: 'Профиль заполнен не полностью',
-        message: 'Добавьте имя и телефон в профиле, чтобы получать все уведомления корректно.',
+        title: tp('profileIncompleteTitle'),
+        message: tp('profileIncompleteMessage'),
         link: '/profile',
-        linkLabel: 'Заполнить профиль'
+        linkLabel: tp('profileIncompleteAction')
       });
     }
     return notifs;
-  }, [user, pendingInvitation]);
+  }, [user, pendingInvitation, tp]);
     // Check for pending invitation on mount or when userEmail changes
     useEffect(() => {
       let ignore = false;

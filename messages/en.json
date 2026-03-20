@@ -205,6 +205,7 @@
         "myInvoices": "My invoices"
       },
       "apartments": {
+          "section": "My apartments",
           "apartmentNumber": "Apartment №",
           "building": "Building",
           "company": "Management company",
@@ -312,6 +313,7 @@
       "profile": {
         "profileIncompleteTitle": "Profile incomplete",
         "profileIncompleteMessage": "Please fill in your name and phone number in the profile.",
+        "profileIncompleteAction": "Complete profile",
         "loading": "Loading...",
         "tabs": {
           "profile": "Profile",

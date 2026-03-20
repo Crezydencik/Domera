@@ -216,7 +216,9 @@
     },
     "profile": {
       "profileIncompleteTitle": "Profils nav aizpildīts",
+      "profileIncompleteMessage": "Pievienojiet vārdu un tālruni profilā, lai saņemtu visus paziņojumus korekti.",
       "profileIncompleteDesc": "Lūdzu, aizpildiet vārdu un tālruņa numuru profilā.",
+      "profileIncompleteAction": "Aizpildīt profilu",
     "loading": "Ielāde...",
     "tabs": {
       "profile": "Profils",

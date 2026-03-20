@@ -223,7 +223,9 @@
     },
     "profile": {
   "profileIncompleteTitle": "Профиль не заполнен",
+  "profileIncompleteMessage": "Добавьте имя и телефон в профиле, чтобы получать все уведомления корректно.",
   "profileIncompleteDesc": "Пожалуйста, заполните имя и телефон в профиле.",
+  "profileIncompleteAction": "Заполнить профиль",
   "loading": "Загрузка...",
   "tabs": {
     "profile": "Профиль",

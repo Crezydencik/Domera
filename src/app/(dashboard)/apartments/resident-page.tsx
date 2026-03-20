@@ -2,10 +2,8 @@
 
 import { useAuth } from '@/shared/hooks/useAuth';
 import { AccessError } from '@/shared/components/AccessError';
-
-import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { getApartment, updateApartment, addTenantToApartment, removeTenantFromApartment, addOrInviteTenantToApartment } from '@/modules/apartments/services/apartmentsService';
+import { getApartment, updateApartment, removeTenantFromApartment, addOrInviteTenantToApartment } from '@/modules/apartments/services/apartmentsService';
 import { getBuilding } from '@/modules/invoices/services/buildings/services/buildingsService';
 import type { Apartment, Building, TenantAccess } from '@/shared/types';
 import { useTranslations } from 'next-intl';
@@ -26,7 +24,6 @@ export default function ResidentApartmentsPage() {
   const [apartment, setApartment] = useState<Apartment | null>(null);
   const [building, setBuilding] = useState<Building | null>(null);
   const [tenants, setTenants] = useState<TenantAccess[]>([]);
-  const [newTenantEmail, setNewTenantEmail] = useState('');
   const [saving, setSaving] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
@@ -36,43 +33,19 @@ export default function ResidentApartmentsPage() {
   const [renterLastName, setRenterLastName] = useState('');
   const [renterDateFrom, setRenterDateFrom] = useState('');
   const [renterDateTo, setRenterDateTo] = useState('');
-  // Состояния для информации о квартире
-  const [description, setDescription] = useState('');
-  const [area, setArea] = useState('');
-  const [rooms, setRooms] = useState('');
+  const [showAddRenterForm, setShowAddRenterForm] = useState(false);
+  const th = useTranslations();
   const t = useTranslations('dashboard.apartments');
+  const getErrorMessage = (err: unknown, fallback: string) => err instanceof Error ? err.message : fallback;
 
   useEffect(() => {
     if (isResident && user?.apartmentId) {
       getApartment(user.apartmentId).then((apt) => {
         setApartment(apt);
         setTenants(apt?.tenants || []);
-        setDescription(apt?.description || '');
-        setArea(apt?.area ? String(apt.area) : '');
-        setRooms(apt?.rooms ? String(apt.rooms) : '');
       });
     }
   }, [user, isResident]);
-  // Сохранение информации о квартире
-  const handleSaveInfo = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!apartment?.id) return;
-    setSaving(true);
-    setErrorMsg('');
-    setSuccessMsg('');
-    try {
-      await updateApartment(apartment.id, {
-        description,
-        area: area ? Number(area) : undefined,
-        rooms: rooms ? Number(rooms) : undefined,
-      });
-      setSuccessMsg(t('successSaveInfo'));
-    } catch (err: any) {
-      setErrorMsg(err.message || t('errorSaveInfo'));
-    } finally {
-      setSaving(false);
-    }
-  };
 
   useEffect(() => {
     if (apartment?.buildingId) {
@@ -84,25 +57,6 @@ export default function ResidentApartmentsPage() {
   if (!user) return <AccessError type="loginRequired" />;
   if (!isResident) return <AccessError type="noAccess" />;
 
-  const handleAddTenant = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
-    setErrorMsg('');
-    setSuccessMsg('');
-    try {
-      if (!apartment?.id || !newTenantEmail) return;
-      await addTenantToApartment(apartment.id, newTenantEmail);
-      const updated = await getApartment(apartment.id);
-      setTenants(updated.tenants || []);
-      setSuccessMsg(t('successAddTenant'));
-      setNewTenantEmail('');
-    } catch (err: any) {
-      setErrorMsg(err.message || t('errorAddTenant'));
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const handleRemoveTenant = async (userId: string) => {
     if (!apartment?.id) return;
     setSaving(true);
@@ -113,15 +67,15 @@ export default function ResidentApartmentsPage() {
       const updated = await getApartment(apartment.id);
       setTenants(updated.tenants || []);
       setSuccessMsg(t('successRemoveTenant'));
-    } catch (err: any) {
-      setErrorMsg(err.message || t('errorRemoveTenant'));
+    } catch (err: unknown) {
+      setErrorMsg(getErrorMessage(err, t('errorRemoveTenant')));
     } finally {
       setSaving(false);
     }
   };
 
   // Проверка: текущий пользователь — арендатор (только submitMeter)
-  const isRenter = tenants.some(
+  const currentUserIsRenter = tenants.some(
     (t) => t.userId === user?.uid && t.permissions.length === 1 && t.permissions[0] === 'submitMeter'
   );
 
@@ -162,23 +116,44 @@ export default function ResidentApartmentsPage() {
       setRenterLastName('');
       setRenterDateFrom('');
       setRenterDateTo('');
-    } catch (err: any) {
-      setErrorMsg(err.message || t('errorAddRenter'));
+      setShowAddRenterForm(false);
+    } catch (err: unknown) {
+      setErrorMsg(getErrorMessage(err, t('errorAddRenter')));
     } finally {
       setSaving(false);
     }
   };
 
+  const cardClass = 'rounded-2xl border border-neutral-200 bg-white shadow-sm';
+  const inputClass = 'w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200 disabled:opacity-60';
+  const labelClass = 'mb-1 block text-xs font-medium uppercase tracking-wide text-neutral-500';
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-white via-green-50 to-blue-50">
-      <Header userName={user?.displayName || user?.email || undefined} />
-    <main className="max-w-2xl mx-auto px-4 py-8">
-        <div className="bg-white border border-blue-100 rounded-lg p-8 shadow-lg">
-          <h2 className="text-2xl font-bold text-blue-700 mb-2 flex items-center gap-2">
-            🏠 {t('apartmentNumber')} {apartment?.number || '—'}
-          </h2>
-          <div className="mb-1 text-gray-500">{t('building')}: <span className="font-semibold">{building?.address || '—'}</span></div>
-          <div className="mb-4 text-gray-400">{t('company')}: {building?.managedBy?.companyName || '—'}</div>
+    <div className="min-h-screen bg-neutral-100">
+      <Header
+        userName={user?.displayName || user?.email || undefined}
+        userEmail={user?.email || undefined}
+        pageTitle={th('dashboard.apartments.section')}
+        onLogout={handleLogout}
+      />
+
+      <main className="mx-auto max-w-5xl px-4 py-8">
+        <div className="mb-6 grid gap-4 sm:grid-cols-3">
+          <div className={`${cardClass} p-5 sm:col-span-2`}>
+            <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500">{t('apartmentNumber')}</div>
+            <div className="mt-1 text-2xl font-bold text-neutral-900">#{apartment?.number || '—'}</div>
+            <div className="mt-3 text-sm text-neutral-600">
+              {t('building')}: <span className="font-medium text-neutral-800">{building?.address || '—'}</span>
+            </div>
+          </div>
+
+          <div className={`${cardClass} p-5`}>
+            <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500">{t('company')}</div>
+            <div className="mt-1 line-clamp-3 text-sm font-medium text-neutral-800">{building?.managedBy?.companyName || '—'}</div>
+          </div>
+        </div>
+
+        <div className={`${cardClass} p-6`}>
 
           {/* Информация о квартире — только не для арендатора */}
           {/* {!isRenter && (
@@ -232,102 +207,141 @@ export default function ResidentApartmentsPage() {
           )} */}
 
           {/* Добавить арендатора — только не для арендатора */}
-          {!isRenter && (
-            <div className="mb-6">
-              <h3 className="font-semibold text-lg mb-2">{t('addRenter')}</h3>
-              <form onSubmit={handleAddRenter} className="grid grid-cols-1 md:grid-cols-5 gap-2 mt-2 items-end">
-                <input
-                  type="text"
-                  className="border rounded px-2 py-1 bg-white text-gray-900 placeholder-gray-400"
-                  placeholder={t('firstName')}
-                  value={renterFirstName}
-                  onChange={e => setRenterFirstName(e.target.value)}
-                  required
-                  disabled={saving}
-                />
-                <input
-                  type="text"
-                  className="border rounded px-2 py-1 bg-white text-gray-900 placeholder-gray-400"
-                  placeholder={t('lastName')}
-                  value={renterLastName}
-                  onChange={e => setRenterLastName(e.target.value)}
-                  required
-                  disabled={saving}
-                />
-                <input
-                  type="email"
-                  className="border rounded px-2 py-1 bg-white text-gray-900 placeholder-gray-400"
-                  placeholder={t('renterEmail')}
-                  value={renterEmail}
-                  onChange={e => setRenterEmail(e.target.value)}
-                  required
-                  disabled={saving}
-                />
-                <input
-                  type="date"
-                  className="border rounded px-2 py-1 bg-white text-gray-900 placeholder-gray-400"
-                  placeholder={t('dateFrom')}
-                  value={renterDateFrom}
-                  onChange={e => setRenterDateFrom(e.target.value)}
-                  required
-                  disabled={saving}
-                />
-                <input
-                  type="date"
-                  className="border rounded px-2 py-1 bg-white text-gray-900 placeholder-gray-400"
-                  placeholder={t('dateTo')}
-                  value={renterDateTo}
-                  onChange={e => setRenterDateTo(e.target.value)}
-                  required
-                  disabled={saving}
-                />
+          {!currentUserIsRenter && (
+            <div className="mb-8">
+              <div className="flex items-center justify-between rounded-2xl border border-blue-200 bg-blue-50/60 px-4 py-3">
+                <h3 className="text-lg font-semibold text-neutral-900">{t('addRenter')}</h3>
                 <button
-                  type="submit"
-                  className="bg-blue-600 text-white px-4 py-1 rounded hover:bg-blue-700 disabled:opacity-50 md:col-span-5"
-                  disabled={saving || !renterEmail || !renterFirstName || !renterLastName || !renterDateFrom || !renterDateTo}
-                >{t('add')}</button>
-              </form>
+                  type="button"
+                  className="rounded-lg border border-blue-200 bg-white px-3 py-1.5 text-xs font-semibold text-blue-700 transition hover:bg-blue-100"
+                  onClick={() => setShowAddRenterForm((prev) => !prev)}
+                >
+                  {showAddRenterForm ? '−' : '+'}
+                </button>
+              </div>
+
+              {showAddRenterForm && (
+                <div className="mt-3 rounded-2xl border border-blue-100 bg-blue-50/50 p-4 sm:p-5">
+                  <form onSubmit={handleAddRenter} className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
+                    <div>
+                      <label className={labelClass}>{t('firstName')}</label>
+                      <input
+                        type="text"
+                        className={inputClass}
+                        placeholder={t('firstName')}
+                        value={renterFirstName}
+                        onChange={e => setRenterFirstName(e.target.value)}
+                        required
+                        disabled={saving}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>{t('lastName')}</label>
+                      <input
+                        type="text"
+                        className={inputClass}
+                        placeholder={t('lastName')}
+                        value={renterLastName}
+                        onChange={e => setRenterLastName(e.target.value)}
+                        required
+                        disabled={saving}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>{t('renterEmail')}</label>
+                      <input
+                        type="email"
+                        className={inputClass}
+                        placeholder={t('renterEmail')}
+                        value={renterEmail}
+                        onChange={e => setRenterEmail(e.target.value)}
+                        required
+                        disabled={saving}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>{t('dateFrom')}</label>
+                      <input
+                        type="date"
+                        className={inputClass}
+                        placeholder={t('dateFrom')}
+                        value={renterDateFrom}
+                        onChange={e => setRenterDateFrom(e.target.value)}
+                        required
+                        disabled={saving}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelClass}>{t('dateTo')}</label>
+                      <input
+                        type="date"
+                        className={inputClass}
+                        placeholder={t('dateTo')}
+                        value={renterDateTo}
+                        onChange={e => setRenterDateTo(e.target.value)}
+                        required
+                        disabled={saving}
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      className="mt-1 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60 md:col-span-2 xl:col-span-5"
+                      disabled={saving || !renterEmail || !renterFirstName || !renterLastName || !renterDateFrom || !renterDateTo}
+                    >
+                      {t('add')}
+                    </button>
+                  </form>
+                </div>
+              )}
             </div>
           )}
 
           {/* Жильцы */}
-          <div className="mb-6">
-            <h3 className="font-semibold text-lg mb-2">{t('tenants')}</h3>
-            <div className="overflow-x-auto rounded-lg shadow border border-blue-100 bg-white">
-              <table className="min-w-full text-sm rounded-lg overflow-hidden">
-                <thead className="bg-blue-50 sticky top-0 z-10">
+          <div className="mb-2">
+            <h3 className="mb-3 text-lg font-semibold text-neutral-900">{t('tenants')}</h3>
+            <div className="overflow-x-auto rounded-2xl border border-neutral-200 bg-white">
+              <table className="min-w-full text-sm">
+                <thead className="sticky top-0 z-10 bg-neutral-50">
                   <tr>
-                    <th className="px-3 py-2 font-semibold text-gray-700 text-center">{t('firstName')}</th>
-                    <th className="px-3 py-2 font-semibold text-gray-700 text-center">{t('lastName')}</th>
-                    <th className="px-3 py-2 font-semibold text-gray-700 text-center">{t('email')}</th>
-                    <th className="px-3 py-2 font-semibold text-gray-700 text-center">{t('dateFrom')}</th>
-                    <th className="px-3 py-2 font-semibold text-gray-700 text-center">{t('dateTo')}</th>
-                    <th className="px-3 py-2 font-semibold text-gray-700 text-center">{t('type')}</th>
-                    {!isRenter && <th className="px-3 py-2 font-semibold text-gray-700 text-center">{t('actions')}</th>}
+                    <th className="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-neutral-600">{t('firstName')}</th>
+                    <th className="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-neutral-600">{t('lastName')}</th>
+                    <th className="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-neutral-600">{t('renterEmail')}</th>
+                    <th className="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-neutral-600">{t('dateFrom')}</th>
+                    <th className="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-neutral-600">{t('dateTo')}</th>
+                    <th className="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-neutral-600">{t('type')}</th>
+                    {!currentUserIsRenter && <th className="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-neutral-600">{t('actions')}</th>}
                   </tr>
                 </thead>
                 <tbody>
                   {tenants.length === 0 && (
-                    <tr><td colSpan={7} className="text-gray-400 text-center py-4">{t('noTenants')}</td></tr>
+                    <tr>
+                      <td colSpan={currentUserIsRenter ? 6 : 7} className="py-6 text-center text-neutral-400">{t('noTenants')}</td>
+                    </tr>
                   )}
                   {tenants.map((tenant, idx) => {
-                    const isRenter = tenant.permissions.length === 1 && tenant.permissions[0] === 'submitMeter';
+                    const rowIsRenter = tenant.permissions.length === 1 && tenant.permissions[0] === 'submitMeter';
                     const [firstName, ...lastNameArr] = tenant.firstName ? [tenant.firstName, tenant.lastName] : (tenant.name ? tenant.name.split(' ') : ['','']);
                     const lastName = lastNameArr ? lastNameArr.join(' ') : '';
                     return (
                       <tr key={tenant.userId} className={
-                        `transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-blue-50'} hover:bg-blue-100`
+                        `transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-neutral-50'} hover:bg-blue-50/70`
                       }>
-                        <td className="px-3 py-2 text-center">{firstName}</td>
-                        <td className="px-3 py-2 text-center">{lastName}</td>
-                        <td className="px-3 py-2 text-center">{tenant.email}</td>
-                        <td className="px-3 py-2 text-center">{tenant.rentDateFrom || ''}</td>
-                        <td className="px-3 py-2 text-center">{tenant.rentDateTo || ''}</td>
-                        <td className="px-3 py-2 text-center">{isRenter ? <span className="text-blue-600 font-medium">{t('renter')}</span> : <span className="text-green-600 font-medium">{t('resident')}</span>}</td>
-                        {!isRenter && (
-                          <td className="px-3 py-2 text-center">
+                        <td className="px-3 py-3 text-center text-neutral-800">{firstName}</td>
+                        <td className="px-3 py-3 text-center text-neutral-800">{lastName}</td>
+                        <td className="px-3 py-3 text-center text-neutral-700">{tenant.email}</td>
+                        <td className="px-3 py-3 text-center text-neutral-700">{tenant.rentDateFrom || '—'}</td>
+                        <td className="px-3 py-3 text-center text-neutral-700">{tenant.rentDateTo || '—'}</td>
+                        <td className="px-3 py-3 text-center">
+                          {rowIsRenter ? (
+                            <span className="inline-flex rounded-full bg-blue-100 px-2.5 py-1 text-xs font-semibold text-blue-700">{t('renter')}</span>
+                          ) : (
+                            <span className="inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">{t('resident')}</span>
+                          )}
+                        </td>
+                        {!currentUserIsRenter && (
+                          <td className="px-3 py-3 text-center">
                             <button
-                              className="text-red-600 hover:bg-red-50 border border-red-200 rounded px-2 py-1 transition disabled:opacity-50"
+                              className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-50"
                               onClick={() => handleRemoveTenant(tenant.userId)}
                               disabled={saving}
                             >{t('delete')}</button>
@@ -341,8 +355,16 @@ export default function ResidentApartmentsPage() {
             </div>
           </div>
 
-          {successMsg && <div className="text-green-600 mb-2">{successMsg}</div>}
-          {errorMsg && <div className="text-red-600 mb-2">{errorMsg}</div>}
+          {successMsg && (
+            <div className="mb-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700">
+              {successMsg}
+            </div>
+          )}
+          {errorMsg && (
+            <div className="mb-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
+              {errorMsg}
+            </div>
+          )}
 
         </div>
       </main>
