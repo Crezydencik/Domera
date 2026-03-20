@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { getApartment } from '@/modules/apartments/services/apartmentsService';
 import { getBuilding } from '@/modules/invoices/services/buildings/services/buildingsService';
 import { updateUserProfile } from '@/modules/auth/services/authService';
+import { logout } from '@/modules/auth/services/authService';
 import { getCompany, updateCompany } from '@/modules/company/services/companyService';
 import type { Company } from '@/shared/types';
 import { showCustomToast } from '@/shared/components/ui/CustomToast';
@@ -89,7 +90,10 @@ export default function ProfilePage() {
   const getUserName = (u: User | null) => u?.displayName || u?.name || u?.email || '';
   const getDisplayName = (u: User | null) => u?.displayName || u?.name || '';
   const getFieldValue = (value?: string) => value?.trim() || '—';
-  const handleLogout = () => { window.location.reload(); };
+  const handleLogout = async () => {
+    await logout();
+    window.location.href = '/login';
+  };
 
   const t = useTranslations('dashboard.profile');
   const th = useTranslations();

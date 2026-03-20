@@ -17,12 +17,18 @@ import {
 import { getCompany } from '@/modules/company/services/companyService';
 import { getApartmentsByBuilding } from '@/modules/apartments/services/apartmentsService';
 import { getUserByEmail, updateUserProfile } from '@/modules/auth/services/authService';
+import { logout } from '@/modules/auth/services/authService';
 import { ConfirmationDialog } from '@/shared/components/ui/ConfirmationDialog';
 import { toast } from 'react-toastify';
 
 export default function BuildingsPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
+
+  const handleLogout = async () => {
+    await logout();
+    router.push('/login');
+  };
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [buildingName, setBuildingName] = useState('');
@@ -369,6 +375,7 @@ export default function BuildingsPage() {
         userName={user?.displayName || user?.name || ''}
         userEmail={user?.email || ''}
         pageTitle="Управление домами"
+        onLogout={handleLogout}
       />
       <main className="max-w-7xl mx-auto px-4 py-8">
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

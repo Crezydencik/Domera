@@ -11,9 +11,18 @@ import type { Apartment, Building, TenantAccess } from '@/shared/types';
 import { useTranslations } from 'next-intl';
 import Loading from '../../../shared/components/ui/loading';
 import Header from '../../../shared/components/layout/heder';
+import { logout } from '@/modules/auth/services/authService';
+import { useRouter } from 'next/navigation';
 
 export default function ResidentApartmentsPage() {
   const { user, loading, isResident } = useAuth();
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    await logout();
+    router.push('/login');
+  };
+
   const [apartment, setApartment] = useState<Apartment | null>(null);
   const [building, setBuilding] = useState<Building | null>(null);
   const [tenants, setTenants] = useState<TenantAccess[]>([]);
@@ -163,7 +172,7 @@ export default function ResidentApartmentsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-white via-green-50 to-blue-50">
       <Header userName={user?.displayName || user?.email || undefined} />
-      <main className="max-w-2xl mx-auto px-4 py-8">
+    <main className="max-w-2xl mx-auto px-4 py-8">
         <div className="bg-white border border-blue-100 rounded-lg p-8 shadow-lg">
           <h2 className="text-2xl font-bold text-blue-700 mb-2 flex items-center gap-2">
             🏠 {t('apartmentNumber')} {apartment?.number || '—'}

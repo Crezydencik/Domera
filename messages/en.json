@@ -27,6 +27,7 @@
       "edit": "Edit",
       "update": "Update",
       "confirm": "Confirm",
+      "logout": "Log out",
       "login": "Log in",
       "register": "Register",
       "registering": "Registering...",
@@ -75,7 +76,11 @@
       "companyInfo": "Company information",
       "personalInfo": "Personal information",
       "confirmation": "Confirmation"
-    }
+    },
+    "viewprofile": "View profile",
+    "editProfile": "Edit profile",
+    "deleteProfile": "Delete profile",
+    "confirmDeleteProfile": "Confirm profile deletion. This action cannot be undone."
 
   },
   "home": {

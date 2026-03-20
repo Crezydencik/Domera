@@ -6,15 +6,15 @@ import { LanguageSwitcher } from './LanguageSwitcher';
 import { useLanguage } from '../../providers/LanguageProvider';
 import { HeaderProps } from '../../types';
 import { useAuth } from '../../hooks/useAuth';
+import { useTranslations } from 'next-intl';
 
 
 
 const Header: React.FC<HeaderProps> = ({ userName = '',  userAvatarUrl = '', userEmail = '', pageTitle = 'Dashboard', onLogout, right }) => {
+  const ts = useTranslations('system');
   const { user, refreshUser } = useAuth();
   // Дефолтная функция выхода, если onLogout не передан
-  const handleLogout = onLogout || (() => {
-    alert('Logout! (onLogout не передан)');
-    });
+  const handleLogout = onLogout || (() => { window.location.href = '/login'; });
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [pendingInvitation, setPendingInvitation] = useState<null | { id: string; apartmentId: string; token?: string }>(null);
@@ -201,15 +201,9 @@ const Header: React.FC<HeaderProps> = ({ userName = '',  userAvatarUrl = '', use
                       <circle cx="12" cy="8" r="4" />
                       <path d="M6 20c0-2.21 3.58-4 6-4s6 1.79 6 4" />
                     </svg>
-                    View profile
+                  {ts('viewprofile')}
                   </a>
-                  <a href="/settings" className="w-full flex items-center gap-3 px-5 py-2 text-gray-700 hover:bg-gray-50 transition text-left" data-dropdown-interactive>
-                    <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                      <circle cx="12" cy="12" r="10" />
-                      <path d="M12 16v-4M12 8h.01" />
-                    </svg>
-                    Account Settings
-                  </a>
+
                 </div>
                 <div className="border-t border-gray-100">
                   <button
@@ -221,7 +215,7 @@ const Header: React.FC<HeaderProps> = ({ userName = '',  userAvatarUrl = '', use
                       <path d="M17 16l4-4m0 0l-4-4m4 4H7" />
                       <path d="M3 12a9 9 0 0118 0 9 9 0 01-18 0z" />
                     </svg>
-                    Log out
+                    {ts('button.logout')}
                   </button>
                 </div>
               </div>
