@@ -575,12 +575,8 @@ export default function ApartmentsManagementPage() {
   // Building CRUD helpers removed from this page (not used here)
   return (
     <div className="min-h-screen bg-linear-to-br from-blue-50 via-white to-blue-50">
-      <Header 
-        userName={user?.name || user?.email || t('user')} 
-        userEmail={user?.email}
-        onLogout={handleLogout}
-        pageTitle={t('apartments') || 'Управление квартирами'}
-      />
+
+
 
       <main className="max-w-7xl mx-auto px-6 py-12">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-sm">

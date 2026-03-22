@@ -476,7 +476,7 @@ export default function MeterReadingsManagerPage() {
 
   return (
     <div className="min-h-screen bg-linear-to-br from-white via-gray-50 to-white text-gray-900">
-      <Header userName={user.name || user.email || tMeter('user')} userEmail={user.email} onLogout={handleLogout} pageTitle={tMeter('waterReadings')} />
+
 
       <main className="max-w-7xl mx-auto px-4 py-10">
         {/* Верхняя панель: фильтр и экспорт */}

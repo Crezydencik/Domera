@@ -219,6 +219,16 @@ export const getApartment = async (apartmentId: string): Promise<Apartment | nul
 };
 
 /**
+ * Get all apartments assigned to a resident (by residentId field)
+ */
+export const getApartmentsByResidentId = async (uid: string): Promise<Apartment[]> => {
+  const apartmentsCollection = collection(db, FIRESTORE_COLLECTIONS.APARTMENTS);
+  const q = query(apartmentsCollection, where('residentId', '==', uid));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map((doc) => ({ id: doc.id, ...(doc.data() as Record<string, unknown>) } as Apartment));
+};
+
+/**
  * Get apartments by building ID
  */
 export const getApartmentsByBuilding = async (buildingId: string): Promise<Apartment[]> => {

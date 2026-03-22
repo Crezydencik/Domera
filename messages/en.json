@@ -15,7 +15,11 @@
     },
     "notifications": {
       "noNewNotifications": "No new notifications",
-      "allEventsViewed": "All events viewed"
+      "allEventsViewed": "All events viewed",
+      "invitationTitle": "You have a new invitation!",
+      "invitationMessage": "You have been invited to join an apartment.",
+      "acceptInvitation": "Accept invitation",
+      "openNotifications": "Open notifications"
     },
     "button": {
       "next": "Next",
@@ -233,6 +237,16 @@
           "errorRemoveTenant": "Error removing tenant.",
           "successAddRenter": "Renter added successfully!",
           "errorAddRenter": "Error adding renter.",
+        "basicInfo": "Basic apartment information",
+        "apartmentAddress": "Apartment address",
+        "floor": "Floor",
+        "apartmentKind": "Apartment type",
+        "owner": "Owner",
+        "ownerEmail": "Owner email",
+        "managerEmail": "Manager email",
+        "companyEmail": "Company email",
+        "companyPhone": "Company phone",
+        "selectApartment": "Select apartment",
         "loading": "Loading...",
         "noApartments": "No apartments assigned. Contact your manager.",
         "viewReadings": "View readings",
@@ -262,6 +276,7 @@
           "submissionPeriodNotSet": "Submission period is not set.",
           "saving": "Saving...",
         "loadingApartmentsAndReadings": "Loading...",
+        "selectApartment": "Select apartment",
         "building": "Building",
         "waterReadings": "Water readings",
         "submitButton": "Submit reading",
@@ -309,7 +324,8 @@
         "notSpecified": "Not specified",
         "invalidDate": "Invalid date. Please enter a correct date.",
         "noReadingsForApartment": "No readings for this apartment",
-        "history": "Meter history"
+        "history": "Meter history",
+        "meterConsumptionError": "The new reading cannot be less than the previous one. Please enter a valid value."
 
       },
       "profile": {
@@ -575,6 +591,7 @@
         "selectBuildingAndFile": "Select building and file",
         "importError": "Import error",
         "importSuccessSummary": "Successfully imported {imported} apartments{details}",
+        "authenticationRequired": "Authentication required",
         "profileUpdated": "Profile updated",
         "consentSaved": "Consent saved",
         "projectTitleDescriptionRequired": "Please enter project title and description",
@@ -597,6 +614,38 @@
       "apartmentCreateError": "Error creating apartment",
       "inviteSent": "Invitation email sent to the resident's email",
       "inviteError": "Error sending invitation",
+      "importApartmentsModal": {
+        "title": "Apartment import",
+        "description": "Upload an Excel file with apartment and meter data",
+        "resultTitle": "Import result",
+        "resultDescription": "Review the imported apartments and press OK",
+        "progress": {
+          "uploadingFile": "Uploading file...",
+          "completed": "✓ Import completed!",
+          "errorPrefix": "Error"
+        },
+        "summary": {
+          "imported": "Imported: {count}",
+          "skippedDuplicates": "Duplicates skipped: {count}",
+          "errors": "Errors: {count}"
+        },
+        "sections": {
+          "createdApartments": "Imported apartments",
+          "noNewApartments": "No new apartments were imported.",
+          "skippedDuplicates": "Skipped duplicates",
+          "errors": "Errors"
+        },
+        "fields": {
+          "selectBuilding": "Select building *",
+          "selectBuildingPlaceholder": "Select building...",
+          "excelFile": "Excel file (.xlsx) *"
+        },
+        "buttons": {
+          "ok": "OK",
+          "import": "Import",
+          "importing": "Importing..."
+        }
+      },
       "sidebarTitleManagement": "Manager Cabinet",
       "sidebarTitleResident": "Resident Cabinet",
       "searchSection": "Search section...",

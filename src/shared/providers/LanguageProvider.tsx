@@ -28,7 +28,6 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   const [messages, setMessages] = useState<Record<string, unknown> | null>(null);
   
   useEffect(() => {
-    setMessages(null); // сбрасываем, чтобы показать лоадер
     (async () => {
       const msgs = (await import(`../../../messages/${locale}.json`)).default;
       setMessages(sanitizeMessages(msgs) as Record<string, unknown>);

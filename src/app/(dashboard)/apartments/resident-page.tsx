@@ -3,8 +3,10 @@
 import { useAuth } from '@/shared/hooks/useAuth';
 import { AccessError } from '@/shared/components/AccessError';
 import { useEffect, useState } from 'react';
-import { getApartment, updateApartment, removeTenantFromApartment, addOrInviteTenantToApartment } from '@/modules/apartments/services/apartmentsService';
+import { getApartment, getApartmentsByResidentId, updateApartment, removeTenantFromApartment, addOrInviteTenantToApartment } from '@/modules/apartments/services/apartmentsService';
 import { getBuilding } from '@/modules/invoices/services/buildings/services/buildingsService';
+import { getCompany } from '@/modules/company/services/companyService';
+import { getUserById } from '@/modules/auth/services/authService';
 import type { Apartment, Building, TenantAccess } from '@/shared/types';
 import { useTranslations } from 'next-intl';
 import Loading from '../../../shared/components/ui/loading';
@@ -21,8 +23,17 @@ export default function ResidentApartmentsPage() {
     router.push('/login');
   };
 
+  const [allApartments, setAllApartments] = useState<Apartment[]>([]);
+  const [selectedApartmentId, setSelectedApartmentId] = useState<string | null>(null);
   const [apartment, setApartment] = useState<Apartment | null>(null);
+  const [apartmentResolved, setApartmentResolved] = useState(false);
   const [building, setBuilding] = useState<Building | null>(null);
+  const [companyContact, setCompanyContact] = useState<{
+    companyName?: string;
+    companyEmail?: string;
+    companyPhone?: string;
+    managerEmail?: string;
+  } | null>(null);
   const [tenants, setTenants] = useState<TenantAccess[]>([]);
   const [saving, setSaving] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
@@ -38,14 +49,88 @@ export default function ResidentApartmentsPage() {
   const t = useTranslations('dashboard.apartments');
   const getErrorMessage = (err: unknown, fallback: string) => err instanceof Error ? err.message : fallback;
 
+  // Build the list of all apartment IDs for this resident
+  const apartmentIds: string[] = user
+    ? (user.apartmentIds && user.apartmentIds.length > 0
+        ? user.apartmentIds
+        : user.apartmentId
+          ? [user.apartmentId]
+          : [])
+    : [];
+
   useEffect(() => {
-    if (isResident && user?.apartmentId) {
-      getApartment(user.apartmentId).then((apt) => {
-        setApartment(apt);
-        setTenants(apt?.tenants || []);
-      });
-    }
+    let cancelled = false;
+
+    const loadAllApartments = async () => {
+      if (!isResident || !user) {
+        if (!cancelled) {
+          setAllApartments([]);
+          setApartment(null);
+          setTenants([]);
+          setApartmentResolved(true);
+        }
+        return;
+      }
+
+      try {
+        // Query by residentId from Firestore (catches all apartments, even legacy ones without apartmentIds array)
+        const [byResidentId, byIds] = await Promise.all([
+          getApartmentsByResidentId(user.uid),
+          apartmentIds.length > 0
+            ? Promise.all(apartmentIds.map((id) => getApartment(id)))
+            : Promise.resolve([] as (Apartment | null)[]),
+        ]);
+
+        // Merge and deduplicate; only include fallback IDs where user is still the resident
+        const merged: Record<string, Apartment> = {};
+        for (const a of byResidentId) {
+          if (a) merged[a.id] = a;
+        }
+        for (const a of byIds) {
+          if (a && a.residentId === user.uid) merged[a.id] = a;
+        }
+        const valid = Object.values(merged);
+
+        if (cancelled) return;
+        setAllApartments(valid);
+        const knownIds = new Set([...apartmentIds, ...byResidentId.map((a) => a.id)]);
+        const firstId = selectedApartmentId && knownIds.has(selectedApartmentId)
+          ? selectedApartmentId
+          : (valid[0]?.id ?? null);
+        setSelectedApartmentId(firstId);
+        const selected = valid.find((a) => a.id === firstId) ?? null;
+        setApartment(selected);
+        setTenants(selected?.tenants || []);
+      } catch {
+        if (cancelled) return;
+        setAllApartments([]);
+        setApartment(null);
+        setTenants([]);
+      } finally {
+        if (!cancelled) setApartmentResolved(true);
+      }
+    };
+
+    setApartmentResolved(false);
+    void loadAllApartments();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, isResident]);
+
+  // When selected apartment changes, update apartment + tenants
+  useEffect(() => {
+    if (!selectedApartmentId) return;
+    const found = allApartments.find((a) => a.id === selectedApartmentId) ?? null;
+    setApartment(found);
+    setTenants(found?.tenants || []);
+    setBuilding(null);
+    setCompanyContact(null);
+    setSuccessMsg('');
+    setErrorMsg('');
+  }, [selectedApartmentId, allApartments]);
 
   useEffect(() => {
     if (apartment?.buildingId) {
@@ -53,9 +138,71 @@ export default function ResidentApartmentsPage() {
     }
   }, [apartment]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadCompanyContact = async () => {
+      if (!building) {
+        if (!cancelled) setCompanyContact(null);
+        return;
+      }
+
+      const companyId = building.companyId || building.managedBy?.companyId;
+      const managerUid = building.managedBy?.managerUid;
+
+      let companyName = building.managedBy?.companyName;
+      let companyEmail: string | undefined;
+      let companyPhone: string | undefined;
+      let managerEmail: string | undefined = building.managedBy?.managerEmail;
+
+      try {
+        if (companyId) {
+          const company = await getCompany(companyId);
+          if (company) {
+            companyName = company.name || companyName;
+            companyEmail = company.email;
+            companyPhone = company.phone;
+          }
+        }
+      } catch {
+        // ignore company contact errors on UI level
+      }
+
+      try {
+        if (managerUid) {
+          const manager = await getUserById(managerUid);
+          if (manager) {
+            managerEmail = manager.email || managerEmail;
+            if (!companyPhone && manager.phone) {
+              companyPhone = manager.phone;
+            }
+          }
+        }
+      } catch {
+        // ignore manager contact errors on UI level
+      }
+
+      if (!cancelled) {
+        setCompanyContact({
+          companyName,
+          companyEmail,
+          companyPhone,
+          managerEmail,
+        });
+      }
+    };
+
+    void loadCompanyContact();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [building]);
+
   if (loading) return <Loading text={t('loading')} />;
   if (!user) return <AccessError type="loginRequired" />;
   if (!isResident) return <AccessError type="noAccess" />;
+  if (!apartmentResolved) return <Loading text={t('loading')} />;
 
   const handleRemoveTenant = async (userId: string) => {
     if (!apartment?.id) return;
@@ -65,7 +212,9 @@ export default function ResidentApartmentsPage() {
     try {
       await removeTenantFromApartment(apartment.id, userId);
       const updated = await getApartment(apartment.id);
-      setTenants(updated.tenants || []);
+      const updatedTenants = updated?.tenants || [];
+      setTenants(updatedTenants);
+      setAllApartments((prev) => prev.map((a) => a.id === apartment.id ? { ...a, tenants: updatedTenants } : a));
       setSuccessMsg(t('successRemoveTenant'));
     } catch (err: unknown) {
       setErrorMsg(getErrorMessage(err, t('errorRemoveTenant')));
@@ -109,7 +258,10 @@ export default function ResidentApartmentsPage() {
           )
         });
       }
-      setTenants((await getApartment(apartment.id)).tenants || []);
+      const finalApt = await getApartment(apartment.id);
+      const finalTenants = finalApt?.tenants || [];
+      setTenants(finalTenants);
+      setAllApartments((prev) => prev.map((a) => a.id === apartment.id ? { ...a, tenants: finalTenants } : a));
       setSuccessMsg(t('successAddRenter'));
       setRenterEmail('');
       setRenterFirstName('');
@@ -127,6 +279,14 @@ export default function ResidentApartmentsPage() {
   const cardClass = 'rounded-2xl border border-neutral-200 bg-white shadow-sm';
   const inputClass = 'w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200 disabled:opacity-60';
   const labelClass = 'mb-1 block text-xs font-medium uppercase tracking-wide text-neutral-500';
+  const displayValue = (value: string | number | null | undefined) => {
+    if (value === null || value === undefined) return '—';
+    if (typeof value === 'string' && value.trim() === '') return '—';
+    return String(value);
+  };
+
+  const companyEmail = companyContact?.companyEmail || companyContact?.managerEmail || building?.managedBy?.managerEmail;
+  const companyPhone = companyContact?.companyPhone;
 
   return (
     <div className="min-h-screen bg-neutral-100">
@@ -137,7 +297,39 @@ export default function ResidentApartmentsPage() {
         onLogout={handleLogout}
       />
 
+      {!apartment && (
       <main className="mx-auto max-w-5xl px-4 py-8">
+        <div className="rounded-xl border border-gray-200 bg-gray-50 p-12 text-center shadow-sm">
+          <svg className="mx-auto mb-3 h-12 w-12 text-gray-400" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+          </svg>
+          <p className="text-lg font-medium text-gray-600">{t('noApartments')}</p>
+        </div>
+      </main>
+      )}
+
+      {apartment && (
+      <main className="mx-auto max-w-5xl px-4 py-8">
+        {allApartments.length > 1 && (
+          <div className="mb-4 flex items-center gap-3">
+            <label className="text-sm font-medium text-neutral-600" htmlFor="apartment-select">
+              {t('selectApartment')}:
+            </label>
+            <select
+              id="apartment-select"
+              className="rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+              value={selectedApartmentId ?? ''}
+              onChange={(e) => setSelectedApartmentId(e.target.value)}
+            >
+              {allApartments.map((apt) => (
+                <option key={apt.id} value={apt.id}>
+                  {t('apartmentNumber')} {apt.number}
+                  {apt.address ? ` — ${apt.address}` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         <div className="mb-6 grid gap-4 sm:grid-cols-3">
           <div className={`${cardClass} p-5 sm:col-span-2`}>
             <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500">{t('apartmentNumber')}</div>
@@ -145,11 +337,45 @@ export default function ResidentApartmentsPage() {
             <div className="mt-3 text-sm text-neutral-600">
               {t('building')}: <span className="font-medium text-neutral-800">{building?.address || '—'}</span>
             </div>
+
+            <div className="mt-4 border-t border-neutral-200 pt-4">
+              <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500">{t('basicInfo')}</div>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <div className="text-sm text-neutral-700">
+                  {t('apartmentAddress')}: <span className="font-medium text-neutral-900">{displayValue(apartment.address || building?.address)}</span>
+                </div>
+                <div className="text-sm text-neutral-700">
+                  {t('floor')}: <span className="font-medium text-neutral-900">{displayValue(apartment.floor)}</span>
+                </div>
+                <div className="text-sm text-neutral-700">
+                  {t('apartmentKind')}: <span className="font-medium text-neutral-900">{displayValue(apartment.apartmentType)}</span>
+                </div>
+                <div className="text-sm text-neutral-700">
+                  {t('owner')}: <span className="font-medium text-neutral-900">{displayValue(apartment.owner)}</span>
+                </div>
+                <div className="text-sm text-neutral-700">
+                  {t('ownerEmail')}: <span className="font-medium text-neutral-900">{displayValue(apartment.ownerEmail)}</span>
+                </div>
+                <div className="text-sm text-neutral-700">
+                  {t('managerEmail')}: <span className="font-medium text-neutral-900">{displayValue(companyContact?.managerEmail || building?.managedBy?.managerEmail)}</span>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className={`${cardClass} p-5`}>
             <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500">{t('company')}</div>
-            <div className="mt-1 line-clamp-3 text-sm font-medium text-neutral-800">{building?.managedBy?.companyName || '—'}</div>
+            <div className="mt-1 line-clamp-2 text-sm font-medium text-neutral-800">
+              {displayValue(companyContact?.companyName || building?.managedBy?.companyName)}
+            </div>
+            <div className="mt-3 space-y-1.5 text-xs text-neutral-600">
+              <div>
+                {t('companyEmail')}: <span className="font-medium text-neutral-800">{displayValue(companyEmail)}</span>
+              </div>
+              <div>
+                {t('companyPhone')}: <span className="font-medium text-neutral-800">{displayValue(companyPhone)}</span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -368,6 +594,7 @@ export default function ResidentApartmentsPage() {
 
         </div>
       </main>
+      )}
     </div>
   );
 }

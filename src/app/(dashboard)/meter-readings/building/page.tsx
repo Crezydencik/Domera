@@ -308,7 +308,7 @@ export default function BuildingWaterReadingsPage() {
 
   return (
     <div className="min-h-screen bg-linear-to-br from-white via-gray-50 to-white text-gray-900">
-      <Header userName={user.name || user.email || tMeter("user")} userEmail={user.email} onLogout={handleLogout} pageTitle="Показания дома" />
+
 
       <main className="max-w-7xl mx-auto px-4 py-10">
         <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 mb-10">

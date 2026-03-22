@@ -8,10 +8,132 @@ import { HeaderProps } from '../../types';
 import { useAuth } from '../../hooks/useAuth';
 import { useTranslations } from 'next-intl';
 
+interface AcceptInvitationModalProps {
+  open: boolean;
+  token: string;
+  invitationId: string;
+  onClose: () => void;
+  onAccepted: () => void;
+}
+
+const AcceptInvitationModal: React.FC<AcceptInvitationModalProps> = ({ open, token, invitationId, onClose, onAccepted }) => {
+  const tInv = useTranslations('auth.invitation');
+  const tSystem = useTranslations('system');
+  const [gdprConsent, setGdprConsent] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (!open) {
+      setGdprConsent(false);
+      setSubmitting(false);
+      setError('');
+    }
+  }, [open]);
+
+  if (!open) return null;
+
+  const handleAccept = async () => {
+    setError('');
+
+    if (!gdprConsent) {
+      setError(tInv('gdprConsentRequired'));
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const response = await fetch('/api/invitations/accept', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...(token ? { token } : {}),
+          ...(invitationId ? { invitationId } : {}),
+          gdprConsent: true,
+        }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data?.error || tInv('invitationError'));
+      }
+
+      onAccepted();
+      onClose();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : tInv('invitationError'));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-120 flex items-center justify-center bg-black/45 p-4">
+      <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <h3 className="text-xl font-bold text-slate-900">{tInv('acceptInvitation')}</h3>
+          <button
+            type="button"
+            className="rounded-lg p-1 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+            onClick={onClose}
+            aria-label={tSystem('button.cancel')}
+          >
+            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <p className="mb-4 text-sm text-slate-600">{tInv('invitedAsResident')}</p>
+
+        {error && (
+          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            {error}
+          </div>
+        )}
+
+        <label className="mb-5 flex items-start gap-2 text-sm text-slate-700">
+          <input
+            type="checkbox"
+            checked={gdprConsent}
+            onChange={(e) => setGdprConsent(e.target.checked)}
+            className="mt-0.5 h-4 w-4 rounded border-slate-300"
+          />
+          {tInv('gdprConsent')}
+        </label>
+
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={submitting}
+            className="flex-1 rounded-lg border border-slate-300 bg-white px-4 py-2 font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+          >
+            {tSystem('button.cancel')}
+          </button>
+          <button
+            type="button"
+            onClick={handleAccept}
+            disabled={submitting}
+            className="flex-1 rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
+          >
+            {submitting ? tInv('acceptingInvitation') : tInv('acceptAccess')}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 
-const Header: React.FC<HeaderProps> = ({ userName = '',  userAvatarUrl = '', userEmail = '', pageTitle = 'Dashboard', onLogout, right }) => {
+
+interface HeaderWithSidebarProps extends HeaderProps {
+  onOpenSidebar?: () => void;
+}
+
+const Header: React.FC<HeaderWithSidebarProps> = ({ userName = '',  userAvatarUrl = '', userEmail = '', pageTitle = 'Dashboard', onLogout, right, onOpenSidebar }) => {
   const ts = useTranslations('system');
+  const tn = useTranslations('system.notifications');
   const tp = useTranslations('dashboard.profile');
   const { user, refreshUser } = useAuth();
   // Дефолтная функция выхода, если onLogout не передан
@@ -19,6 +141,7 @@ const Header: React.FC<HeaderProps> = ({ userName = '',  userAvatarUrl = '', use
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [pendingInvitation, setPendingInvitation] = useState<null | { id: string; apartmentId: string; token?: string }>(null);
+  const [acceptModalOpen, setAcceptModalOpen] = useState(false);
   const [langDropdownOpen, setLangDropdownOpen] = useState(false);
   const LANGUAGES = [
     { code: 'lv', label: 'LV' },
@@ -40,12 +163,12 @@ const Header: React.FC<HeaderProps> = ({ userName = '',  userAvatarUrl = '', use
       notifs.push({
         id: 'invite',
         type: 'invite',
-        title: 'Вам пришло приглашение!',
-        message: 'Вас пригласили присоединиться к квартире.',
-        link: pendingInvitation.token
-          ? `/accept-invitation?token=${pendingInvitation.token}`
-          : '/login',
-        linkLabel: 'Принять приглашение'
+        title: tn('invitationTitle'),
+        message: tn('invitationMessage'),
+        linkLabel: tn('acceptInvitation'),
+        onAction: () => {
+          setAcceptModalOpen(true);
+        }
       });
     }
     if (user && (!user.phone || !(user.displayName || user.name))) {
@@ -59,7 +182,7 @@ const Header: React.FC<HeaderProps> = ({ userName = '',  userAvatarUrl = '', use
       });
     }
     return notifs;
-  }, [user, pendingInvitation, tp]);
+  }, [user, pendingInvitation, tn, tp]);
     // Check for pending invitation on mount or when userEmail changes
     useEffect(() => {
       let ignore = false;
@@ -101,8 +224,18 @@ const Header: React.FC<HeaderProps> = ({ userName = '',  userAvatarUrl = '', use
   return (
     <header className="bg-white w-full border-b border-gray-100">
       <div className="max-w-7xl mx-auto px-6 py-5 flex items-center justify-between">
-        {/* Left: Title and subtitle */}
-        <div className="flex flex-col">
+        {/* Left: Burger + Title */}
+        <div className="flex items-center gap-3">
+          {/* Кнопка открытия меню только на мобильных */}
+          {onOpenSidebar && (
+            <button
+              className="md:hidden mr-2 p-2 bg-blue-500 text-white rounded-md shadow-md"
+              onClick={onOpenSidebar}
+              aria-label="Открыть меню"
+            >
+              <svg width="28" height="28" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
+            </button>
+          )}
           <span className="text-3xl font-bold text-gray-900 leading-tight">{pageTitle}</span>
         </div>
         {/* Right: custom right prop + Search, theme, bell, user */}
@@ -141,7 +274,7 @@ const Header: React.FC<HeaderProps> = ({ userName = '',  userAvatarUrl = '', use
             <button
               className="relative p-2 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500"
               onClick={() => setNotifOpen((v) => !v)}
-              aria-label="Открыть уведомления"
+              aria-label={tn('openNotifications')}
             >
               <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                 <path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
@@ -226,6 +359,21 @@ const Header: React.FC<HeaderProps> = ({ userName = '',  userAvatarUrl = '', use
                  <LanguageSwitcher value={locale} onChange={handleLanguageChange} />
         </div>
       </div>
+
+      <AcceptInvitationModal
+        open={acceptModalOpen && Boolean(pendingInvitation?.id)}
+        token={pendingInvitation?.token || ''}
+        invitationId={pendingInvitation?.id || ''}
+        onClose={() => setAcceptModalOpen(false)}
+        onAccepted={async () => {
+          setPendingInvitation(null);
+          try {
+            await refreshUser?.();
+          } catch {
+            // noop
+          }
+        }}
+      />
     </header>
   );
 };

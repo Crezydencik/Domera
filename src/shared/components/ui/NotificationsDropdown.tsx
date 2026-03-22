@@ -9,6 +9,7 @@ export interface NotificationItem {
   message: string;
   link?: string;
   linkLabel?: string;
+  onAction?: () => void;
 }
 
 interface NotificationsDropdownProps {
@@ -61,7 +62,19 @@ export const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ op
             <div className="flex-1">
               <div className="font-semibold text-gray-900 text-lg mb-1">{n.title}</div>
               <div className="text-gray-500 text-sm mb-1">{n.message}</div>
-              {n.link && n.linkLabel && (
+              {n.onAction && n.linkLabel && (
+                <button
+                  type="button"
+                  className="inline-block text-blue-600 hover:underline text-sm font-semibold mt-1"
+                  onClick={() => {
+                    n.onAction?.();
+                    onClose();
+                  }}
+                >
+                  {n.linkLabel}
+                </button>
+              )}
+              {!n.onAction && n.link && n.linkLabel && (
                 <Link href={n.link} className="inline-block text-blue-600 hover:underline text-sm font-semibold mt-1" onClick={onClose}>
                   {n.linkLabel}
                 </Link>

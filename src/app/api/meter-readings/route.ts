@@ -76,7 +76,20 @@ export async function POST(request: NextRequest) {
       : [];
 
     if (auth.role === 'Resident') {
-      if (!auth.apartmentId || auth.apartmentId !== payload.apartmentId) {
+      const isClaimApartment = Boolean(auth.apartmentId && auth.apartmentId === payload.apartmentId);
+      const isPrimaryResident = typeof apartment.residentId === 'string' && apartment.residentId === auth.uid;
+      const isTenantWithSubmit = Array.isArray(apartment.tenants)
+        && apartment.tenants.some((tenant) => {
+          if (!tenant || typeof tenant !== 'object') return false;
+          const t = tenant as Record<string, unknown>;
+          const userId = typeof t.userId === 'string' ? t.userId : '';
+          const permissions = Array.isArray(t.permissions)
+            ? t.permissions.filter((p): p is string => typeof p === 'string')
+            : [];
+          return userId === auth.uid && permissions.includes('submitMeter');
+        });
+
+      if (!isClaimApartment && !isPrimaryResident && !isTenantWithSubmit) {
         await writeAuditEvent({
           request,
           action: 'meter_reading.submit',
@@ -103,8 +116,9 @@ export async function POST(request: NextRequest) {
     }
 
     const now = new Date();
-    const month = now.getMonth() + 1;
-    const year = now.getFullYear();
+    // Используем месяц и год из payload, если они есть, иначе по серверу
+    const month = typeof payload.month === 'number' ? payload.month : now.getMonth() + 1;
+    const year = typeof payload.year === 'number' ? payload.year : now.getFullYear();
     const reading = {
       id: randomUUID(),
       apartmentId: payload.apartmentId,
@@ -133,6 +147,13 @@ export async function POST(request: NextRequest) {
 
     const duplicate = history.some((h) => Number(h.month) === month && Number(h.year) === year);
     if (duplicate) {
+      // Логируем подробности для диагностики
+      const debugHistory = history.map((h) => ({ month: h.month, year: h.year, value: h.currentValue }));
+      console.error('[METER DUPLICATE]', {
+        payloadMonth: month,
+        payloadYear: year,
+        debugHistory,
+      });
       await writeAuditEvent({
         request,
         action: 'meter_reading.submit',
@@ -141,8 +162,9 @@ export async function POST(request: NextRequest) {
         actorRole: auth.role,
         apartmentId: payload.apartmentId,
         reason: 'duplicate_period_reading',
+        debug: { payloadMonth: month, payloadYear: year, debugHistory },
       });
-      return NextResponse.json({ error: 'Reading already exists for current month' }, { status: 409 });
+      return NextResponse.json({ error: 'Reading already exists for current month', debug: { payloadMonth: month, payloadYear: year, debugHistory } }, { status: 409 });
     }
 
     history.push(reading);

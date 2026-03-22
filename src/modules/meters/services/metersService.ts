@@ -50,14 +50,14 @@ const getBuildingWaterTemplates = (building: Building | null): string[] => {
   return [...DEFAULT_WATER_METER_TEMPLATES];
 };
 
-const toVirtualWaterMeter = (apartmentId: string, templateName: string): Meter => {
+const toVirtualWaterMeter = (apartmentId: string, templateName: string, serialNumber?: string): Meter => {
   const normalized = normalizeMeterKey(templateName) || 'water';
   const code = /гвс|gvs|hot|гор/i.test(templateName) ? 'hwm' : 'cwm';
   return {
     id: `house-water-${apartmentId}-${normalized}`,
     apartmentId,
     type: 'water',
-    serialNumber: `HOUSE-WATER-${normalized.toUpperCase()}`,
+    serialNumber: (serialNumber ?? '').trim(),
     name: code,
   };
 };
@@ -131,8 +131,36 @@ export const getMetersByApartment = async (apartmentId: string): Promise<Meter[]
       } as Meter;
     });
 
+    const apartmentWr = apartment.waterReadings;
+    const apartmentWaterMeters: Meter[] = [];
+
+    if (apartmentWr && typeof apartmentWr === 'object' && !Array.isArray(apartmentWr)) {
+      for (const key of ['coldmeterwater', 'hotmeterwater'] as const) {
+        const group = (apartmentWr as Record<string, unknown>)[key] as Record<string, unknown> | undefined;
+        if (!group || typeof group !== 'object') continue;
+
+        const isHot = key === 'hotmeterwater';
+        const meterId = typeof group.meterId === 'string' && group.meterId
+          ? String(group.meterId)
+          : `house-water-${apartmentId}-${isHot ? 'hwm' : 'cwm'}`;
+        const groupSerial = typeof group.serialNumber === 'string' ? group.serialNumber.trim() : '';
+        const apartmentSerial = isHot
+          ? (apartment.hotWaterMeterNumber ?? '').trim()
+          : (apartment.coldWaterMeterNumber ?? '').trim();
+
+        apartmentWaterMeters.push({
+          id: meterId,
+          apartmentId,
+          type: 'water',
+          serialNumber: groupSerial || apartmentSerial,
+          name: isHot ? 'hwm' : 'cwm',
+          checkDueDate: typeof group.checkDueDate === 'string' ? group.checkDueDate : undefined,
+        });
+      }
+    }
+
     const normalizedLegacyWaterNames = new Set(
-      legacyMeters
+      [...legacyMeters, ...apartmentWaterMeters]
         .filter((meter) => meter.type === 'water')
         .map((meter) => normalizeMeterKey(getMeterDisplayName(meter)))
         .filter(Boolean)
@@ -140,9 +168,33 @@ export const getMetersByApartment = async (apartmentId: string): Promise<Meter[]
 
     const missingVirtualMeters = templates
       .filter((templateName) => !normalizedLegacyWaterNames.has(normalizeMeterKey(templateName)))
-      .map((templateName) => toVirtualWaterMeter(apartmentId, templateName));
+      .map((templateName) => {
+        const isHot = /гвс|gvs|hot|гор/i.test(templateName);
+        const apartmentSerial = isHot
+          ? (apartment.hotWaterMeterNumber ?? '').trim()
+          : (apartment.coldWaterMeterNumber ?? '').trim();
+        return toVirtualWaterMeter(apartmentId, templateName, apartmentSerial);
+      });
 
-    return [...legacyMeters, ...missingVirtualMeters];
+    const merged = [...legacyMeters, ...apartmentWaterMeters, ...missingVirtualMeters];
+    const byId = new Map<string, Meter>();
+    for (const meter of merged) {
+      if (!meter?.id) continue;
+      const current = byId.get(meter.id);
+      if (!current) {
+        byId.set(meter.id, meter);
+        continue;
+      }
+
+      byId.set(meter.id, {
+        ...current,
+        ...meter,
+        serialNumber: meter.serialNumber?.trim() || current.serialNumber,
+        name: meter.name || current.name,
+      });
+    }
+
+    return Array.from(byId.values());
   } catch (error) {
     console.error('Error getting meters by apartment:', error);
     throw error;
@@ -399,13 +451,29 @@ export const getMeterReadingsByApartmentAndPeriod = async (
       for (const key of ['coldmeterwater', 'hotmeterwater'] as const) {
         const md = wr[key] as Record<string, unknown> | undefined;
         if (md && Array.isArray(md.history)) {
-          for (const h of md.history as MeterReading[]) allReadings.push(h);
+          const groupSerial = typeof md.serialNumber === 'string' ? md.serialNumber : undefined;
+          const groupMeterId = typeof md.meterId === 'string' ? md.meterId : undefined;
+          for (const h of md.history as MeterReading[]) {
+            allReadings.push({
+              ...h,
+              meterId: h.meterId || groupMeterId || '',
+              serialNumber: h.serialNumber || groupSerial,
+            });
+          }
         }
       }
     } else if (Array.isArray(wr)) {
       for (const item of wr as Record<string, unknown>[]) {
         if (Array.isArray(item.history)) {
-          for (const h of item.history as MeterReading[]) allReadings.push(h);
+          const groupSerial = typeof item.serialNumber === 'string' ? item.serialNumber : undefined;
+          const groupMeterId = typeof item.meterId === 'string' ? item.meterId : undefined;
+          for (const h of item.history as MeterReading[]) {
+            allReadings.push({
+              ...h,
+              meterId: h.meterId || groupMeterId || '',
+              serialNumber: h.serialNumber || groupSerial,
+            });
+          }
         }
       }
     }
@@ -441,8 +509,15 @@ export const getMeterReadingsByApartment = async (apartmentId: string): Promise<
         if (item && typeof item === 'object') {
           const itemObj = item as Record<string, unknown>;
           if (Array.isArray(itemObj.history)) {
+            const groupSerial = typeof itemObj.serialNumber === 'string' ? itemObj.serialNumber : undefined;
+            const groupMeterId = typeof itemObj.meterId === 'string' ? itemObj.meterId : undefined;
             for (const h of itemObj.history) {
-              allReadings.push(h as MeterReading);
+              const reading = h as MeterReading;
+              allReadings.push({
+                ...reading,
+                meterId: reading.meterId || groupMeterId || '',
+                serialNumber: reading.serialNumber || groupSerial,
+              });
             }
           }
         }
@@ -454,8 +529,15 @@ export const getMeterReadingsByApartment = async (apartmentId: string): Promise<
         if (meterData && typeof meterData === 'object') {
           const md = meterData as Record<string, unknown>;
           if (Array.isArray(md.history)) {
+            const groupSerial = typeof md.serialNumber === 'string' ? md.serialNumber : undefined;
+            const groupMeterId = typeof md.meterId === 'string' ? md.meterId : undefined;
             for (const h of md.history) {
-              allReadings.push(h as MeterReading);
+              const reading = h as MeterReading;
+              allReadings.push({
+                ...reading,
+                meterId: reading.meterId || groupMeterId || '',
+                serialNumber: reading.serialNumber || groupSerial,
+              });
             }
           }
         }

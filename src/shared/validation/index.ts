@@ -195,15 +195,17 @@ export const validateConsumption = (
   error?: string;
   consumption?: number;
 } => {
-  if (currentValue < previousValue) {
+  const consumption = currentValue - previousValue;
+  if (!Number.isFinite(consumption)) {
+    return { isValid: false, error: 'Расход должен быть числом', consumption };
+  }
+  if (consumption < 0) {
     return {
       isValid: false,
-      error: 'Новые показания не могут быть меньше показаний прошлого периода',
+      error: 'Показание не может быть меньше предыдущего месяца',
+      consumption,
     };
   }
-
-  const consumption = currentValue - previousValue;
-
   return {
     isValid: true,
     consumption,

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Timestamp } from 'firebase-admin/firestore';
+import { Timestamp, FieldValue } from 'firebase-admin/firestore';
 import { getFirebaseAdminAuth, getFirebaseAdminDb } from '@/firebase/admin';
 import { requireRequestAuth, toAuthErrorResponse } from '@/shared/lib/serverAuth';
 import { hashInvitationToken, normalizeEmail } from '@/shared/lib/invitationToken';
@@ -7,7 +7,8 @@ import { buildRateLimitKey, consumeRateLimit } from '@/shared/lib/rateLimit';
 import { writeAuditEvent } from '@/shared/lib/auditLog';
 
 interface AcceptInvitationPayload {
-  token: string;
+  token?: string;
+  invitationId?: string;
   password?: string;
   gdprConsent: boolean;
 }
@@ -62,14 +63,16 @@ const markInvitationAccepted = async (invitationId: string, gdpr: Record<string,
   );
 };
 
-const assignUserToApartment = async (uid: string, apartmentId: string) => {
+const assignUserToApartment = async (uid: string, apartmentId: string, email?: string) => {
   const db = getFirebaseAdminDb();
 
   await db.collection('users').doc(uid).set(
     {
       uid,
+      ...(email ? { email } : {}),
       role: 'Resident',
       apartmentId,
+      apartmentIds: FieldValue.arrayUnion(apartmentId),
       updatedAt: new Date().toISOString(),
     },
     { merge: true }
@@ -87,20 +90,23 @@ export async function POST(request: NextRequest) {
   try {
     const payload = (await request.json()) as AcceptInvitationPayload;
 
-    if (!payload?.token) {
+    if (!payload?.token && !payload?.invitationId) {
       await writeAuditEvent({
         request,
         action: 'invitation.accept',
         status: 'denied',
-        reason: 'missing_token',
+        reason: 'missing_token_or_invitation_id',
       });
 
-      return NextResponse.json({ error: 'token is required' }, { status: 400 });
+      return NextResponse.json({ error: 'token or invitationId is required' }, { status: 400 });
     }
 
-    const tokenHash = await hashInvitationToken(payload.token);
+    const rateLimitDiscriminator = payload.token
+      ? (await hashInvitationToken(payload.token)).slice(0, 12)
+      : String(payload.invitationId).slice(0, 12);
+
     const rl = await consumeRateLimit(
-      buildRateLimitKey(request, 'invitations:accept', tokenHash.slice(0, 12)),
+      buildRateLimitKey(request, 'invitations:accept', rateLimitDiscriminator),
       10,
       60_000
     );
@@ -136,7 +142,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'GDPR consent is required' }, { status: 400 });
     }
 
-    const invitation = await getInvitationByToken(payload.token);
+    let invitation = null as Awaited<ReturnType<typeof getInvitationByToken>>;
+
+    if (payload.invitationId) {
+      const db = getFirebaseAdminDb();
+      const invitationDoc = await db.collection('invitations').doc(payload.invitationId).get();
+      if (invitationDoc.exists) {
+        invitation = {
+          id: invitationDoc.id,
+          ...(invitationDoc.data() as InvitationDoc),
+        };
+      }
+    } else if (payload.token) {
+      invitation = await getInvitationByToken(payload.token);
+    }
+
     if (!invitation || !invitation.email || !invitation.apartmentId) {
       await writeAuditEvent({
         request,
@@ -254,7 +274,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      await assignUserToApartment(authContext.uid, invitation.apartmentId);
+      await assignUserToApartment(authContext.uid, invitation.apartmentId, authContext.email ?? undefined);
       await markInvitationAccepted(invitation.id, invitation.gdpr);
 
       await writeAuditEvent({
@@ -317,7 +337,7 @@ export async function POST(request: NextRequest) {
       emailVerified: false,
     });
 
-    await assignUserToApartment(createdUser.uid, invitation.apartmentId);
+    await assignUserToApartment(createdUser.uid, invitation.apartmentId, normalizedEmail);
     await markInvitationAccepted(invitation.id, invitation.gdpr);
 
     await writeAuditEvent({

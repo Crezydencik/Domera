@@ -31,7 +31,8 @@ export interface User {
   email: string;
   role: UserRole;
   companyId?: string; // возвращено: companyId используется во многих местах
-  apartmentId?: string; // Only for Resident role
+  apartmentId?: string; // Only for Resident role (primary or legacy)
+  apartmentIds?: string[]; // Multiple apartments for Resident role
   createdAt: Date;
   displayName?: string; // Added displayName property
   phone?: string;

@@ -11,12 +11,14 @@ import { useTranslations } from 'next-intl';
 
 interface AdminSidebarProps {
   user: User;
+  open?: boolean;
+  setOpen?: (open: boolean) => void;
 }
 
 
 
 
-export function AdminSidebar({ user }: AdminSidebarProps) {
+export function AdminSidebar({ user, open, setOpen }: AdminSidebarProps) {
   const pathname = usePathname();
    const t = useTranslations('dashboard');
   const MANAGEMENT_NAV_ITEMS = [
@@ -35,7 +37,20 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
   const roleItems = user.role === 'Resident' ? RESIDENT_NAV_ITEMS : MANAGEMENT_NAV_ITEMS;
 
   return (
-    <aside className="fixed top-0 left-0 z-40 h-screen w-72 bg-white border-r border-gray-100 flex flex-col shadow-sm">
+    <aside
+      className={`fixed top-0 left-0 z-40 h-screen w-72 bg-white border-r border-gray-100 flex flex-col shadow-sm transition-transform duration-300
+        ${open ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}
+    >
+      {/* Кнопка закрытия только на мобильных */}
+      {setOpen && (
+        <button
+          className="absolute top-4 right-4 z-50 p-2 bg-gray-200 rounded-full md:hidden"
+          onClick={() => setOpen(false)}
+          aria-label="Закрыть меню"
+        >
+          <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M6 18L18 6"/></svg>
+        </button>
+      )}
       {/* Логотип */}
       <div className="flex items-center justify-center px-7 py-7 border-b border-gray-100">
         <img src="/Logo1.png" alt="Domera Logo" className="w-56 h-12  object-contain" />
@@ -52,6 +67,7 @@ export function AdminSidebar({ user }: AdminSidebarProps) {
                     ${isActive ? 'bg-blue-500 text-white shadow' : 'bg-white text-gray-700 hover:bg-blue-50'}
                   `}
                   style={{ marginBottom: isActive ? '16px' : '0' }}
+                  onClick={setOpen ? () => setOpen(false) : undefined} // Закрывать меню при переходе
                 >
                   <span className={`text-2xl shrink-0 ${isActive ? 'text-white' : 'text-gray-500'}`} aria-hidden="true">{item.icon}</span>
                   <span className="truncate">{item.label}</span>

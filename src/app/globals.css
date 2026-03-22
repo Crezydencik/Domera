@@ -1,3 +1,11 @@
+/* Мобильная адаптация сайдбара */
+@media (max-width: 767px) {
+  aside[class*="w-72"] {
+    width: 80vw !important;
+    min-width: 0;
+    max-width: 320px;
+  }
+}
 @import "tailwindcss";
 @import "react-toastify/dist/ReactToastify.css";
 

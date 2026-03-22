@@ -3,7 +3,7 @@
 import { useAuth } from '@/shared/hooks/useAuth';
 import { AccessError } from '@/shared/components/AccessError';
 import { useEffect, useMemo, useState, useCallback } from 'react';
-import { getApartmentsByCompany, getApartment } from '@/modules/apartments/services/apartmentsService';
+import { getApartmentsByCompany, getApartment, getApartmentsByResidentId } from '@/modules/apartments/services/apartmentsService';
 import { getBuildingsByCompany, getBuilding } from '@/modules/invoices/services/buildings/services/buildingsService';
 import {
   deleteMeterReading,
@@ -24,7 +24,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { logout } from '../../../modules/auth/services/authService';
 import Header from '../../../shared/components/layout/heder';
-import { MeterInputBlock } from '@/shared/components/ui/MeterInputBlock';
+import { WaterMeterInput } from '@/shared/components/ui/WaterMeterInput';
 
 
 
@@ -155,6 +155,28 @@ const getApartmentWaterMeterData = (
   return undefined;
 };
 
+const getLatestReadingByWaterType = (
+  apartment: Apartment | null | undefined,
+  meterType: 'cold' | 'hot'
+): MeterReading | undefined => {
+  const wr = apartment?.waterReadings;
+  if (!wr || typeof wr !== 'object' || Array.isArray(wr)) return undefined;
+
+  const group = meterType === 'hot'
+    ? (wr.hotmeterwater as WaterMeterData | undefined)
+    : (wr.coldmeterwater as WaterMeterData | undefined);
+
+  const history = Array.isArray(group?.history) ? group.history : [];
+  if (history.length === 0) return undefined;
+
+  return [...history].sort((a, b) => toTimestampMs(b.submittedAt) - toTimestampMs(a.submittedAt))[0];
+};
+
+const normalizeMeterSerial = (value: unknown): string => {
+  if (typeof value !== 'string') return '';
+  return value.trim().toLowerCase().replace(/\s+/g, '');
+};
+
 
 
 const formatNumberDot = (value: number | string | undefined | null, decimals = 2): string => {
@@ -188,6 +210,7 @@ export default function MeterReadingsPage() {
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [metersByApartmentId, setMetersByApartmentId] = useState<Record<string, Meter[]>>({});
   const [readings, setReadings] = useState<MeterReading[]>([]);
+  const [selectedMeterApartmentId, setSelectedMeterApartmentId] = useState<string | null>(null);
   
   const [isLoadingData, setIsLoadingData] = useState(false);
   const [loadError, setLoadError] = useState('');
@@ -560,17 +583,29 @@ export default function MeterReadingsPage() {
         let buildingsData: Building[] = [];
         let readingsData: MeterReading[] = [];
 
-        if (user.role === 'Resident' && user.apartmentId) {
-          const apt = await getApartment(user.apartmentId);
-          if (apt) {
-            apartmentsData = [apt];
-            if (apt.buildingId) {
-              const b = await getBuilding(apt.buildingId);
-              if (b) buildingsData = [b];
-            }
-            // defer reading fetch for faster initial render
-            // readingsData = await getMeterReadingsByApartment(apt.id);
-          }
+        if (user.role === 'Resident') {
+          const residentApartmentIds: string[] = (user.apartmentIds && user.apartmentIds.length > 0)
+            ? user.apartmentIds
+            : user.apartmentId ? [user.apartmentId] : [];
+
+          // Also query by residentId to catch apartments not yet in the user's apartmentIds array
+          const [byIds, byResidentId] = await Promise.all([
+            residentApartmentIds.length > 0
+              ? Promise.all(residentApartmentIds.map((id) => getApartment(id)))
+              : Promise.resolve([] as (Apartment | null)[]),
+            getApartmentsByResidentId(user.uid),
+          ]);
+
+          const merged: Record<string, Apartment> = {};
+          for (const a of byResidentId) if (a) merged[a.id] = a;
+          // Fallback by user.apartmentIds only when resident binding still belongs to current user
+          for (const a of byIds) if (a && a.residentId === user.uid) merged[a.id] = a;
+          const apts = Object.values(merged);
+
+          apartmentsData = apts;
+          const buildingIdSet = new Set(apts.map((a) => a.buildingId).filter(Boolean));
+          const bArr = (await Promise.all(Array.from(buildingIdSet).map((id) => getBuilding(id)))).filter((b): b is Building => b !== null);
+          buildingsData = bArr;
         } else if (user.companyId) {
           // fetch apartments and buildings in parallel; readings and meters will be fetched afterwards
           const [aData, bData] = await Promise.all([
@@ -583,7 +618,8 @@ export default function MeterReadingsPage() {
         }
 
         // Ensure apartments come from DB and include buildingId
-        const visibleApartments = user.role === 'Resident' ? apartmentsData.filter((apartment) => apartment.id === user.apartmentId) : apartmentsData;
+        // For residents, apartmentsData is already filtered/merged above; for managers use all
+        const visibleApartments = user.role === 'Resident' ? apartmentsData : apartmentsData;
 
         // If some apartments reference buildings that weren't returned by getBuildingsByCompany
         // (e.g., legacy docs or missing companyId on building), fetch those buildings individually
@@ -599,11 +635,22 @@ export default function MeterReadingsPage() {
         setApartments(visibleApartments);
         setBuildings(buildingsData); // DEBUG: убрана фильтрация для проверки
 
+        // Set initial selectedMeterApartmentId when first loading
+        if (visibleApartments.length > 0) {
+          setSelectedMeterApartmentId((prev) => {
+            if (prev && visibleApartments.some((a) => a.id === prev)) return prev;
+            return visibleApartments[0]?.id ?? null;
+          });
+        }
+
         // fetch readings and meters in background (do not block initial render)
         (async () => {
           try {
-            if (user.role === 'Resident' && user.apartmentId) {
-              readingsData = await getMeterReadingsByApartment(user.apartmentId);
+            if (user.role === 'Resident') {
+              // Use the already-loaded visibleApartments IDs (which includes residentId query results)
+              const residentIds = visibleApartments.map((a) => a.id);
+              const allReadings = await Promise.all(residentIds.map((id) => getMeterReadingsByApartment(id)));
+              readingsData = allReadings.flat();
             } else if (user.companyId) {
               readingsData = await getMeterReadingsByCompany(user.companyId);
             }
@@ -671,30 +718,48 @@ export default function MeterReadingsPage() {
   useEffect(() => {
     if (!user) return;
     // only prefill for resident viewing their apartment (submission UI shown for residents)
-    if (!isResident || !user.apartmentId) return;
+    if (!isResident || !selectedMeterApartmentId) return;
 
-    const apartmentId = user.apartmentId;
+    const apartmentId = selectedMeterApartmentId;
     const meters = getWaterMetersByApartment(apartmentId);
     const aptReadings = readingsByApartmentId[apartmentId] ?? [];
+    const selectedApartment = apartments.find((a) => a.id === apartmentId);
+
+    const resolveLastReadingForMeter = (meter: Meter): MeterReading | undefined => {
+      // 1) Prefer grouped history by water type (cold/hot), independent from meterId schema changes
+      const fromTypeGroup = getLatestReadingByWaterType(selectedApartment, isHotMeter(meter) ? 'hot' : 'cold');
+      if (fromTypeGroup) return fromTypeGroup;
+
+      // 2) Prefer grouped history in apartment.waterReadings for this meterId
+      const group = getApartmentWaterMeterData(selectedApartment, meter.id);
+      const groupHistory = Array.isArray(group?.history) ? group.history : [];
+      const fromGroup = [...groupHistory].sort((a, b) => toTimestampMs(b.submittedAt) - toTimestampMs(a.submittedAt))[0];
+      if (fromGroup) return fromGroup;
+
+      // 3) Fallback by exact meterId in flattened readings
+      const fromMeterId = aptReadings
+        .filter((r) => r.meterId === meter.id)
+        .sort((a, b) => toTimestampMs(b.submittedAt) - toTimestampMs(a.submittedAt))[0];
+      if (fromMeterId) return fromMeterId;
+
+      // 4) Fallback by serial in reading payload (serialNumber / WMETNUM)
+      const meterSerial = normalizeMeterSerial(meter.serialNumber);
+      if (!meterSerial) return undefined;
+
+      return aptReadings
+        .filter((r) => {
+          const readingSerial = normalizeMeterSerial(r.serialNumber ?? r.WMETNUM);
+          return readingSerial.length > 0 && readingSerial === meterSerial;
+        })
+        .sort((a, b) => toTimestampMs(b.submittedAt) - toTimestampMs(a.submittedAt))[0];
+    };
 
     // Новый алгоритм: ищем последнее показание сначала по meterId, если не найдено — по serialNumber
     setWaterReadingIntegerByMeterId((prev) => {
       const next = { ...prev };
       let changed = false;
       for (const meter of meters) {
-        // Найти последнее показание по meterId
-        let last = aptReadings
-          .filter(r => r.meterId === meter.id)
-          .sort((a, b) => toTimestampMs(b.submittedAt) - toTimestampMs(a.submittedAt))[0];
-        // Если не найдено — ищем по serialNumber
-        if (!last && meter.serialNumber) {
-          last = aptReadings
-            .filter(r => {
-              const m = meters.find(mtr => mtr.id === r.meterId);
-              return m && m.serialNumber && m.serialNumber === meter.serialNumber;
-            })
-            .sort((a, b) => toTimestampMs(b.submittedAt) - toTimestampMs(a.submittedAt))[0];
-        }
+        const last = resolveLastReadingForMeter(meter);
         let intPart = '0';
         if (last) {
           const currentVal = last.currentValue ?? 0;
@@ -711,19 +776,7 @@ export default function MeterReadingsPage() {
       const next = { ...prev };
       let changed = false;
       for (const meter of meters) {
-        // Найти последнее показание по meterId
-        let last = aptReadings
-          .filter(r => r.meterId === meter.id)
-          .sort((a, b) => toTimestampMs(b.submittedAt) - toTimestampMs(a.submittedAt))[0];
-        // Если не найдено — ищем по serialNumber
-        if (!last && meter.serialNumber) {
-          last = aptReadings
-            .filter(r => {
-              const m = meters.find(mtr => mtr.id === r.meterId);
-              return m && m.serialNumber && m.serialNumber === meter.serialNumber;
-            })
-            .sort((a, b) => toTimestampMs(b.submittedAt) - toTimestampMs(a.submittedAt))[0];
-        }
+        const last = resolveLastReadingForMeter(meter);
         let fracPart = '000';
         if (last) {
           const currentVal = last.currentValue ?? 0;
@@ -735,7 +788,7 @@ export default function MeterReadingsPage() {
       }
       return changed ? next : prev;
     });
-  }, [user, isResident, readingsByApartmentId, metersByApartmentId, getWaterMetersByApartment]);
+  }, [user, isResident, selectedMeterApartmentId, readingsByApartmentId, metersByApartmentId, apartments, getWaterMetersByApartment]);
 
   const firstReadingIdByMeterId = useMemo(() => {
     const byMeter = readings.reduce<Record<string, MeterReading[]>>((acc, reading) => {
@@ -804,8 +857,16 @@ export default function MeterReadingsPage() {
       ? apartment.tenants.some((tenant) => tenant.userId === user?.uid && tenant.permissions?.includes('submitMeter'))
       : false;
 
+    const residentApartmentIds = user
+      ? (user.apartmentIds && user.apartmentIds.length > 0
+          ? user.apartmentIds
+          : user.apartmentId
+            ? [user.apartmentId]
+            : [])
+      : [];
+
     const canUserSubmit =
-      (isResident && user?.apartmentId === apartment.id) ||
+      (isResident && residentApartmentIds.includes(apartment.id)) ||
       (isManagementCompany && user?.companyId && Array.isArray(apartment.companyIds) && apartment.companyIds.includes(user.companyId)) ||
       isTenantWithSubmit;
 
@@ -857,7 +918,7 @@ export default function MeterReadingsPage() {
       // КЛИЕНТСКОЕ вычисление текущего месяца/года
       const { month, year } = getCurrentMonthYear();
 
-            const preparedReadings = await Promise.all(
+      const preparedReadings = await Promise.all(
         waterMeters.map(async (meter) => {
           const meterLabel = getMeterDisplayName(meter);
           const lastReading = await getLastMeterReading(apartment.id, meter.id);
@@ -866,8 +927,8 @@ export default function MeterReadingsPage() {
 
           // Metadata updates (serial/check date) are managed by ManagementCompany only.
 
-          const intPart = (waterReadingIntegerByMeterId[meter.id] ?? '').replace(/\D/g, '').slice(0,5) || '0';
-          let fracPart = (waterReadingFractionByMeterId[meter.id] ?? '').replace(/\D/g, '').slice(0,3);
+          const intPart = (waterReadingIntegerByMeterId[meter.id] ?? '').replace(/\D/g, '') || '0';
+          let fracPart = (waterReadingFractionByMeterId[meter.id] ?? '').replace(/\D/g, '');
           // pad fraction to 3 digits
           fracPart = fracPart.padEnd(3, '0');
           const rawValue = `${intPart}.${fracPart}`;
@@ -965,62 +1026,114 @@ export default function MeterReadingsPage() {
   }
 
   // Новый компонент для истории показаний в стиле аккордеона
-  function MeterReadingsHistoryAccordion({ readings, meterById }) {
-    // Группируем по годам и месяцам
-    const grouped = readings.reduce((acc, r) => {
-      const key = `${r.year}-${String(r.month).padStart(2, '0')}`;
-      acc[key] = acc[key] || [];
-      acc[key].push(r);
-      return acc;
-    }, {});
+  function MeterReadingsHistoryAccordion({ readings, meterById, apartment }: { readings: MeterReading[]; meterById: Record<string, Meter>; apartment?: Apartment }) {
+        // Группируем по годам и месяцам
+        const [openAccordionKey, setOpenAccordionKey] = useState<string>('');
+        const grouped = readings.reduce((acc, r) => {
+          const submittedMs = toTimestampMs(r.submittedAt as ReadingTimestampLike);
+          const submittedDate = submittedMs > 0 ? new Date(submittedMs) : null;
+          const year = Number.isFinite(Number(r.year)) ? Number(r.year) : submittedDate?.getFullYear();
+          const month = Number.isFinite(Number(r.month)) ? Number(r.month) : (submittedDate ? submittedDate.getMonth() + 1 : undefined);
+          const key = `${year ?? 'unknown'}-${String(month ?? 'unknown').padStart(2, '0')}`;
+          acc[key] = acc[key] || [];
+          acc[key].push(r);
+          return acc;
+        }, {});
 
-    // Сортировка: сначала год по убыванию, потом месяц по убыванию
-    const sortedKeys = Object.keys(grouped).sort((a, b) => {
-      const [aYear, aMonth] = a.split('-').map(Number);
-      const [bYear, bMonth] = b.split('-').map(Number);
-      if (bYear !== aYear) return bYear - aYear;
-      return bMonth - aMonth;
-    });
-    const [open, setOpen] = useState(sortedKeys[0] || '');
+        // Сортировка: сначала год по убыванию, потом месяц по убыванию
+        const sortedKeys = Object.keys(grouped).sort((a, b) => {
+          if (a.includes('unknown')) return 1;
+          if (b.includes('unknown')) return -1;
+          const [aYear, aMonth] = a.split('-').map(Number);
+          const [bYear, bMonth] = b.split('-').map(Number);
+          if (bYear !== aYear) return bYear - aYear;
+          return bMonth - aMonth;
+        });
+    const inferIsHotFromApartment = (reading: MeterReading): boolean | undefined => {
+      const wr = apartment?.waterReadings;
+      if (!wr || typeof wr !== 'object' || Array.isArray(wr)) return undefined;
+
+      const hot = wr.hotmeterwater as WaterMeterData | undefined;
+      const cold = wr.coldmeterwater as WaterMeterData | undefined;
+
+      if (reading.meterId) {
+        if (hot?.meterId && hot.meterId === reading.meterId) return true;
+        if (cold?.meterId && cold.meterId === reading.meterId) return false;
+      }
+
+      const readingSerial = normalizeMeterSerial(reading.serialNumber ?? reading.WMETNUM);
+      if (readingSerial) {
+        const hotSerial = normalizeMeterSerial(hot?.serialNumber);
+        const coldSerial = normalizeMeterSerial(cold?.serialNumber);
+        if (hotSerial && readingSerial === hotSerial) return true;
+        if (coldSerial && readingSerial === coldSerial) return false;
+      }
+      return undefined;
+    };
+
+    // Для быстрого поиска предыдущего показания по meterId
+    const readingsByMeterId = useMemo(() => {
+      const map: Record<string, MeterReading[]> = {};
+      readings.forEach(r => {
+        if (!map[r.meterId]) map[r.meterId] = [];
+        map[r.meterId].push(r);
+      });
+      // Сортируем по времени (старое -> новое)
+      Object.keys(map).forEach(id => map[id].sort((a, b) => toTimestampMs(a.submittedAt as ReadingTimestampLike) - toTimestampMs(b.submittedAt as ReadingTimestampLike)));
+      return map;
+    }, [readings]);
 
     return (
       <div className="rounded-lg border border-gray-200 bg-white">
         {sortedKeys.map((key) => {
           const [year, month] = key.split('-');
-          const monthLabel = formatMonthPeriodLabel(Number(year), Number(month));
+          const monthLabel = key.includes('unknown')
+            ? tMeter('history')
+            : formatMonthPeriodLabel(Number(year), Number(month));
           const monthReadings = grouped[key];
-          // Для каждого месяца ищем холодный и горячий счетчик
-          const cold = monthReadings.find(r => !isHotMeter(meterById[r.meterId]));
-          const hot = monthReadings.find(r => isHotMeter(meterById[r.meterId]));
+          const monthReadingsSorted = [...monthReadings].sort(
+            (a, b) => toTimestampMs(b.submittedAt as ReadingTimestampLike) - toTimestampMs(a.submittedAt as ReadingTimestampLike)
+          );
           return (
             <div key={key} className="border-b last:border-b-0">
               <button
                 className="w-full flex justify-between items-center px-4 py-3 bg-gray-50 hover:bg-gray-100 transition"
-                onClick={() => setOpen(open === key ? '' : key)}
+                onClick={() => setOpenAccordionKey(openAccordionKey === key ? '' : key)}
               >
                 <span className="font-semibold text-gray-900">{monthLabel}</span>
-                <span className="text-blue-600 text-sm">{open === key ? '▲' : '▼'}</span>
+                <span className="text-blue-600 text-sm">{openAccordionKey === key ? '▲' : '▼'}</span>
               </button>
-              {open === key && (
+              {openAccordionKey === key && (
                 <div className="px-4 py-3 space-y-3 bg-white">
-                  {[cold, hot].map((reading, idx) => {
-                    if (!reading) return null;
+                  {monthReadingsSorted.map((reading, idx) => {
                     const meter = meterById[reading.meterId];
-                    const isHot = isHotMeter(meter);
+                    const inferred = inferIsHotFromApartment(reading);
+                    const isHot = meter
+                      ? isHotMeter(meter)
+                      : (inferred ?? /hwm|hot|gvs|гор/i.test(String(reading.meterId ?? '')));
+                    const readingKey = reading.id
+                      ? String(reading.id)
+                      : `${key}-${reading.meterId || 'unknown-meter'}-${toTimestampMs(reading.submittedAt as ReadingTimestampLike)}-${idx}`;
+                    const allForMeter = readingsByMeterId[reading.meterId] || [];
+                    const idxInAll = allForMeter.findIndex(r => r.id === reading.id);
+                    const prevReading = idxInAll > 0 ? allForMeter[idxInAll - 1] : undefined;
+                    const prevValue = prevReading?.currentValue ?? 0;
+                    let diff = (reading.currentValue ?? 0) - prevValue;
+                    if (diff < 0) diff = 0;
                     return (
-                      <div key={reading.id} className="flex items-center gap-4 p-3 rounded border bg-gray-50">
-                        <div className={`rounded-full p-2 ${ isHot ? 'bg-red-100' : 'bg-blue-100'}`}>
+                      <div key={readingKey} className="flex items-center gap-4 p-3 rounded border bg-gray-50">
+                        <div className={`rounded-full p-2 ${ isHot ? 'bg-red-100' : 'bg-blue-100'}`}> 
                           <svg width={24} height={24} fill="none" viewBox="0 0 24 24">
                             <circle cx={12} cy={12} r={10} fill={isHot ? '#f87171' : '#60a5fa'} />
                           </svg>
                         </div>
                         <div className="flex-1">
-                          <div className="text-xs text-gray-500">{isHot ? tMeter('hotWater') : tMeter('coldWater')} Nr. <b>{meter?.serialNumber || '—'}</b></div>
+                          <div className="text-xs text-gray-500">{isHot ? tMeter('hotWater') : tMeter('coldWater')} Nr. <b>{meter?.serialNumber || reading.serialNumber || reading.WMETNUM || reading.meterId || '—'}</b></div>
                         </div>
                         <div className="text-right">
                           <div className="text-lg font-bold text-gray-900">{formatNumberDot(reading.currentValue ?? 0, 3)}</div>
-                          <div className="text-xs text-gray-500">{tMeter('periodStart')}: {formatNumberDot(reading.previousValue ?? 0, 3)}</div>
-                          <div className="text-xs text-gray-500">{tMeter('difference')}: <b>{formatNumberDot((reading.currentValue ?? 0) - (reading.previousValue ?? 0), 3)} m³</b></div>
+                          <div className="text-xs text-gray-500">{tMeter('periodStart')}: {formatNumberDot(prevValue, 3)}</div>
+                          <div className="text-xs text-gray-500">{tMeter('difference')}: <b>{formatNumberDot(diff, 3)} m³</b></div>
                         </div>
                       </div>
                     );
@@ -1049,7 +1162,7 @@ export default function MeterReadingsPage() {
           </div>
         ) : (
           (() => {
-            const residentApartment = apartments.find(a => user.role === 'Resident' && user.apartmentId === a.id);
+            const residentApartment = apartments.find(a => selectedMeterApartmentId ? a.id === selectedMeterApartmentId : true) ?? apartments[0];
             if (!residentApartment) {
               return <div className="rounded-lg border border-gray-200 bg-gray-50 p-8 text-center"><p className="text-gray-600">{tMeter('noApartmentsFound')}</p></div>;
             }
@@ -1063,6 +1176,27 @@ export default function MeterReadingsPage() {
             const canSubmit = isMeterSubmissionAllowed(openDate, closeDate, fallbackOpenDay);
             // ---
             return (
+              <div>
+                {apartments.length > 1 && (
+                  <div className="mb-4 flex items-center gap-3">
+                    <label className="text-sm font-medium text-neutral-600" htmlFor="meter-apartment-select">
+                      {tMeter('selectApartment')}:
+                    </label>
+                    <select
+                      id="meter-apartment-select"
+                      className="rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                      value={selectedMeterApartmentId ?? ''}
+                      onChange={(e) => setSelectedMeterApartmentId(e.target.value)}
+                    >
+                      {apartments.map((apt) => (
+                        <option key={apt.id} value={apt.id}>
+                          {tMeter('apartment')} {apt.number}
+                          {apt.address ? ` — ${apt.address}` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               <div className="rounded-lg border border-gray-200 bg-white p-3">
                 <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                   <div>
@@ -1105,25 +1239,34 @@ export default function MeterReadingsPage() {
                         {['cold', 'hot'].map((type) => {
                           const meter = meters.find(m => (type === 'hot' ? isHotMeter(m) : !isHotMeter(m)));
                           if (!meter) return null;
-                          const value = `${waterReadingIntegerByMeterId[meter.id] ?? ''}.${(waterReadingFractionByMeterId[meter.id] ?? '').padEnd(3, '0')}`;
+                          // Формируем value для WaterMeterInput (целая.др, др всегда 3 цифры)
+                          const intPart = waterReadingIntegerByMeterId[meter.id] ?? '';
+                          const fracPart = (waterReadingFractionByMeterId[meter.id] ?? '').padEnd(3, '0');
+                          const value = `${intPart}.${fracPart}`;
                           // Найти serialNumber из waterReadings для текущей квартиры и meterId
                           const wr = getApartmentWaterMeterData(residentApartment, meter.id);
                           return (
                             <div key={meter.id} className="flex-1 min-w-0 flex flex-col items-stretch">
-                              <MeterInputBlock
-                                type={type as 'hot' | 'cold'}
+                              <WaterMeterInput
                                 value={value}
                                 onChange={val => {
-                                  const [int, frac = ''] = val.split('.')
-                                  setWaterReadingIntegerByMeterId(prev => ({ ...prev, [meter.id]: int.replace(/\D/g, '').slice(0, 6) }));
-                                  setWaterReadingFractionByMeterId(prev => ({ ...prev, [meter.id]: frac.replace(/\D/g, '').slice(0, 3) }));
+                                  let clean = val.replace(',', '.');
+                                  const parts = clean.split('.');
+                                  let int = parts[0] || '';
+                                  let frac = parts[1] || '';
+                                  int = int.replace(/\D/g, '').slice(0, 5);
+                                  frac = frac.replace(/\D/g, '').slice(0, 3);
+                                  setWaterReadingIntegerByMeterId(prev => ({ ...prev, [meter.id]: int }));
+                                  setWaterReadingFractionByMeterId(prev => ({ ...prev, [meter.id]: frac }));
                                 }}
-                                loading={false}
-                                serial={wr?.serialNumber || meter.serialNumber || meter.id}
-                                label={getMeterDisplayName(meter)}
-                                validUntil={formatDateOnly(meter?.checkDueDate)}
-                                onSubmit={undefined}
+                                integerLength={5}
+                                fractionLength={3}
+                                disabled={false}
+                                color={isHotMeter(meter) ? 'red' : 'blue'}
                               />
+                            
+                              {/* Debug info for validation */}
+                            
                             </div>
                           );
                         })}
@@ -1145,9 +1288,10 @@ export default function MeterReadingsPage() {
                   {readings.length === 0 ? (
                     <p className="rounded-md border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-500">{tMeter('noReadingsForApartment')}</p>
                   ) : (
-                    <MeterReadingsHistoryAccordion readings={readings} meterById={meterById} />
+                    <MeterReadingsHistoryAccordion readings={readings} meterById={meterById} apartment={residentApartment} />
                   )}
                 </div>
+              </div>
               </div>
             );
           })()

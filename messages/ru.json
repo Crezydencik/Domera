@@ -13,7 +13,11 @@
     "alert": {},
     "notifications": {
       "noNewNotifications": "Нет новых уведомлений",
-      "allEventsViewed": "Все события просмотрены"
+      "allEventsViewed": "Все события просмотрены",
+      "invitationTitle": "Вам пришло приглашение!",
+      "invitationMessage": "Вас пригласили присоединиться к квартире.",
+      "acceptInvitation": "Принять приглашение",
+      "openNotifications": "Открыть уведомления"
     },
     "button": {
       "next": "Далее",
@@ -74,11 +78,11 @@
       "personalInfo": "Личная информация",
       "confirmation": "Подтверждение"
     },
+      "meterConsumptionError": "Новое показание не может быть меньше предыдущего. Введите корректное значение.",
     "viewprofile": "Просмотр профиля",
     "editProfile": "Редактировать профиль",
     "deleteProfile": "Удалить профиль",
-    "confirmDeleteProfile": "Подтвердите удаление профиля. Это действие нельзя отменить.",
-    "alert": {}
+    "confirmDeleteProfile": "Подтвердите удаление профиля. Это действие нельзя отменить."
   },
   "home": {
     "subtitleManagement": "Управляйте домами, квартирами и платежами в одном месте",
@@ -227,6 +231,16 @@
       "errorRemoveTenant": "Ошибка при удалении жильца.",
       "successAddRenter": "Арендатор успешно добавлен!",
       "errorAddRenter": "Ошибка при добавлении арендатора.",
+      "basicInfo": "Базовая информация о квартире",
+      "apartmentAddress": "Адрес квартиры",
+      "floor": "Этаж",
+      "apartmentKind": "Тип квартиры",
+      "owner": "Собственник",
+      "ownerEmail": "Email собственника",
+      "managerEmail": "Email управляющего",
+      "companyEmail": "Email компании",
+      "companyPhone": "Телефон компании",
+      "selectApartment": "Выберите квартиру",
       "loading": "Загрузка...",
       "noApartments": "Нет назначенных квартир. Свяжитесь с управляющим.",
       "viewReadings": "Просмотр показаний",
@@ -256,6 +270,7 @@
       "submissionPeriodNotSet": "Период подачи не установлен.",
       "saving": "Сохранение...",
       "loadingApartmentsAndReadings": "Загрузка...",
+      "selectApartment": "Выберите квартиру",
       "building": "Здание",
       "waterReadings": "Показания воды",
       "submitButton": "Подать показание",
@@ -566,6 +581,7 @@
       "selectBuildingAndFile": "Выберите здание и файл",
       "importError": "Ошибка импорта",
       "importSuccessSummary": "Успешно импортировано квартир: {imported}{details}",
+      "authenticationRequired": "Требуется авторизация",
       "profileUpdated": "Профиль обновлен",
       "consentSaved": "Согласие сохранено",
       "projectTitleDescriptionRequired": "Пожалуйста, введите название и описание проекта",
@@ -573,6 +589,24 @@
       "projectDateNotSpecified": "Дата не указана",
       "emailMismatch": "Вы вошли как {currentEmail}, но приглашение предназначено для {invitationEmail}"
     }
+  },
+  "projects": {
+    "title": "Проекты",
+    "noProjects": "Нет проектов",
+    "addProject": "Добавить проект",
+    "newProject": "Новый проект",
+    "projectName": "Название проекта",
+    "description": "Описание",
+    "status": "Статус",
+    "statusPlanned": "Запланировано",
+    "statusInProgress": "В процессе",
+    "statusCompleted": "Завершено",
+    "save": "Сохранить",
+    "saving": "Сохранение...",
+    "cancel": "Отмена",
+    "addFirstProject": "Добавьте свой первый проект для управления задачами",
+    "created": "Создано:",
+    "back": "Назад"
   },
   "ui": {
     "apartmentsManagement": "Управление квартирами",
@@ -587,6 +621,38 @@
     "apartmentCreateError": "Ошибка при создании квартиры",
     "inviteSent": "Приглашение отправлено на электронную почту жильца",
     "inviteError": "Ошибка при отправке приглашения",
+    "importApartmentsModal": {
+      "title": "Импорт квартир",
+      "description": "Загрузите Excel файл с данными квартир и счётчиков",
+      "resultTitle": "Результат импорта",
+      "resultDescription": "Проверьте импортированные квартиры и нажмите OK",
+      "progress": {
+        "uploadingFile": "Загрузка файла...",
+        "completed": "✓ Импорт завершен!",
+        "errorPrefix": "Ошибка"
+      },
+      "summary": {
+        "imported": "Импортировано: {count}",
+        "skippedDuplicates": "Пропущено дублей: {count}",
+        "errors": "Ошибок: {count}"
+      },
+      "sections": {
+        "createdApartments": "Импортированные квартиры",
+        "noNewApartments": "Новые квартиры не были импортированы.",
+        "skippedDuplicates": "Пропущенные дубли",
+        "errors": "Ошибки"
+      },
+      "fields": {
+        "selectBuilding": "Выберите дом *",
+        "selectBuildingPlaceholder": "Выберите дом...",
+        "excelFile": "Файл Excel (.xlsx) *"
+      },
+      "buttons": {
+        "ok": "OK",
+        "import": "Импортировать",
+        "importing": "Импорт..."
+      }
+    },
     "sidebarTitleManagement": "Кабинет управляющего",
     "sidebarTitleResident": "Кабинет жильца",
     "searchSection": "Поиск по разделу...",
@@ -616,70 +682,7 @@
     "subscriptionStatus": "Статус подписки",
     "dataTodo": "TODO: Загрузить данные",
     "subscriptionActive": "Активна",
-    "loading": "Загрузка..."
-  },
-  "projects": {
-    "title": "Проекты",
-    "noProjects": "Нет проектов",
-    "addProject": "Добавить проект",
-    "newProject": "Новый проект",
-    "projectName": "Название проекта",
-    "description": "Описание",
-    "status": "Статус",
-    "statusPlanned": "Запланировано",
-    "statusInProgress": "В процессе",
-    "statusCompleted": "Завершено",
-    "save": "Сохранить",
-    "saving": "Сохранение...",
-    "cancel": "Отмена",
-    "addFirstProject": "Добавьте свой первый проект для управления задачами",
-    "created": "Создано:",
-    "back": "Назад",
     "loading": "Загрузка...",
-    "loginRequired": "Требуется вход"
-  },
-  "profile": {
-    "tabs": {
-      "profile": "Профиль",
-      "notifications": "Уведомления"
-    },
-    "userAvatar": "Аватар пользователя",
-    "clientNumber": "Номер клиента",
-    "personalData": "Личные данные",
-    "notification": {
-      "meterReminder": "Напоминание о показаниях",
-      "paymentReminder": "Напоминание об оплате",
-      "general": "Общие уведомления",
-      "lang": "Язык уведомлений",
-      "lang_ru": "Русский",
-      "lang_lv": "Латышский",
-      "lang_en": "Английский"
-    },
-    "notificationSettingsSaved": "Настройки уведомлений сохранены",
-    "notificationsSaved": "Уведомления сохранены",
-    "privacySaved": "Согласие на обработку данных сохранено",
-    "deleteRequestSent": "Запрос на удаление отправлен"
-  },
-  "input": {
-    "hidePassword": "Скрыть пароль",
-    "showPassword": "Показать пароль"
-  },
-  "invitation": {
-    "invalidToken": "Недействительный токен приглашения",
-    "invitationError": "Ошибка при обработке приглашения",
-    "gdprConsentRequired": "Требуется согласие GDPR",
-    "passwordTooShort": "Пароль слишком короткий",
-    "passwordsDoNotMatch": "Пароли не совпадают",
-    "emailInUse": "Этот email уже используется",
-    "validatingInvitation": "Проверка приглашения...",
-    "acceptInvitation": "Принять приглашение",
-    "invitedAsResident": "Вы приглашены как жилец",
-    "gdprConsent": "Я согласен на обработку персональных данных",
-    "acceptingInvitation": "Принятие...",
-    "acceptAccess": "Подтвердить доступ",
-    "newPasswordLabel": "Новый пароль",
-    "registrationInProgress": "Регистрация...",
-    "andAcceptAccessWithoutCreatingNewPassword": "и подтвердить доступ без создания нового пароля",
     "loginInstead": "Или просто",
     "loginAndAcceptAccess": "войти и подтвердить доступ",
     "accountCreated": "Аккаунт успешно создан",

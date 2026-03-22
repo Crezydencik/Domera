@@ -13,7 +13,11 @@
     "alert": {},
     "notifications": {
       "noNewNotifications": "Nav jaunu paziņojumu",
-      "allEventsViewed": "Visi notikumi apskatīti"
+      "allEventsViewed": "Visi notikumi apskatīti",
+      "invitationTitle": "Jums ir jauns uzaicinājums!",
+      "invitationMessage": "Jūs esat uzaicināts pievienoties dzīvoklim.",
+      "acceptInvitation": "Pieņemt uzaicinājumu",
+      "openNotifications": "Atvērt paziņojumus"
     },
     "button": {
       "next": "Tālāk",
@@ -227,6 +231,16 @@
       "errorRemoveTenant": "Kļūda, noņemot iemītnieku.",
       "successAddRenter": "Īrnieks veiksmīgi pievienots!",
       "errorAddRenter": "Kļūda, pievienojot īrnieku.",
+      "basicInfo": "Dzīvokļa pamatinformācija",
+      "apartmentAddress": "Dzīvokļa adrese",
+      "floor": "Stāvs",
+      "apartmentKind": "Dzīvokļa tips",
+      "owner": "Īpašnieks",
+      "ownerEmail": "Īpašnieka e-pasts",
+      "managerEmail": "Pārvaldnieka e-pasts",
+      "companyEmail": "Uzņēmuma e-pasts",
+      "companyPhone": "Uzņēmuma tālrunis",
+      "selectApartment": "Izvēlieties dzīvokli",
       "loading": "Ielāde...",
       "noApartments": "Nav piesaistītu dzīvokļu. Sazinieties ar pārvaldnieku.",
       "viewReadings": "Skatīt rādījumus",
@@ -256,6 +270,7 @@
       "submissionPeriodNotSet": "Iesniegšanas periods nav iestatīts.",
       "saving": "Saglabāšana...",
       "loadingApartmentsAndReadings": "Ielāde...",
+      "selectApartment": "Izvēlieties dzīvokli",
       "building": "Ēka",
       "waterReadings": "Ūdens rādījumi",
       "submitButton": "Iesniegt rādījumu",
@@ -283,6 +298,7 @@
       "deletingReading": "Rādījuma dzēšana...",
       "back": "Atpakaļ",
       "totalMonths": "Kopā mēneši",
+      "retryAvailableIn": "Atkārtota iesniegšana būs pieejama pēc {seconds} sek.",
       "totalReadings": "Kopā rādījumi",
       "lastSubmission": "Pēdējā iesniegšana",
       "checkDueDate": "Pārbaudīt termiņus",
@@ -303,7 +319,8 @@
       "notSpecified": "Nav norādīts",
       "invalidDate": "Nederīgs datums. Lūdzu, ievadiet pareizu datumu.",
       "noReadingsForApartment": "Šim dzīvoklim rādījumu nav",
-      "history": "Skaitītāju vēsture"
+      "history": "Skaitītāju vēsture",
+      "meterConsumptionError": "Jaunais rādījums nevar būt mazāks par iepriekšējo. Lūdzu, ievadiet korektu vērtību."
     },
     "profile": {
       "profileIncompleteTitle": "Profils nav pilnīgs",
@@ -566,6 +583,7 @@
       "selectBuildingAndFile": "Izvēlieties ēku un failu",
       "importError": "Importēšanas kļūda",
       "importSuccessSummary": "Veiksmīgi importēti {imported} dzīvokļi{details}",
+      "authenticationRequired": "Nepieciešama autorizācija",
       "profileUpdated": "Profils atjaunināts",
       "consentSaved": "Piekrišana saglabāta",
       "projectTitleDescriptionRequired": "Lūdzu, ievadiet projekta nosaukumu un aprakstu",
@@ -587,6 +605,38 @@
     "apartmentCreateError": "Kļūda, veidojot dzīvokli",
     "inviteSent": "Ielūguma vēstule nosūtīta uz iedzīvotāja e-pastu",
     "inviteError": "Kļūda, sūtot ielūgumu",
+    "importApartmentsModal": {
+      "title": "Dzīvokļu imports",
+      "description": "Augšupielādējiet Excel failu ar dzīvokļu un skaitītāju datiem",
+      "resultTitle": "Importa rezultāts",
+      "resultDescription": "Pārskatiet importētos dzīvokļus un nospiediet OK",
+      "progress": {
+        "uploadingFile": "Faila augšupielāde...",
+        "completed": "✓ Imports pabeigts!",
+        "errorPrefix": "Kļūda"
+      },
+      "summary": {
+        "imported": "Importēts: {count}",
+        "skippedDuplicates": "Izlaisti dublikāti: {count}",
+        "errors": "Kļūdas: {count}"
+      },
+      "sections": {
+        "createdApartments": "Importētie dzīvokļi",
+        "noNewApartments": "Jauni dzīvokļi netika importēti.",
+        "skippedDuplicates": "Izlaistie dublikāti",
+        "errors": "Kļūdas"
+      },
+      "fields": {
+        "selectBuilding": "Izvēlieties ēku *",
+        "selectBuildingPlaceholder": "Izvēlieties ēku...",
+        "excelFile": "Excel fails (.xlsx) *"
+      },
+      "buttons": {
+        "ok": "OK",
+        "import": "Importēt",
+        "importing": "Importē..."
+      }
+    },
     "sidebarTitleManagement": "Pārvaldnieka kabinets",
     "sidebarTitleResident": "Iedzīvotāja kabinets",
     "searchSection": "Meklēt sadaļu...",

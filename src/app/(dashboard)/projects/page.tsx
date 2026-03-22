@@ -126,21 +126,7 @@ export default function ProjectsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800">
-      <header className="bg-slate-800 border-b border-slate-700">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <Link href="/dashboard" className="text-gray-400 hover:text-white">
-            ← {t('projects.back')}
-          </Link>
-          <h1 className="text-2xl font-bold text-white">{t('projects.title')}</h1>
-          <button
-            type="button"
-            onClick={() => setShowCreateForm((prev) => !prev)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-          >
-            + {t('projects.addProject')}
-          </button>
-        </div>
-      </header>
+
 
       <main className="max-w-7xl mx-auto px-4 py-8">
         {showCreateForm && (
