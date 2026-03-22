@@ -1,11 +1,13 @@
 "use client";
 import Link from "next/link";
 import { useState } from "react";
+import { useTranslations } from 'next-intl';
 import { updateUserProfile } from "@/modules/auth/services/authService";
 import { showCustomToast } from "@/shared/components/ui/CustomToast";
 import { FiEdit2 } from "react-icons/fi";
 
 export default function ManagerProfile({ user }: { user: any }) {
+  const t = useTranslations();
   const [formData, setFormData] = useState({
     email: user?.email || '',
     displayName: user?.displayName || '',
@@ -29,7 +31,7 @@ export default function ManagerProfile({ user }: { user: any }) {
         displayName: formData.displayName,
         phone: formData.phone,
       });
-      showCustomToast({ type: 'success', title: 'Профиль обновлён' });
+      showCustomToast({ type: 'success', title: t('auth.alert.profileUpdated') });
       setEditField(null);
     } finally {
       setProfileSaving(false);
@@ -43,7 +45,7 @@ export default function ManagerProfile({ user }: { user: any }) {
     try {
       await updateUserProfile(user.uid, { privacyConsent: value });
       setPrivacySaved(true);
-      showCustomToast({ type: 'success', title: 'Согласие сохранено' });
+      showCustomToast({ type: 'success', title: t('auth.alert.consentSaved') });
     } finally {
       setPrivacySaving(false);
       setTimeout(() => setPrivacySaved(false), 1200);

@@ -1,5 +1,6 @@
 import React from 'react';
 import { toast } from 'react-toastify';
+import { useTranslations } from 'next-intl';
 import { sendPasswordResetEmail } from '@/modules/auth/services/authService';
 import type { Apartment } from '../../types';
 import type { ApartmentInvitationMeta, ApartmentAccountStatus } from '../../types/index';
@@ -39,6 +40,7 @@ export const ApartmentModal: React.FC<ApartmentModalProps> = ({
   canUnassignResident,
   pendingInvitationId,
 }) => {
+  const t = useTranslations();
   const [inviteEmail, setInviteEmail] = React.useState("");
   const [sendingInvite, setSendingInvite] = React.useState(false);
   const [inviteError, setInviteError] = React.useState("");
@@ -52,11 +54,11 @@ export const ApartmentModal: React.FC<ApartmentModalProps> = ({
   const handleSendInvite = async () => {
     setInviteError("");
     if (!inviteEmail || !inviteEmail.includes("@")) {
-      setInviteError("Введите корректный email");
+      setInviteError(t('auth.alert.invalidEmail'));
       return;
     }
     if (!apartment?.id) {
-      setInviteError("Не удалось определить квартиру");
+      setInviteError(t('auth.alert.apartmentNotDetermined'));
       return;
     }
     setSendingInvite(true);
@@ -72,13 +74,13 @@ export const ApartmentModal: React.FC<ApartmentModalProps> = ({
       });
       const data = await response.json();
       if (!response.ok) {
-        setInviteError(data.error || "Ошибка при отправке приглашения");
+        setInviteError(data.error || t('auth.alert.inviteSendError'));
       } else {
-        toast.success(`Приглашение отправлено на ${inviteEmail}`);
+        toast.success(t('auth.alert.invitationSentToEmail', { email: inviteEmail }));
         setInviteEmail("");
       }
     } catch {
-      setInviteError("Ошибка при отправке приглашения");
+      setInviteError(t('auth.alert.inviteSendError'));
     } finally {
       setSendingInvite(false);
     }
@@ -247,18 +249,18 @@ export const ApartmentModal: React.FC<ApartmentModalProps> = ({
                 setResetError('');
                 const email = (resetEmail || '').trim().toLowerCase();
                 if (!email || !email.includes('@')) {
-                  setResetError('Введите корректный email');
+                  setResetError(t('auth.alert.invalidEmail'));
                   return;
                 }
                 setResetLoading(true);
                 try {
                   await sendPasswordResetEmail(email);
-                  toast.success(`Письмо для сброса пароля отправлено на ${email}`);
+                  toast.success(t('auth.alert.resetEmailSentTo', { email }));
                   setShowResetForm(false);
                 } catch (err: unknown) {
                   console.error('Error sending reset email:', err);
                   const msg = err instanceof Error ? err.message : String(err ?? '');
-                  setResetError(msg || 'Ошибка при отправке письма');
+                  setResetError(msg || t('auth.alert.resetEmailSendError'));
                 } finally {
                   setResetLoading(false);
                 }

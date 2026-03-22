@@ -40,7 +40,7 @@ export const getBuildingsFromDatabase = async (): Promise<Building[]> => {
       };
     });
   } catch (error) {
-    console.error('Error fetching buildings:', error);
+    console.error('firestore.buildings.fetch.error', error);
     throw error;
   }
 };
@@ -60,7 +60,7 @@ export const createDocument = async (
     const docRef = await addDoc(collection(db, collectionName), data);
     return docRef.id;
   } catch (error) {
-    console.error(`Error creating document in ${collectionName}:`, error);
+    console.error('firestore.document.create.error', error);
     throw error;
   }
 };
@@ -76,7 +76,7 @@ export const setDocument = async (
   try {
     await setDoc(doc(db, collectionName, docId), data);
   } catch (error) {
-    console.error(`Error setting document in ${collectionName}:`, error);
+    console.error('firestore.document.set.error', error);
     throw error;
   }
 };
@@ -94,7 +94,7 @@ export const setSubDocument = async (
   try {
     await setDoc(doc(db, collectionName, docId, subcollectionName, subDocId), data);
   } catch (error) {
-    console.error(`Error setting subdocument ${subcollectionName}/${subDocId} in ${collectionName}/${docId}:`, error);
+    console.error('firestore.subdocument.set.error', error);
     throw error;
   }
 };
@@ -112,7 +112,7 @@ export const addSubDocument = async (
     const ref = await addDoc(collection(db, collectionName, docId, subcollectionName), data);
     return ref.id;
   } catch (error) {
-    console.error(`Error adding subdocument to ${collectionName}/${docId}/${subcollectionName}:`, error);
+    console.error('firestore.subdocument.add.error', error);
     throw error;
   }
 };
@@ -130,7 +130,7 @@ export const getSubcollectionDocuments = async (
     const snapshot = await getDocs(q);
     return snapshot.docs.map((d) => ({ id: d.id, ...(d.data() as Record<string, unknown>) }));
   } catch (error) {
-    console.error(`Error getting subcollection documents from ${collectionName}/${docId}/${subcollectionName}:`, error);
+    console.error('firestore.subcollection.get.error', error);
     throw error;
   }
 };
@@ -148,7 +148,7 @@ export const getDocument = async (
     const data = docSnapshot.data();
     return { id: docSnapshot.id, ...data };
   } catch (error) {
-    console.error(`Error getting document from ${collectionName}:`, error);
+    console.error('firestore.document.get.error', error);
     throw error;
   }
 };
@@ -164,7 +164,7 @@ export const updateDocument = async (
   try {
     await updateDoc(doc(db, collectionName, docId), data);
   } catch (error) {
-    console.error(`Error updating document in ${collectionName}:`, error);
+    console.error('firestore.document.update.error', error);
     throw error;
   }
 };
@@ -179,7 +179,7 @@ export const deleteDocument = async (
   try {
     await deleteDoc(doc(db, collectionName, docId));
   } catch (error) {
-    console.error(`Error deleting document from ${collectionName}:`, error);
+    console.error('firestore.document.delete.error', error);
     throw error;
   }
 };
@@ -217,7 +217,7 @@ export const queryDocuments = async (
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map((doc) => ({ id: doc.id, ...(doc.data() as Record<string, unknown>) }));
   } catch (error) {
-    console.error(`Error querying documents in ${collectionName}:`, error);
+    console.error('firestore.documents.query.error', error);
     throw error;
   }
 };
@@ -233,7 +233,7 @@ export const getDocumentsByCompany = async (
     const conditions = [{ field: 'companyId', operator: '==', value: companyId }];
     return queryDocuments(collectionName, conditions);
   } catch (error) {
-    console.error(`Error getting documents by company from ${collectionName}:`, error);
+    console.error('firestore.documents.by_company.get.error', error);
     throw error;
   }
 };
@@ -255,7 +255,7 @@ export const getDocumentsByConditions = async (
     return queryDocuments(collectionName, constraints);
   } catch (error) {
     console.error(
-      `Error getting documents by conditions from ${collectionName}:`,
+      'firestore.documents.by_conditions.get.error',
       error
     );
     throw error;
@@ -273,7 +273,7 @@ export const executeBatch = async (
     await callback(batch);
     await batch.commit();
   } catch (error) {
-    console.error('Error executing batch operation:', error);
+    console.error('firestore.batch.execute.error', error);
     throw error;
   }
 };
@@ -289,7 +289,7 @@ export const documentExists = async (
     const docSnapshot = await getDoc(doc(db, collectionName, docId));
     return docSnapshot.exists();
   } catch (error) {
-    console.error(`Error checking document existence in ${collectionName}:`, error);
+    console.error('firestore.document.exists.check.error', error);
     throw error;
   }
 };
@@ -306,7 +306,7 @@ export const countDocuments = async (
     const querySnapshot = await getDocs(q);
     return querySnapshot.size;
   } catch (error) {
-    console.error(`Error counting documents in ${collectionName}:`, error);
+    console.error('firestore.documents.count.error', error);
     throw error;
   }
 };

@@ -67,6 +67,11 @@ const parsePeriodFromDateCell = (raw: unknown): { month: number; year: number } 
   if (raw === undefined || raw === null || String(raw).trim() === '') return null;
 
   if (typeof raw === 'number' && Number.isFinite(raw)) {
+    // Guardrail: treat numeric value as Excel date only for realistic serial ranges.
+    // Prevent false positives on meter readings like 207.898, 563.000, etc.
+    if (raw < 20000 || raw > 70000) {
+      return null;
+    }
     const excelEpoch = new Date(Date.UTC(1899, 11, 30));
     const date = new Date(excelEpoch.getTime() + raw * 24 * 60 * 60 * 1000);
     if (!Number.isNaN(date.getTime())) {
@@ -158,6 +163,37 @@ const extractReadings = (row: Record<string, unknown>, prefix: 'Kartsais' | 'Auk
     const n = normalizeHeader(header);
     return n.startsWith('data') || n.includes('date');
   };
+  const isLikelyDateColumn = (header: string): boolean => {
+    const n = normalizeHeader(header);
+    // XLSX utils often generate __EMPTY / __EMPTY_1 headers for unlabeled columns.
+    return isDateHeader(header) || n === '' || n.startsWith('__empty');
+  };
+
+  const findNearestPeriod = (index: number): { period: { month: number; year: number }; label: string } | null => {
+    let best: { distance: number; period: { month: number; year: number }; label: string } | null = null;
+
+    for (let j = 0; j < entries.length; j++) {
+      if (j === index) continue;
+      const [dateColName, dateValue] = entries[j];
+      if (!isLikelyDateColumn(dateColName)) continue;
+
+      const parsed = parsePeriodFromDateCell(dateValue);
+      if (!parsed) continue;
+
+      const distance = Math.abs(j - index);
+      const candidateLabel = String(dateValue ?? dateColName).trim() || dateColName;
+
+      if (
+        !best ||
+        distance < best.distance ||
+        (distance === best.distance && j > index)
+      ) {
+        best = { distance, period: parsed, label: candidateLabel };
+      }
+    }
+
+    return best ? { period: best.period, label: best.label } : null;
+  };
 
   for (let i = 0; i < entries.length; i++) {
     const [colName, value] = entries[i];
@@ -179,28 +215,10 @@ const extractReadings = (row: Record<string, unknown>, prefix: 'Kartsais' | 'Auk
     let label = colName.trim();
 
     if (!period) {
-      for (let j = i - 1; j >= 0; j--) {
-        const [dateColName, dateValue] = entries[j];
-        if (!isDateHeader(dateColName)) continue;
-        const parsed = parsePeriodFromDateCell(dateValue);
-        if (parsed) {
-          period = parsed;
-          label = String(dateValue ?? dateColName).trim() || colName.trim();
-          break;
-        }
-      }
-
-      if (!period) {
-        for (let j = i + 1; j < entries.length; j++) {
-          const [dateColName, dateValue] = entries[j];
-          if (!isDateHeader(dateColName)) continue;
-          const parsed = parsePeriodFromDateCell(dateValue);
-          if (parsed) {
-            period = parsed;
-            label = String(dateValue ?? dateColName).trim() || colName.trim();
-            break;
-          }
-        }
+      const nearest = findNearestPeriod(i);
+      if (nearest) {
+        period = nearest.period;
+        label = nearest.label || colName.trim();
       }
     }
 
@@ -373,35 +391,26 @@ async function importApartmentsFromExcel(filePath: string, buildingId: string) {
           };
         };
 
-        // Build meter docs and waterReadings BEFORE writing apartment
+        // Build waterReadings only inside apartment doc (no separate meters collection)
         const waterReadingsData: Record<string, unknown> = {};
 
         if (apt.hotWaterMeterNumber) {
-          const hotWaterRef = db.collection('meters').doc();
+          const hotWaterMeterId = db.collection('apartments').doc().id;
           const hotGroup = buildWaterReadingGroup({
             apartmentId: apartmentRef.id,
             buildingId,
-            meterId: hotWaterRef.id,
+            meterId: hotWaterMeterId,
             serialNumber: apt.hotWaterMeterNumber,
             checkDueDate: apt.hotWaterCheckDueDate,
             readings: hotWaterReadings,
           });
-          await hotWaterRef.set({
-            apartmentId: apartmentRef.id,
-            type: 'water',
-            name: 'hwm',
-            serialNumber: apt.hotWaterMeterNumber,
-            checkDueDate: apt.hotWaterCheckDueDate || '',
-            history: hotGroup.history,
-            createdAt: new Date(),
-          });
-          console.log(`  ✓ Hot water meter created: ${apt.hotWaterMeterNumber}`);
+          console.log(`  ✓ Hot water data prepared: ${apt.hotWaterMeterNumber}`);
           // If no dated-column history, use direct column values as one history entry
           if (hotGroup.history.length === 0 && apt.hotWaterCurrentValue !== undefined) {
             hotGroup.history = [buildFallbackReading({
               apartmentId: apartmentRef.id,
               buildingId,
-              meterId: hotWaterRef.id,
+              meterId: hotWaterMeterId,
               previousValue: apt.hotWaterPreviousValue ?? 0,
               currentValue: apt.hotWaterCurrentValue,
             })];
@@ -410,31 +419,22 @@ async function importApartmentsFromExcel(filePath: string, buildingId: string) {
         }
 
         if (apt.coldWaterMeterNumber) {
-          const coldWaterRef = db.collection('meters').doc();
+          const coldWaterMeterId = db.collection('apartments').doc().id;
           const coldGroup = buildWaterReadingGroup({
             apartmentId: apartmentRef.id,
             buildingId,
-            meterId: coldWaterRef.id,
+            meterId: coldWaterMeterId,
             serialNumber: apt.coldWaterMeterNumber,
             checkDueDate: apt.coldWaterCheckDueDate,
             readings: coldWaterReadings,
           });
-          await coldWaterRef.set({
-            apartmentId: apartmentRef.id,
-            type: 'water',
-            name: 'cwm',
-            serialNumber: apt.coldWaterMeterNumber,
-            checkDueDate: apt.coldWaterCheckDueDate || '',
-            history: coldGroup.history,
-            createdAt: new Date(),
-          });
-          console.log(`  ✓ Cold water meter created: ${apt.coldWaterMeterNumber}`);
+          console.log(`  ✓ Cold water data prepared: ${apt.coldWaterMeterNumber}`);
           // If no dated-column history, use direct column values as one history entry
           if (coldGroup.history.length === 0 && apt.coldWaterCurrentValue !== undefined) {
             coldGroup.history = [buildFallbackReading({
               apartmentId: apartmentRef.id,
               buildingId,
-              meterId: coldWaterRef.id,
+              meterId: coldWaterMeterId,
               previousValue: apt.coldWaterPreviousValue ?? 0,
               currentValue: apt.coldWaterCurrentValue,
             })];

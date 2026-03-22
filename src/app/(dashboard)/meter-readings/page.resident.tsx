@@ -198,7 +198,8 @@ export default function MeterReadingsPage() {
   const [editingSerialByMeterId, setEditingSerialByMeterId] = useState<Record<string, boolean>>({});
   const [submittingReadingApartmentId, setSubmittingReadingApartmentId] = useState<string | null>(null);
   const [submitRetryLockedUntilByApartmentId, setSubmitRetryLockedUntilByApartmentId] = useState<Record<string, number>>({});
-  const t = useTranslations('dashboard.meterReadings');
+  const t = useTranslations();
+  const tMeter = useTranslations('dashboard.meterReadings');
   const [meterCheckDateInputByMeterId, setMeterCheckDateInputByMeterId] = useState<Record<string, string>>({});
   const [editingCheckByMeterId, setEditingCheckByMeterId] = useState<Record<string, boolean>>({});
   const [forceSaveByMeterId, setForceSaveByMeterId] = useState<Record<string, boolean>>({});
@@ -266,7 +267,7 @@ export default function MeterReadingsPage() {
   const handleSaveMeterSerial = async (apartmentId: string, meterId: string) => {
     const pending = (meterSerialInputByMeterId[meterId] || '').trim();
     if (!pending) {
-      toast.error('Введите номер счётчика');
+      toast.error(t('auth.alert.enterMeterNumber'));
       return;
     }
 
@@ -275,7 +276,7 @@ export default function MeterReadingsPage() {
     if (meter0 && !canEditMetaForMeter(meter0)) {
       const allowedForManagement = isManagementCompany && Boolean(forceSaveByMeterId[meterId]);
       if (!allowedForManagement) {
-        showMeterError(meterId, t('editingMetaForbidden'));
+        showMeterError(meterId, tMeter('editingMetaForbidden'));
         return;
       }
     }
@@ -298,18 +299,18 @@ export default function MeterReadingsPage() {
       setForceSaveByMeterId((prev) => ({ ...prev, [meterId]: false }));
       // clear input
       setMeterSerialInputByMeterId((prev) => ({ ...prev, [meterId]: '' }));
-      toast.success(t('submitSuccess'));
+      toast.success(tMeter('submitSuccess'));
     } catch (err) {
       console.error('Failed to save meter serial:', err);
       const msg = err instanceof Error ? err.message : String(err);
-      showMeterError(meterId, msg || t('submitError'));
+      showMeterError(meterId, msg || tMeter('submitError'));
     }
   };
 
     const handleSaveMeterCheckDate = async (apartmentId: string, meterId: string) => {
       const pending = (meterCheckDateInputByMeterId[meterId] || '').trim();
       if (!pending) {
-        toast.error(t('enterCheckDate'));
+        toast.error(tMeter('enterCheckDate'));
         return;
       }
 
@@ -318,7 +319,7 @@ export default function MeterReadingsPage() {
         if (meter0 && !canEditMetaForMeter(meter0)) {
           const allowedForManagement = isManagementCompany && Boolean(forceSaveByMeterId[meterId]);
           if (!allowedForManagement) {
-            showMeterError(meterId, t('editingMetaForbidden'));
+            showMeterError(meterId, tMeter('editingMetaForbidden'));
             return;
           }
         }
@@ -338,11 +339,11 @@ export default function MeterReadingsPage() {
         setEditingCheckByMeterId((prev) => ({ ...prev, [meterId]: false }));
         setMeterCheckDateInputByMeterId((prev) => ({ ...prev, [meterId]: '' }));
         setForceSaveByMeterId((prev) => ({ ...prev, [meterId]: false }));
-        toast.success(t('meterReadings.submitSuccess'));
+        toast.success(tMeter('meterReadings.submitSuccess'));
       } catch (err) {
         console.error('Failed to save meter check date:', err);
         const msg = err instanceof Error ? err.message : String(err);
-        showMeterError(meterId, msg || t('submitError'));
+        showMeterError(meterId, msg || tMeter('submitError'));
       }
     };
 
@@ -424,12 +425,12 @@ export default function MeterReadingsPage() {
                     className="text-xs rounded bg-slate-800/60 px-1 py-0.5 text-slate-200"
                     value={meterSerialInputByMeterId[meter.id] ?? meter?.serialNumber ?? ''}
                     onChange={(e) => setMeterSerialInputByMeterId((prev) => ({ ...prev, [meter.id]: e.target.value }))}
-                    placeholder={t('enterMeterSerial')}
+                    placeholder={tMeter('enterMeterSerial')}
                   />
                   <button
                     onClick={() => handleSaveMeterSerial(reading.apartmentId, meter.id)}
                     className="text-xs text-slate-300 hover:text-white"
-                    title={t('save')}
+                    title={tMeter('save')}
 
                   >
                     ✓
@@ -440,7 +441,7 @@ export default function MeterReadingsPage() {
                       setForceSaveByMeterId((prev) => ({ ...prev, [meter.id]: false }));
                     }}
                     className="text-xs text-slate-400 hover:text-slate-200"
-                    title={t('cancel')}
+                    title={tMeter('cancel')}
                   >
                     ✕
                   </button>
@@ -460,7 +461,7 @@ export default function MeterReadingsPage() {
                         setEditingSerialByMeterId((prev) => ({ ...prev, [meter.id]: true }));
                       }}
                       className="text-xs text-slate-400 hover:text-slate-200"
-                      title={t('edit')}
+                      title={tMeter('edit')}
                     >
                       ✎
                     </button>
@@ -480,7 +481,7 @@ export default function MeterReadingsPage() {
                   <button
                     onClick={() => handleSaveMeterCheckDate(reading.apartmentId, meter.id)}
                     className="text-xs text-slate-300 hover:text-white"
-                    title={t('save')}
+                    title={tMeter('save')}
                   >
                     ✓
                   </button>
@@ -491,7 +492,7 @@ export default function MeterReadingsPage() {
                         checked={Boolean(forceSaveByMeterId[meter.id])}
                         onChange={(e) => setForceSaveByMeterId((prev) => ({ ...prev, [meter.id]: e.target.checked }))}
                       />
-                      {t('force')}
+                      {tMeter('force')}
                     </label>
                   )}
                   <button
@@ -500,14 +501,14 @@ export default function MeterReadingsPage() {
                       setForceSaveByMeterId((prev) => ({ ...prev, [meter.id]: false }));
                     }}
                     className="text-xs text-slate-400 hover:text-slate-200"
-                    title={t('cancel')}
+                    title={tMeter('cancel')}
                   >
                     ✕
                   </button>
                 </span>
               ) : (
                 <span className="flex items-center gap-2">
-                  <span>{t('checkDueDate')}: {formatDateOnly(meter?.checkDueDate)}</span>
+                  <span>{tMeter('checkDueDate')}: {formatDateOnly(meter?.checkDueDate)}</span>
                   {canEditMeta ? (
                     <button
                       onClick={() => {
@@ -515,7 +516,7 @@ export default function MeterReadingsPage() {
                         setEditingCheckByMeterId((prev) => ({ ...prev, [meter.id]: true }));
                       }}
                       className="text-xs text-slate-400 hover:text-slate-200"
-                      title={t('edit')}
+                      title={tMeter('edit')}
                     >
                       ✎
                     </button>
@@ -528,7 +529,7 @@ export default function MeterReadingsPage() {
 
         <div className="text-right">
           <div className="text-lg font-semibold text-white">{value}</div>
-          <div className="text-xs text-slate-400">{t('periodStart')}: {prevValue}</div>
+          <div className="text-xs text-slate-400">{tMeter('periodStart')}: {prevValue}</div>
         </div>
       </div>
     );
@@ -627,13 +628,13 @@ export default function MeterReadingsPage() {
           } catch (err) {
             console.error('Background load failed:', err);
             // surface non-blocking error
-            setLoadError((err as Error).message ?? t('loadError'));
+            setLoadError((err as Error).message ?? tMeter('loadError'));
           } finally {
             setIsLoadingData(false);
           }
         })();
       } catch (error: unknown) {
-        setLoadError(error instanceof Error ? error.message : t('loadError'));
+        setLoadError(error instanceof Error ? error.message : tMeter('loadError'));
         setIsLoadingData(false);
       }
     };
@@ -772,7 +773,7 @@ export default function MeterReadingsPage() {
         if (!best) return r;
         return toTimestampMs(r.submittedAt as ReadingTimestampLike) > toTimestampMs(best.submittedAt as ReadingTimestampLike) ? r : best;
       }, undefined as unknown as MeterReading | undefined) as MeterReading | undefined;
-      const buildingName = buildingNameById[apartment.buildingId] ?? t('notSpecified');
+      const buildingName = buildingNameById[apartment.buildingId] ?? tMeter('notSpecified');
       const monthsCount = new Set(
         apartmentReadings.map((reading) => `${reading.year}-${String(reading.month).padStart(2, '0')}`)
       ).size;
@@ -791,7 +792,7 @@ export default function MeterReadingsPage() {
     if (isSubmitRetryLocked(apartment.id)) {
       const lockedUntil = submitRetryLockedUntilByApartmentId[apartment.id] ?? 0;
       const secondsLeft = Math.max(1, Math.ceil((lockedUntil - Date.now()) / 1000));
-      setTimedSubmitError(apartment.id, t('retryAvailableIn', { seconds: secondsLeft }), 15000);
+      setTimedSubmitError(apartment.id, tMeter('retryAvailableIn', { seconds: secondsLeft }), 15000);
       return;
     }
 
@@ -809,7 +810,7 @@ export default function MeterReadingsPage() {
       isTenantWithSubmit;
 
     if (!canUserSubmit) {
-      setTimedSubmitError(apartment.id, t('insufficientPermissions'), 15000);
+      setTimedSubmitError(apartment.id, tMeter('insufficientPermissions'), 15000);
       return;
     }
 
@@ -821,18 +822,18 @@ export default function MeterReadingsPage() {
     const canSubmit = isMeterSubmissionAllowed(openDate, closeDate, fallbackOpenDay);
     if (!canSubmit) {
       let periodMsg = openDate && closeDate
-        ? `${t('submissionPeriod', {
+        ? `${tMeter('submissionPeriod', {
             open: formatDateByLocale(openDate),
             close: formatDateByLocale(closeDate),
           })}`
-        : t('submissionAvailableFrom', { day: fallbackOpenDay || 25 });
+        : tMeter('submissionAvailableFrom', { day: fallbackOpenDay || 25 });
       setTimedSubmitError(apartment.id, periodMsg, 15000);
       return;
     }
 
     const waterMeters = getWaterMetersByApartment(apartment.id).slice().sort((a, b) => Number(isHotMeter(a)) - Number(isHotMeter(b)));
     if (waterMeters.length === 0) {
-      setTimedSubmitError(apartment.id, t('noWaterMetersConfigured'), 15000);
+      setTimedSubmitError(apartment.id, tMeter('noWaterMetersConfigured'), 15000);
       return;
     }
 
@@ -845,7 +846,7 @@ export default function MeterReadingsPage() {
 
     if (alreadySubmittedMeters.length > 0) {
       const names = alreadySubmittedMeters.map((m) => getMeterDisplayName(m)).join(', ');
-      setTimedSubmitError(apartment.id, t('alreadySubmittedFor', { names }), 15000);
+      setTimedSubmitError(apartment.id, tMeter('alreadySubmittedFor', { names }), 15000);
       return;
     }
 
@@ -876,16 +877,16 @@ export default function MeterReadingsPage() {
           let nextConsumption = 0;
           if (isFirstReading) {
             if (currentValue < 0 || isNaN(currentValue)) {
-              throw new Error(t('meterReadingError', { meterLabel, error: t('invalidValue') }));
+              throw new Error(tMeter('meterReadingError', { meterLabel, error: tMeter('invalidValue') }));
             }
           } else {
             const meterReadingValidation = validateMeterReading(currentValue);
             if (!meterReadingValidation.isValid) {
-              throw new Error(t('meterReadingError', { meterLabel, error: meterReadingValidation.error ?? t('invalidValue') }));
+              throw new Error(tMeter('meterReadingError', { meterLabel, error: meterReadingValidation.error ?? tMeter('invalidValue') }));
             }
             const consumptionValidation = validateConsumption(currentValue, previousValue);
             if (!consumptionValidation.isValid || typeof consumptionValidation.consumption !== 'number') {
-              throw new Error(t('meterConsumptionError', { meterLabel, error: consumptionValidation.error ?? t('invalidConsumption') }));
+              throw new Error(tMeter('meterConsumptionError', { meterLabel, error: consumptionValidation.error ?? tMeter('invalidConsumption') }));
             }
             nextConsumption = consumptionValidation.consumption;
           }
@@ -937,11 +938,11 @@ export default function MeterReadingsPage() {
         });
         return next;
       });
-      toast.success(t('meterReadingsSaved'));
+      toast.success(tMeter('meterReadingsSaved'));
     } catch (error: unknown) {
       setTimedSubmitError(
         apartment.id,
-        error instanceof Error ? error.message : t('meterReadingsSubmitError'),
+        error instanceof Error ? error.message : tMeter('meterReadingsSubmitError'),
         15000
       );
     } finally {
@@ -956,7 +957,7 @@ export default function MeterReadingsPage() {
       router.refresh();
       };
   if (loading) {
-    return <div className="text-white">{t('loading')}</div>;
+    return <div className="text-white">{tMeter('loading')}</div>;
   }
 
   if (!user) {
@@ -1014,12 +1015,12 @@ export default function MeterReadingsPage() {
                           </svg>
                         </div>
                         <div className="flex-1">
-                          <div className="text-xs text-gray-500">{isHot ? t('hotWater') : t('coldWater')} Nr. <b>{meter?.serialNumber || '—'}</b></div>
+                          <div className="text-xs text-gray-500">{isHot ? tMeter('hotWater') : tMeter('coldWater')} Nr. <b>{meter?.serialNumber || '—'}</b></div>
                         </div>
                         <div className="text-right">
                           <div className="text-lg font-bold text-gray-900">{formatNumberDot(reading.currentValue ?? 0, 3)}</div>
-                          <div className="text-xs text-gray-500">{t('periodStart')}: {formatNumberDot(reading.previousValue ?? 0, 3)}</div>
-                          <div className="text-xs text-gray-500">{t('difference')}: <b>{formatNumberDot((reading.currentValue ?? 0) - (reading.previousValue ?? 0), 3)} m³</b></div>
+                          <div className="text-xs text-gray-500">{tMeter('periodStart')}: {formatNumberDot(reading.previousValue ?? 0, 3)}</div>
+                          <div className="text-xs text-gray-500">{tMeter('difference')}: <b>{formatNumberDot((reading.currentValue ?? 0) - (reading.previousValue ?? 0), 3)} m³</b></div>
                         </div>
                       </div>
                     );
@@ -1035,7 +1036,7 @@ export default function MeterReadingsPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      <Header userName={user.name || user.email || t('user')} userEmail={user.email} onLogout={handleLogout} pageTitle={t('waterReadings')} />
+      <Header userName={user.name || user.email || tMeter('user')} userEmail={user.email} onLogout={handleLogout} pageTitle={tMeter('waterReadings')} />
       <main className=" mx-auto px-4 py-8">
         {loadError && (
           <div className="mb-6 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -1044,13 +1045,13 @@ export default function MeterReadingsPage() {
         )}
         {isLoadingData ? (
           <div className="rounded-lg border border-gray-200 bg-gray-50 p-6 text-gray-600">
-            {t('loadingApartmentsAndReadings')}
+            {tMeter('loadingApartmentsAndReadings')}
           </div>
         ) : (
           (() => {
             const residentApartment = apartments.find(a => user.role === 'Resident' && user.apartmentId === a.id);
             if (!residentApartment) {
-              return <div className="rounded-lg border border-gray-200 bg-gray-50 p-8 text-center"><p className="text-gray-600">{t('noApartmentsFound')}</p></div>;
+              return <div className="rounded-lg border border-gray-200 bg-gray-50 p-8 text-center"><p className="text-gray-600">{tMeter('noApartmentsFound')}</p></div>;
             }
             const meters = getWaterMetersByApartment(residentApartment.id);
             const readings = readingsByApartmentId[residentApartment.id] ?? [];
@@ -1065,14 +1066,14 @@ export default function MeterReadingsPage() {
               <div className="rounded-lg border border-gray-200 bg-white p-3">
                 <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <h2 className="text-base font-semibold text-gray-900">{t('apartment')} {residentApartment.number}</h2>
+                    <h2 className="text-base font-semibold text-gray-900">{tMeter('apartment')} {residentApartment.number}</h2>
                   </div>
                 </div>
                 <div className="mb-3">
-                  <h3 className="text-sm font-medium text-blue-800 mb-2">{t('submitWaterReadings')}</h3>
+                  <h3 className="text-sm font-medium text-blue-800 mb-2">{tMeter('submitWaterReadings')}</h3>
                   {!canSubmit ? (
                     <div className="mt-3 rounded-md border border-yellow-200 bg-yellow-50 px-3 py-2 text-sm text-yellow-800">
-                      {t('submissionUnavailable')}<br />
+                      {tMeter('submissionUnavailable')}<br />
                       {(() => {
                         // Найти здание по id (строгое сравнение строк)
                         const buildingId = String(residentApartment?.buildingId || '');
@@ -1086,17 +1087,17 @@ export default function MeterReadingsPage() {
                           <>
                             {openDate && closeDate ? (
                               <>
-                                {t('submissionPeriod', { open: formatDateByLocale(openDate), close: formatDateByLocale(closeDate) })}
+                                {tMeter('submissionPeriod', { open: formatDateByLocale(openDate), close: formatDateByLocale(closeDate) })}
                               </>
                             ) : (
-                              <span>{t('submissionPeriodNotSet')}</span>
+                              <span>{tMeter('submissionPeriodNotSet')}</span>
                             )}
                           </>
                         );
                       })()}
                     </div>
                   ) : meters.length === 0 ? (
-                    <p className="mt-3 rounded-md border border-yellow-200 bg-yellow-50 px-3 py-2 text-sm text-yellow-800">{t('noWaterMetersConfigured')}</p>
+                    <p className="mt-3 rounded-md border border-yellow-200 bg-yellow-50 px-3 py-2 text-sm text-yellow-800">{tMeter('noWaterMetersConfigured')}</p>
                   ) : (
                     <>
                       <div className="flex flex-col md:flex-row gap-6">
@@ -1133,16 +1134,16 @@ export default function MeterReadingsPage() {
                           onClick={() => handleSubmitWaterReading(residentApartment)}
                           disabled={submittingReadingApartmentId === residentApartment.id}
                         >
-                          {submittingReadingApartmentId === residentApartment.id ? t('saving') : t('submitWaterReadings')}
+                          {submittingReadingApartmentId === residentApartment.id ? tMeter('saving') : tMeter('submitWaterReadings')}
                         </button>
                       </div>
                     </>
                   )}
                 </div>
                 <div className="mt-4">
-                  <h3 className="text-sm font-medium text-blue-800 mb-2">{t('history')}</h3>
+                  <h3 className="text-sm font-medium text-blue-800 mb-2">{tMeter('history')}</h3>
                   {readings.length === 0 ? (
-                    <p className="rounded-md border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-500">{t('noReadingsForApartment')}</p>
+                    <p className="rounded-md border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-500">{tMeter('noReadingsForApartment')}</p>
                   ) : (
                     <MeterReadingsHistoryAccordion readings={readings} meterById={meterById} />
                   )}

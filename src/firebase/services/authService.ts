@@ -90,7 +90,7 @@ export const getCurrentUserToken = async (): Promise<string | null> => {
     if (!user) return null;
     return await user.getIdToken();
   } catch (error) {
-    console.error('Error getting user token:', error);
+    console.error('auth.user.token.get.error', error);
     return null;
   }
 };
@@ -132,21 +132,21 @@ export const onAuthStateChanged = (callback: (uid: string | null) => void) => {
 const formatAuthError = (error: any): AuthError => {
   const code = error.code || 'auth/unknown-error';
   const errors: Record<string, string> = {
-    'auth/invalid-email': 'Неверный email формат',
-    'auth/user-not-found': 'Пользователь не найден',
-    'auth/wrong-password': 'Неверный пароль',
-    'auth/user-disabled': 'Учётная запись отключена',
-    'auth/email-already-in-use': 'Email уже привязан к другому аккаунту',
-    'auth/weak-password': 'Пароль слишком слабый',
-    'auth/operation-not-allowed': 'Операция недоступна',
-    'auth/too-many-requests': 'Слишком много попыток входа. Попробуйте позже',
-    'auth/network-request-failed': 'Ошибка сети. Проверьте подключение',
-    'auth/invalid-credential': 'Неверные учётные данные',
+    'auth/invalid-email': 'Invalid email format',
+    'auth/user-not-found': 'User not found',
+    'auth/wrong-password': 'Incorrect password',
+    'auth/user-disabled': 'Account has been disabled',
+    'auth/email-already-in-use': 'Email already in use',
+    'auth/weak-password': 'Password is too weak',
+    'auth/operation-not-allowed': 'Operation not allowed',
+    'auth/too-many-requests': 'Too many requests. Please try later.',
+    'auth/network-request-failed': 'Network error. Check your connection.',
+    'auth/invalid-credential': 'Invalid login credentials',
   };
 
   return {
     code,
-    message: errors[code] || error.message || 'Произошла ошибка при входе',
+    message: errors[code] || error.message || 'Authentication error',
   };
 };
 

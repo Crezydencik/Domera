@@ -84,12 +84,12 @@ const trackBurstAndAlert = async (
     detectedAt: new Date(),
   };
 
-  console.warn('SECURITY_ALERT repeated_401_403_429_burst', alertPayload);
+  console.warn('security.alert.repeated_401_403_429_burst', alertPayload);
 
   try {
     await db.collection('security_alerts').add(alertPayload);
   } catch (error) {
-    console.warn('SECURITY_ALERT write failed:', toSafeErrorDetails(error));
+    console.warn('security.alert.write.failed', toSafeErrorDetails(error));
   }
 };
 
@@ -120,6 +120,6 @@ export const writeAuditEvent = async (input: AuditEventInput): Promise<void> => 
 
     await trackBurstAndAlert(db, input.status, ipHash, input.action, input.reason);
   } catch (error) {
-    console.warn('AUDIT_LOG write failed:', toSafeErrorDetails(error));
+    console.warn('audit.log.write.failed', toSafeErrorDetails(error));
   }
 };

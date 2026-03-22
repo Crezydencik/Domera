@@ -30,7 +30,7 @@ export default function ApartmentsManagementPage() {
       router.push('/login');
     } catch (error) {
       console.error('Logout error:', toSafeErrorDetails(error));
-      toast.error('Ошибка при выходе');
+      toast.error(t('auth.alert.logoutError'));
     }
   };
 
@@ -162,7 +162,7 @@ export default function ApartmentsManagementPage() {
     try {
       const currentCompanyId = user?.companyId?.trim();
       if (!currentCompanyId) {
-        toast.error('Не удалось определить управляющую компанию');
+        toast.error(t('auth.alert.managementCompanyDetectError'));
         return;
       }
 
@@ -173,11 +173,11 @@ export default function ApartmentsManagementPage() {
         (ap) => ap.buildingId === newApartment.buildingId && ap.number === newApartment.number
       );
       if (duplicate) {
-        toast.error('Квартира с таким номером уже существует в этом доме!');
+        toast.error(t('auth.alert.apartmentDuplicateInBuilding'));
         return;
       }
       if (!selectedBuilding) {
-        toast.error('У выбранного дома не найден идентификатор управляющей компании!');
+        toast.error(t('auth.alert.selectedBuildingCompanyIdMissing'));
         return;
       }
 
@@ -188,13 +188,13 @@ export default function ApartmentsManagementPage() {
 
       setNewApartment({ number: '', buildingId: '' });
       setIsAddingApartment(false);
-      toast.success('Квартира успешно добавлена!');
+      toast.success(t('auth.alert.apartmentAdded'));
       // meters loading skipped here
       // Обновляем данные после добавления квартиры
       await fetchData();
     } catch (error) {
       console.error('Error adding apartment:', toSafeErrorDetails(error));
-      toast.error('Ошибка при добавлении квартиры.');
+      toast.error(t('auth.alert.apartmentAddError'));
     }
   };
 
@@ -216,30 +216,30 @@ export default function ApartmentsManagementPage() {
         setIsModalOpen(false);
       }
       setApartmentPendingDelete(null);
-      toast.success('Квартира успешно удалена!');
+      toast.success(t('auth.alert.apartmentDeleted'));
     } catch (error) {
       console.error('Error deleting apartment:', toSafeErrorDetails(error));
-      toast.error('Ошибка при удалении квартиры.');
+      toast.error(t('auth.alert.apartmentDeleteError'));
     } finally {
       setIsDeletingApartment(false);
     }
   };
 
   const handleUnassignResidentFor = async (apartmentId: string) => {
-    if (!window.confirm('Вы уверены, что хотите удалить жильца из этой квартиры?')) return;
+    if (!window.confirm(t('auth.alert.removeResidentConfirm'))) return;
     try {
       const apt = apartments.find((a) => a.id === apartmentId);
       if (!apt || !apt.residentId) {
-        toast.info('В этой квартире нет привязанного жильца');
+        toast.info(t('auth.alert.noResidentLinked'));
         return;
       }
 
       await unassignResidentFromApartment(apartmentId);
       setApartments((prev) => prev.map((ap) => (ap.id === apartmentId ? { ...ap, residentId: undefined, tenants: [] } : ap)));
-      toast.success('Жилец удалён из квартиры');
+      toast.success(t('auth.alert.residentRemovedFromApartment'));
     } catch (error) {
       console.error('Error unassigning resident:', toSafeErrorDetails(error));
-      toast.error('Ошибка при удалении жильца');
+      toast.error(t('auth.alert.residentRemoveError'));
     }
   };
 
@@ -329,7 +329,7 @@ export default function ApartmentsManagementPage() {
   };
 
   const handleCancelInvitation = async (invitationId: string) => {
-    if (!window.confirm('Вы уверены, что хотите отменить это приглашение?')) {
+    if (!window.confirm(t('auth.alert.cancelInvitationConfirm'))) {
       return;
     }
 
@@ -337,10 +337,10 @@ export default function ApartmentsManagementPage() {
       await revokeInvitation(invitationId);
       setSelectedApartment(null);
       setIsModalOpen(false);
-      toast.success('Приглашение успешно отменено');
+      toast.success(t('auth.alert.invitationCancelledSuccess'));
     } catch (error) {
       console.error('Error canceling invitation:', toSafeErrorDetails(error));
-      toast.error('Ошибка при отмене приглашения');
+      toast.error(t('auth.alert.invitationCancelError'));
     }
   };
 
@@ -394,7 +394,7 @@ export default function ApartmentsManagementPage() {
     });
     const data = await response.json();
     if (!response.ok) {
-      throw new Error(data.error || 'Ошибка при отправке приглашения');
+      throw new Error(data.error || t('auth.alert.invitationSendError'));
     }
   };
 
@@ -447,7 +447,7 @@ export default function ApartmentsManagementPage() {
     const selectedTargets = readyBulkInviteRows.filter((row) => bulkSelectedApartmentIds.includes(row.apartmentId));
 
     if (selectedTargets.length === 0) {
-      toast.info('Нет выбранных квартир для приглашения');
+      toast.info(t('auth.alert.noApartmentsSelectedForInvite'));
       return;
     }
 
@@ -471,10 +471,10 @@ export default function ApartmentsManagementPage() {
       }
 
       if (successCount > 0) {
-        toast.success(`Отправлено приглашений: ${successCount}`);
+        toast.success(t('auth.alert.invitesSentCount', { count: successCount }));
       }
       if (failCount > 0) {
-        toast.error(`Не удалось отправить: ${failCount}`);
+        toast.error(t('auth.alert.invitesFailedCount', { count: failCount }));
       }
 
       setBulkSelectedApartmentIds((prev) => prev.filter((id) => !successfullyInvitedIds.includes(id)));
@@ -487,11 +487,11 @@ export default function ApartmentsManagementPage() {
   const handleCancelInvitationForApartment = async (apartmentId: string) => {
     const invitationId = pendingInvitationByApartmentId[apartmentId];
     if (!invitationId) {
-      toast.info('Активное приглашение не найдено');
+      toast.info(t('auth.alert.noActiveInvitation'));
       return;
     }
 
-    if (!window.confirm('Отменить приглашение для этой квартиры?')) {
+    if (!window.confirm(t('auth.alert.cancelApartmentInvitationConfirm'))) {
       return;
     }
 
@@ -503,17 +503,17 @@ export default function ApartmentsManagementPage() {
         delete next[apartmentId];
         return next;
       });
-      toast.success('Приглашение отменено');
+      toast.success(t('auth.alert.invitationCancelledSuccess'));
       await fetchData();
     } catch (error) {
       console.error('Error cancel invitation from bulk modal:', toSafeErrorDetails(error));
-      toast.error('Ошибка при отмене приглашения');
+      toast.error(t('auth.alert.invitationCancelError'));
     }
   };
 
   const handleExportVisibleApartments = () => {
     if (displayedApartments.length === 0) {
-      toast.info('Нет данных для экспорта');
+      toast.info(t('auth.alert.noDataToExport'));
       return;
     }
 
@@ -744,23 +744,23 @@ export default function ApartmentsManagementPage() {
                   onClick={async () => {
                     const email = (globalInviteEmail || '').trim();
                     if (!email || !isValidInviteEmail(email)) {
-                      toast.error('Введите корректный email');
+                      toast.error(t('auth.alert.invalidEmail'));
                       return;
                     }
                     if (!globalInviteApartmentId) {
-                      toast.error('Выберите квартиру');
+                      toast.error(t('auth.alert.selectApartment'));
                       return;
                     }
                     try {
                       await sendApartmentInvitation(globalInviteApartmentId, email);
-                      toast.success(`Приглашение отправлено на ${email}`);
+                      toast.success(t('auth.alert.invitationSentToEmail', { email }));
                       setGlobalInviteEmail('');
                       setInvitedApartmentIds(prev => Array.from(new Set([...prev, globalInviteApartmentId])));
                       setGlobalInviteApartmentId(undefined);
                       await fetchData();
                     } catch (err) {
                       console.error('Invite error', toSafeErrorDetails(err));
-                      toast.error('Ошибка при отправке приглашения');
+                      toast.error(t('auth.alert.invitationSendError'));
                     }
                   }}
                   className="flex-1 rounded-lg bg-linear-to-r from-emerald-500 to-emerald-600 px-4 py-3 text-sm font-semibold text-white hover:shadow-lg transition"

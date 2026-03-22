@@ -126,7 +126,7 @@ export default function AcceptInvitationPage() {
             return;
           } else {
             // Email не совпадает - ошибка
-            setError(`Вы авторизованы как ${userEmail}, но приглашение на ${invitationEmail}`);
+            setError(t('invitation.emailMismatch', { currentEmail: userEmail, invitationEmail }));
             setLoading(false);
             return;
           }
@@ -141,7 +141,7 @@ export default function AcceptInvitationPage() {
           setLoading(false);
         }
       } catch (err: unknown) {
-        console.error('[AcceptInvitationPage] Error:', err);
+        console.error('invitations.accept.page.error', err);
         const message = err instanceof Error ? err.message : String(err);
         setError(`${t('invitation.invitationError')}: ${message}`);
         setLoading(false);

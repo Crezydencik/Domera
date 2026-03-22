@@ -253,72 +253,51 @@ export const getApartmentsByCompany = async (companyId: string): Promise<Apartme
     uniqueById[d.id as string] = d;
   }
 
-  const mapped = mapFirestoreDocsToApartments(Object.values(uniqueById));
+  // Also include apartments discovered by company-owned buildings.
+  // This covers legacy/partial imports where apartment.companyIds/companyId might be missing,
+  // but apartment.buildingId is valid and building belongs to the company.
+  try {
+    const buildingsCollection = collection(db, FIRESTORE_COLLECTIONS.BUILDINGS);
+    const [managedBySnap, legacySnap] = await Promise.all([
+      getDocs(query(buildingsCollection, where('managedBy.companyId', '==', companyId))),
+      getDocs(query(buildingsCollection, where('companyId', '==', companyId))),
+    ]);
 
-  // If no apartments were found by company, attempt to find buildings for the company
-  // and populate apartments by buildingId. Also update building.apartmentIds if missing.
-  if (mapped.length === 0) {
-    try {
-      const buildingsCollection = collection(db, FIRESTORE_COLLECTIONS.BUILDINGS);
-      // try nested managedBy.companyId first (per current schema), fallback to companyId
-      const bQuery = query(buildingsCollection, where('managedBy.companyId', '==', companyId));
-      const bSnap = await getDocs(bQuery);
-      if (bSnap.empty) {
-        // fallback
-        const bQuery2 = query(buildingsCollection, where('companyId', '==', companyId));
-        const bSnap2 = await getDocs(bQuery2);
-        // use bSnap2
-        for (const bDoc of bSnap2.docs) {
-          const bId = bDoc.id;
-          const aQuery = query(apartmentsCollection, where('buildingId', '==', bId));
-          const aSnap = await getDocs(aQuery);
-          const ids = aSnap.docs.map((d) => d.id);
-          if (ids.length > 0) {
-            // try to update building document with apartmentIds
-            try {
-              await updateDocument(FIRESTORE_COLLECTIONS.BUILDINGS, bId, { apartmentIds: ids });
-            } catch (e) {
-              // ignore update errors (may be permission issues)
-            }
-          }
-        }
-        // try to load apartments again across those buildings
-        const loaded: Apartment[] = [];
-        for (const bDoc of bSnap2.docs) {
-          const bId = bDoc.id;
-          const aQuery = query(apartmentsCollection, where('buildingId', '==', bId));
-          const aSnap = await getDocs(aQuery);
-          for (const ad of aSnap.docs) loaded.push(mapFirestoreDocsToApartments([{ id: ad.id, ...(ad.data() as Record<string, unknown>) }])[0]);
-        }
-        if (loaded.length > 0) return loaded;
-      } else {
-        for (const bDoc of bSnap.docs) {
-          const bId = bDoc.id;
-          const aQuery = query(apartmentsCollection, where('buildingId', '==', bId));
-          const aSnap = await getDocs(aQuery);
-          const ids = aSnap.docs.map((d) => d.id);
-          if (ids.length > 0) {
-            try {
-              await updateDocument(FIRESTORE_COLLECTIONS.BUILDINGS, bId, { apartmentIds: ids });
-            } catch (e) {}
+    const buildingIds = Array.from(new Set([
+      ...managedBySnap.docs.map((d) => d.id),
+      ...legacySnap.docs.map((d) => d.id),
+    ]));
+
+    if (buildingIds.length > 0) {
+      const apartmentSnapshots = await Promise.all(
+        buildingIds.map((buildingId) =>
+          getDocs(query(apartmentsCollection, where('buildingId', '==', buildingId)))
+        )
+      );
+
+      for (let i = 0; i < apartmentSnapshots.length; i++) {
+        const snap = apartmentSnapshots[i];
+        const buildingId = buildingIds[i];
+        const ids = snap.docs.map((d) => d.id);
+
+        if (ids.length > 0) {
+          try {
+            await updateDocument(FIRESTORE_COLLECTIONS.BUILDINGS, buildingId, { apartmentIds: ids });
+          } catch {
+            // best-effort consistency update only
           }
         }
 
-        const loaded: Apartment[] = [];
-        for (const bDoc of bSnap.docs) {
-          const bId = bDoc.id;
-          const aQuery = query(apartmentsCollection, where('buildingId', '==', bId));
-          const aSnap = await getDocs(aQuery);
-          for (const ad of aSnap.docs) loaded.push(mapFirestoreDocsToApartments([{ id: ad.id, ...(ad.data() as Record<string, unknown>) }])[0]);
+        for (const ad of snap.docs) {
+          uniqueById[ad.id] = { id: ad.id, ...(ad.data() as Record<string, unknown>) };
         }
-        if (loaded.length > 0) return loaded;
       }
-    } catch (err) {
-      console.error('Fallback apartment load failed:', err);
     }
+  } catch (err) {
+    console.error('Fallback apartment load failed:', err);
   }
 
-  return mapped;
+  return mapFirestoreDocsToApartments(Object.values(uniqueById));
 };
 
 /**
@@ -441,16 +420,71 @@ export const deleteApartment = async (apartmentId: string): Promise<void> => {
 // Utility function to map Firestore documents to Apartment type
 const mapFirestoreDocsToApartments = (docs: Record<string, unknown>[]): Apartment[] => {
   return docs.map((doc) => {
-    const { id, buildingId, companyIds, number, residentId, tenants, waterReadings, companyName } = doc;
+    const {
+      id,
+      buildingId,
+      companyIds,
+      number,
+      residentId,
+      tenants,
+      waterReadings,
+      companyName,
+      address,
+      floor,
+      owner,
+      ownerEmail,
+      cadastralNumber,
+      cadastralPart,
+      apartmentType,
+      commonPropertyShare,
+      area,
+      heatingArea,
+      managementArea,
+      declaredResidents,
+      hotWaterMeterNumber,
+      coldWaterMeterNumber,
+      description,
+      rooms,
+      ResidencyAgreementLinks,
+      residencyAgreementLinks,
+    } = doc;
+
+    const normalizedDeclaredResidents =
+      typeof declaredResidents === 'number'
+        ? declaredResidents
+        : (typeof declaredResidents === 'string' && declaredResidents.trim() !== ''
+          ? Number(declaredResidents)
+          : undefined);
+
     return {
       id: id as string,
       buildingId: buildingId as string,
-      companyIds: companyIds as string[],
+      companyIds: Array.isArray(companyIds) ? companyIds as string[] : [],
       number: number as string,
       residentId: residentId as string | undefined,
       tenants: tenants as TenantAccess[] | undefined,
       waterReadings: waterReadings as WaterReadings | undefined,
       companyName: companyName as string | undefined,
+      address: typeof address === 'string' ? address : undefined,
+      floor: typeof floor === 'string' ? floor : (floor != null ? String(floor) : undefined),
+      owner: typeof owner === 'string' ? owner : undefined,
+      ownerEmail: typeof ownerEmail === 'string' ? ownerEmail : undefined,
+      cadastralNumber: typeof cadastralNumber === 'string' ? cadastralNumber : undefined,
+      cadastralPart: typeof cadastralPart === 'string' ? cadastralPart : undefined,
+      apartmentType: typeof apartmentType === 'string' ? apartmentType : undefined,
+      commonPropertyShare: typeof commonPropertyShare === 'string' ? commonPropertyShare : undefined,
+      area: typeof area === 'number' ? area : undefined,
+      heatingArea: typeof heatingArea === 'number' ? heatingArea : undefined,
+      managementArea: typeof managementArea === 'number' ? managementArea : undefined,
+      declaredResidents: Number.isFinite(normalizedDeclaredResidents)
+        ? normalizedDeclaredResidents
+        : undefined,
+      hotWaterMeterNumber: typeof hotWaterMeterNumber === 'string' ? hotWaterMeterNumber : undefined,
+      coldWaterMeterNumber: typeof coldWaterMeterNumber === 'string' ? coldWaterMeterNumber : undefined,
+      description: typeof description === 'string' ? description : undefined,
+      rooms: typeof rooms === 'number' ? rooms : undefined,
+      ResidencyAgreementLinks: Array.isArray(ResidencyAgreementLinks) ? ResidencyAgreementLinks as string[] : undefined,
+      residencyAgreementLinks: Array.isArray(residencyAgreementLinks) ? residencyAgreementLinks as string[] : undefined,
     };
   });
 };

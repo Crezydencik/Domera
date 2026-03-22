@@ -11,7 +11,6 @@
 import {
   createDocument,
   getDocument,
-  getDocumentsByCompany,
   updateDocument,
   deleteDocument,
 } from '@/firebase/services/firestoreService';
@@ -21,6 +20,8 @@ import {
   METER_READING_RULES,
 } from '@/shared/constants';
 import { Building } from '@/shared/types';
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import { db } from '@/firebase/config';
 
 /**
  * Create new building
@@ -97,8 +98,30 @@ export const getBuilding = async (buildingId: string): Promise<Building | null> 
  */
 export const getBuildingsByCompany = async (companyId: string): Promise<Building[]> => {
   try {
-    const buildings = await getDocumentsByCompany(FIRESTORE_COLLECTIONS.BUILDINGS, companyId);
-    return buildings as Building[];
+    const buildingsCollection = collection(db, FIRESTORE_COLLECTIONS.BUILDINGS);
+
+    const [legacyCompanySnapshot, managedBySnapshot] = await Promise.all([
+      getDocs(query(buildingsCollection, where('companyId', '==', companyId))),
+      getDocs(query(buildingsCollection, where('managedBy.companyId', '==', companyId))),
+    ]);
+
+    const uniqueById: Record<string, Building> = {};
+
+    for (const buildingDoc of legacyCompanySnapshot.docs) {
+      uniqueById[buildingDoc.id] = {
+        id: buildingDoc.id,
+        ...(buildingDoc.data() as Omit<Building, 'id'>),
+      } as Building;
+    }
+
+    for (const buildingDoc of managedBySnapshot.docs) {
+      uniqueById[buildingDoc.id] = {
+        id: buildingDoc.id,
+        ...(buildingDoc.data() as Omit<Building, 'id'>),
+      } as Building;
+    }
+
+    return Object.values(uniqueById);
   } catch (error) {
     console.error('Error getting buildings by company:', error);
     throw error;

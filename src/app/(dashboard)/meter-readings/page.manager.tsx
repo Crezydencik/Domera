@@ -37,6 +37,33 @@ const formatDateTime = (value: ReadingTimestampLike): string => {
   if (!timestamp) return "—";
   return new Intl.DateTimeFormat("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(timestamp));
 };
+const formatThreeDecimals = (value: unknown): string => {
+  const num = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(num)) return '—';
+  return num.toFixed(3);
+};
+const getLatestReadingForMeter = (readings: MeterReading[], meterId: string): MeterReading | null => {
+  const filtered = readings.filter((reading) => reading.meterId === meterId);
+  if (filtered.length === 0) return null;
+
+  return [...filtered].sort((a, b) => {
+    const periodDiff = Number(b.year) - Number(a.year) || Number(b.month) - Number(a.month);
+    if (periodDiff !== 0) return periodDiff;
+    return toTimestampMs(b.submittedAt as ReadingTimestampLike) - toTimestampMs(a.submittedAt as ReadingTimestampLike);
+  })[0] ?? null;
+};
+const isPreviousCalendarMonth = (year: number, month: number): boolean => {
+  const now = new Date();
+  let prevMonth = now.getMonth(); // 0..11, previous calendar month index
+  let prevYear = now.getFullYear();
+
+  if (prevMonth === 0) {
+    prevMonth = 12;
+    prevYear -= 1;
+  }
+
+  return year === prevYear && month === prevMonth;
+};
 const getMeterDisplayName = (meter?: Meter | null): string => {
   if (!meter) return '';
   const name = meter.name?.toString().trim() ?? '';
@@ -139,7 +166,7 @@ export default function MeterReadingsManagerPage() {
         const updateData: Partial<Omit<Apartment, 'id'>> = { waterReadings: waterReadingsUpdate };
         const mod = await import('@/modules/apartments/services/apartmentsService');
         await mod.updateApartment(editApartmentId, updateData);
-        toast.success('Сохранено!');
+        toast.success(t('auth.alert.saved'));
         // Обновить данные квартиры после сохранения
         const aData = await getApartmentsByCompany(user.companyId);
         setApartments(aData);
@@ -161,12 +188,13 @@ export default function MeterReadingsManagerPage() {
         }
         setEditModalOpen(false);
       } catch (e: unknown) {
-        const message = e instanceof Error ? e.message : 'Ошибка при сохранении!';
+        const message = e instanceof Error ? e.message : t('auth.alert.saveError');
         toast.error(message);
       }
     };
   const { user, loading } = useAuth();
-  const t = useTranslations('dashboard.meterReadings');
+  const t = useTranslations();
+  const tMeter = useTranslations('dashboard.meterReadings');
   const [apartments, setApartments] = useState<Apartment[]>([]);
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [readings, setReadings] = useState<MeterReading[]>([]);
@@ -243,7 +271,7 @@ export default function MeterReadingsManagerPage() {
         }, {});
         setMetersByApartmentId(currentMetersByApartmentId);
       } catch (error: unknown) {
-        setLoadError(error instanceof Error ? error.message : t('loadError'));
+        setLoadError(error instanceof Error ? error.message : tMeter('loadError'));
       } finally {
         setIsLoadingData(false);
       }
@@ -300,7 +328,7 @@ export default function MeterReadingsManagerPage() {
     return sortedReadings.map((reading) => {
       const apartment = apartmentById[reading.apartmentId];
       const apartmentNumber = apartment?.number ?? reading.apartmentId;
-      const buildingName = apartment ? buildingNameById[apartment.buildingId] ?? t('notSpecified') : t('notSpecified');
+      const buildingName = apartment ? buildingNameById[apartment.buildingId] ?? tMeter('notSpecified') : tMeter('notSpecified');
       const meter = meterById[reading.meterId];
       const meterName = meter ? getMeterDisplayName(meter) : reading.meterId;
       const period = `${reading.year}. gads ${String(reading.month).padStart(2, '0')}`;
@@ -316,20 +344,20 @@ export default function MeterReadingsManagerPage() {
         isMissing: Boolean(reading.isMissing),
       };
     });
-  }, [sortedReadings, apartmentById, buildingNameById, meterById, t]);
+  }, [sortedReadings, apartmentById, buildingNameById, meterById, tMeter]);
 
   const handleExportCsv = () => {
     if (exportRows.length === 0) return;
     const headers = [
-      t('apartment'),
-      t('building'),
-      t('meter'),
-      t('period'),
-      t('submittedAt'),
-      t('previousValue'),
-      t('currentValue'),
-      t('consumption'),
-      t('isMissing'),
+      tMeter('apartment'),
+      tMeter('building'),
+      tMeter('meter'),
+      tMeter('period'),
+      tMeter('submittedAt'),
+      tMeter('previousValue'),
+      tMeter('currentValue'),
+      tMeter('consumption'),
+      tMeter('isMissing'),
     ];
     const rows = exportRows.map((row) => [
       row.apartmentNumber,
@@ -340,7 +368,7 @@ export default function MeterReadingsManagerPage() {
       row.previousValue,
       row.currentValue,
       row.consumption,
-      row.isMissing ? t('yes') : t('no'),
+      row.isMissing ? tMeter('yes') : tMeter('no'),
     ]);
     const csv = [headers, ...rows]
       .map((line) => line.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
@@ -371,8 +399,8 @@ export default function MeterReadingsManagerPage() {
     );
     const workbook = XLSX.utils.book_new();
     // Имя листа: максимум 31 символ, без спецсимволов
-    let sheetName = t('meterReadings');
-    if (typeof sheetName !== 'string' || !sheetName.trim()) sheetName = t('readings');
+    let sheetName = tMeter('meterReadings');
+    if (typeof sheetName !== 'string' || !sheetName.trim()) sheetName = tMeter('readings');
     sheetName = sheetName.replace(/[\/?*\[\]:]/g, '').replace(/&/g, 'and').slice(0, 31);
     XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
     XLSX.writeFile(workbook, `meter-readings-${new Date().toISOString().slice(0, 10)}.xlsx`);
@@ -386,11 +414,11 @@ export default function MeterReadingsManagerPage() {
       await deleteMeterReading(deleteTarget.apartmentId, deleteTarget.readingId);
       setReadings((prev) => prev.filter((reading) => reading.id !== deleteTarget.readingId));
       toast.success(
-        t('meterReadingDeleted', { meterName: deleteTarget.meterName, period: deleteTarget.period })
+        tMeter('meterReadingDeleted', { meterName: deleteTarget.meterName, period: deleteTarget.period })
       );
       setDeleteTarget(null);
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : t('meterReadingDeleteError'));
+      toast.error(error instanceof Error ? error.message : tMeter('meterReadingDeleteError'));
     } finally {
       setDeletingReadingId(null);
     }
@@ -404,16 +432,16 @@ export default function MeterReadingsManagerPage() {
       if (deleteMultiLeft && deleteMulti.left && deleteMulti.left.id) toDelete.push(deleteMulti.left.id);
       if (deleteMultiRight && deleteMulti.right && deleteMulti.right.id) toDelete.push(deleteMulti.right.id);
       if (toDelete.length === 0) {
-        throw new Error('Не выбрано ни одного показания для удаления');
+        throw new Error(t('auth.alert.noneSelectedForDelete'));
       }
       for (const id of toDelete) {
         await deleteMeterReading(deleteMulti.apartmentId, id);
       }
       setReadings((prev) => prev.filter((reading) => !toDelete.includes(reading.id)));
-      toast.success(t('meterReadingsDeleted'));
+      toast.success(tMeter('meterReadingsDeleted'));
       setDeleteMulti(null);
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : t('meterReadingsDeleteError'));
+      toast.error(error instanceof Error ? error.message : tMeter('meterReadingsDeleteError'));
     } finally {
       setDeletingReadingId(null);
     }
@@ -437,7 +465,7 @@ export default function MeterReadingsManagerPage() {
       <div className="min-h-screen bg-linear-to-br from-white via-gray-50 to-white flex items-center justify-center">
         <div className="text-center">
           <div className="w-12 h-12 border-3 border-blue-500 border-t-blue-300 rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-700 font-medium">{t('loading')}</p>
+          <p className="text-gray-700 font-medium">{tMeter('loading')}</p>
         </div>
       </div>
     );
@@ -448,14 +476,14 @@ export default function MeterReadingsManagerPage() {
 
   return (
     <div className="min-h-screen bg-linear-to-br from-white via-gray-50 to-white text-gray-900">
-      <Header userName={user.name || user.email || t('user')} userEmail={user.email} onLogout={handleLogout} pageTitle={t('waterReadings')} />
+      <Header userName={user.name || user.email || tMeter('user')} userEmail={user.email} onLogout={handleLogout} pageTitle={tMeter('waterReadings')} />
 
       <main className="max-w-7xl mx-auto px-4 py-10">
         {/* Верхняя панель: фильтр и экспорт */}
         <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 mb-12">
           <div className="flex-1 max-w-sm">
             <label className="block text-sm font-semibold text-gray-700 mb-3" htmlFor="building-select">
-              {t('selectBuilding') !== 'dashboard.meterReadings.selectBuilding' ? t('selectBuilding') : 'Выбрать дом'}
+              {tMeter('selectBuilding') !== 'dashboard.meterReadings.selectBuilding' ? tMeter('selectBuilding') : 'Выбрать дом'}
             </label>
             <select
               id="building-select"
@@ -525,13 +553,13 @@ export default function MeterReadingsManagerPage() {
               Object.keys(updateWithMonthly).forEach(key => updateWithMonthly[key] === undefined && delete updateWithMonthly[key]);
               const mod = await import('@/modules/invoices/services/buildings/services/buildingsService');
               await mod.updateBuilding(selectedBuilding.id, updateWithMonthly);
-              toast.success('Период сдачи показаний успешно сохранён!');
+              toast.success(t('auth.alert.submissionPeriodSaved'));
               // Обновить данные о домах после сохранения
               const bData = await getBuildingsByCompany(user.companyId);
               setBuildings(bData);
             } catch (e) {
               console.error('Ошибка при сохранении периода сдачи:', e);
-              toast.error('Ошибка при сохранении периода сдачи!');
+              toast.error(t('auth.alert.submissionPeriodSaveError'));
             } finally {
               setIsSaving(false);
             }
@@ -549,7 +577,7 @@ export default function MeterReadingsManagerPage() {
                         </svg>
                       </div>
                       <div>
-                        <h3 className="text-lg font-bold text-gray-900">{t('submissionPeriodForBuilding')}</h3>
+                        <h3 className="text-lg font-bold text-gray-900">{tMeter('submissionPeriodForBuilding')}</h3>
                         <p className="text-sm text-gray-600 mt-1">
                           {editOpenDate && editCloseDate
                             ? `${new Date(editOpenDate).toLocaleDateString('ru-RU')} — ${new Date(editCloseDate).toLocaleDateString('ru-RU')}`
@@ -567,7 +595,7 @@ export default function MeterReadingsManagerPage() {
                 <div className="border-t border-blue-100 px-6 pb-6 lg:px-8 lg:pb-8">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 mt-6">
                     <label className="block">
-                      <span className="text-sm font-semibold text-gray-700 mb-2 block">{t('openDate')}</span>
+                      <span className="text-sm font-semibold text-gray-700 mb-2 block">{tMeter('openDate')}</span>
                       <input
                         type="date"
                         className="w-full px-4 py-2.5 border border-gray-200 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition shadow-sm"
@@ -576,7 +604,7 @@ export default function MeterReadingsManagerPage() {
                       />
                     </label>
                     <label className="block">
-                      <span className="text-sm font-semibold text-gray-700 mb-2 block">{t('closeDate')}</span>
+                      <span className="text-sm font-semibold text-gray-700 mb-2 block">{tMeter('closeDate')}</span>
                       <input
                         type="date"
                         className="w-full px-4 py-2.5 border border-gray-200 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition shadow-sm"
@@ -602,10 +630,10 @@ export default function MeterReadingsManagerPage() {
                       type="button"
                       disabled={isSaving || !editOpenDate || !editCloseDate || !selectedBuildingId}
                     >
-                      {isSaving ? 'Сохранение...' : t('save')}
+                      {isSaving ? 'Сохранение...' : tMeter('save')}
                     </button>
                     {!selectedBuildingId && (
-                      <p className="text-xs text-red-600 self-center">{t('selectBuildingToSave')}</p>
+                      <p className="text-xs text-red-600 self-center">{tMeter('selectBuildingToSave')}</p>
                     )}
                   </div>
                 </div>
@@ -622,14 +650,14 @@ export default function MeterReadingsManagerPage() {
 
         {isLoadingData ? (
           <div className="rounded-xl border border-gray-200 bg-gray-50 p-12 text-center shadow-sm animate-pulse">
-            <p className="text-gray-600 text-lg font-medium">{t('loadingApartmentsAndReadings')}</p>
+            <p className="text-gray-600 text-lg font-medium">{tMeter('loadingApartmentsAndReadings')}</p>
           </div>
         ) : apartments.length === 0 ? (
           <div className="rounded-xl border border-gray-200 bg-gray-50 p-12 text-center shadow-sm">
             <svg className="w-12 h-12 text-gray-400 mx-auto mb-3" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
             </svg>
-            <p className="text-gray-600 text-lg font-medium">{t('noApartmentsFound')}</p>
+            <p className="text-gray-600 text-lg font-medium">{tMeter('noApartmentsFound')}</p>
           </div>
         ) : visibleApartments.length === 0 ? (
           <div className="rounded-xl border border-gray-200 bg-gray-50 p-12 text-center shadow-sm">
@@ -649,7 +677,7 @@ export default function MeterReadingsManagerPage() {
                 </thead>
                 <tbody className="divide-y divide-gray-100">
             {visibleApartments.map((apartment) => {
-                const buildingName = buildingNameById[apartment.buildingId] ?? t('notSpecified');
+                const buildingName = buildingNameById[apartment.buildingId] ?? tMeter('notSpecified');
                 const meters = metersByApartmentId[apartment.id] || [];
                 const apartmentReadings = readingsByApartmentId[apartment.id] || [];
                 const dedupedMeters = meters.reduce<Meter[]>((acc, meter) => {
@@ -683,19 +711,27 @@ export default function MeterReadingsManagerPage() {
                             <div className="flex flex-col items-start gap-2">
                               {dedupedMeters.map((meter) => {
                                 const isCold = meter.name?.toLowerCase() === 'cwm';
+                                const latestReading = getLatestReadingForMeter(apartmentReadings, meter.id);
                                 return (
-                                  <div
-                                    key={meter.id}
-                                    className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold ${
-                                      isCold
-                                        ? 'border-blue-200 bg-blue-50 text-blue-700'
-                                        : 'border-rose-200 bg-rose-50 text-rose-700'
-                                    }`}
-                                  >
-                                    <span className={`inline-flex h-2.5 w-2.5 rounded-full ${isCold ? 'bg-blue-500' : 'bg-rose-500'}`} />
-                                    <span>{getMeterDisplayName(meter)}</span>
-                                    <span className="text-gray-400">•</span>
-                                    <span className="font-medium text-gray-900">{getApartmentMeterSerial(apartment, meter) || 'без номера'}</span>
+                                  <div key={meter.id} className="flex flex-col items-start gap-1">
+                                    <div
+                                      className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold ${
+                                        isCold
+                                          ? 'border-blue-200 bg-blue-50 text-blue-700'
+                                          : 'border-rose-200 bg-rose-50 text-rose-700'
+                                      }`}
+                                    >
+                                      <span className={`inline-flex h-2.5 w-2.5 rounded-full ${isCold ? 'bg-blue-500' : 'bg-rose-500'}`} />
+                                      <span>{getMeterDisplayName(meter)}</span>
+                                      <span className="text-gray-400">•</span>
+                                      <span className="font-medium text-gray-900">{getApartmentMeterSerial(apartment, meter) || 'без номера'}</span>
+                                    </div>
+
+                                    <div className="pl-1 text-[11px] text-gray-600">
+                                      {latestReading
+                                        ? `Пред: ${formatThreeDecimals(latestReading.previousValue)} • Тек: ${formatThreeDecimals(latestReading.currentValue)} • Расход: ${formatThreeDecimals(latestReading.consumption)}`
+                                        : 'Пред: — • Тек: — • Расход: —'}
+                                    </div>
                                   </div>
                                 );
                               })}
@@ -750,6 +786,7 @@ export default function MeterReadingsManagerPage() {
                                   const [year, month] = key.split('-').map(Number);
                                   const label = `${year}. gads ${String(month).padStart(2, '0')}`;
                                   const readingsInMonth = grouped[key];
+                                  const showConsumption = isPreviousCalendarMonth(year, month);
 
                                   return (
                                     <details key={key} className="group/month overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -772,6 +809,7 @@ export default function MeterReadingsManagerPage() {
                                               <th className="px-2 py-2 text-left font-semibold">Дата</th>
                                               <th className="px-2 py-2 text-right font-semibold">Предыдущее</th>
                                               <th className="px-2 py-2 text-right font-semibold">Текущее</th>
+                                              <th className="px-2 py-2 text-right font-semibold">Расход</th>
                                             </tr>
                                           </thead>
                                           <tbody>
@@ -781,8 +819,11 @@ export default function MeterReadingsManagerPage() {
                                                   {meterById[reading.meterId] ? getMeterDisplayName(meterById[reading.meterId]) : reading.meterId}
                                                 </td>
                                                 <td className="px-2 py-2">{formatDateTime(reading.submittedAt)}</td>
-                                                <td className="px-2 py-2 text-right">{reading.previousValue}</td>
-                                                <td className="px-2 py-2 text-right font-bold text-slate-900">{reading.currentValue}</td>
+                                                <td className="px-2 py-2 text-right">{formatThreeDecimals(reading.previousValue)}</td>
+                                                <td className="px-2 py-2 text-right font-bold text-slate-900">{formatThreeDecimals(reading.currentValue)}</td>
+                                                <td className="px-2 py-2 text-right">
+                                                  {showConsumption ? formatThreeDecimals(reading.consumption) : '—'}
+                                                </td>
                                               </tr>
                                             ))}
                                           </tbody>
@@ -816,18 +857,18 @@ export default function MeterReadingsManagerPage() {
         />
         <ConfirmationDialog
           isOpen={Boolean(deleteTarget)}
-          title={t('deleteReading')}
-          description={t('confirmDeleteReading')}
+          title={tMeter('deleteReading')}
+          description={tMeter('confirmDeleteReading')}
           details={
             deleteTarget
               ? [
-                  `${t('apartment')}: ${deleteTarget.apartmentNumber}`,
-                  `${t('meter')}: ${deleteTarget.meterName}`,
-                  `${t('period')}: ${deleteTarget.period}`,
+                  `${tMeter('apartment')}: ${deleteTarget.apartmentNumber}`,
+                  `${tMeter('meter')}: ${deleteTarget.meterName}`,
+                  `${tMeter('period')}: ${deleteTarget.period}`,
                 ]
               : []
           }
-          confirmLabel={t('delete')}
+          confirmLabel={tMeter('delete')}
           confirmVariant="danger"
           loading={Boolean(deletingReadingId)}
           onCancel={() => setDeleteTarget(null)}
@@ -836,10 +877,10 @@ export default function MeterReadingsManagerPage() {
 
         <ConfirmationDialog
           isOpen={Boolean(deleteMulti)}
-          title={t('deleteReadings')}
-          description={t('selectReadingsToDelete')}
-          details={deleteMulti ? [`${t('apartment')}: ${deleteMulti.apartmentNumber}`, `${t('period')}: ${deleteMulti.period}`] : []}
-          confirmLabel={t('deleteSelected')}
+          title={tMeter('deleteReadings')}
+          description={tMeter('selectReadingsToDelete')}
+          details={deleteMulti ? [`${tMeter('apartment')}: ${deleteMulti.apartmentNumber}`, `${tMeter('period')}: ${deleteMulti.period}`] : []}
+          confirmLabel={tMeter('deleteSelected')}
           confirmVariant="danger"
           loading={Boolean(deletingReadingId)}
           onCancel={() => setDeleteMulti(null)}

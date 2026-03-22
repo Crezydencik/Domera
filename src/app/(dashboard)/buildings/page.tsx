@@ -7,6 +7,7 @@ import Image from 'next/image';
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import type { Building, CompanyInvitation } from '@/shared/types';
 import {
   createBuilding,
@@ -24,6 +25,7 @@ import { toast } from 'react-toastify';
 export default function BuildingsPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const t = useTranslations();
 
   const handleLogout = async () => {
     await logout();
@@ -204,12 +206,12 @@ export default function BuildingsPage() {
     e.preventDefault();
 
     if (!user?.companyId) {
-      toast.error('Не найдена компания пользователя');
+      toast.error(t('auth.alert.userCompanyNotFound'));
       return;
     }
 
     if (!buildingName.trim() || !buildingAddress.trim()) {
-      toast.error('Заполните название и адрес дома');
+      toast.error(t('auth.alert.buildingNameAddressRequired'));
       return;
     }
 
@@ -231,9 +233,9 @@ export default function BuildingsPage() {
       setBuildingName('');
       setBuildingAddress('');
       setShowCreateForm(false);
-      toast.success('Дом успешно создан');
+      toast.success(t('auth.alert.buildingCreated'));
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Ошибка при создании дома');
+      toast.error(err instanceof Error ? err.message : t('auth.alert.buildingCreateError'));
     } finally {
       setSubmitting(false);
     }
@@ -241,7 +243,7 @@ export default function BuildingsPage() {
 
   const handleDeleteBuilding = async (building: Building) => {
     if (!user?.companyId) {
-      toast.error('Не найден идентификатор компании');
+      toast.error(t('auth.alert.companyIdMissing'));
       return;
     }
 
@@ -250,7 +252,7 @@ export default function BuildingsPage() {
     try {
       const apartments = await getApartmentsByBuilding(building.id);
       if (apartments.length > 0) {
-        throw new Error('Нельзя удалить дом: сначала удалите или перенесите все квартиры');
+        throw new Error(t('auth.alert.buildingDeleteBlockedHasApartments'));
       }
 
       await deleteBuilding(building.id);
@@ -262,9 +264,9 @@ export default function BuildingsPage() {
         return next;
       });
       setSelectedBuildingForModal((prev) => (prev?.id === building.id ? null : prev));
-      toast.success(`Дом «${building.name}» удалён`);
+      toast.success(t('auth.alert.buildingDeleted', { name: building.name }));
     } catch (deleteErr: unknown) {
-      toast.error(deleteErr instanceof Error ? deleteErr.message : 'Ошибка удаления дома');
+      toast.error(deleteErr instanceof Error ? deleteErr.message : t('auth.alert.buildingDeleteError'));
     } finally {
       setDeletingBuildingId(null);
     }
@@ -275,17 +277,17 @@ export default function BuildingsPage() {
 
     const normalizedEmail = userEmailToAssign.trim().toLowerCase();
     if (!normalizedEmail) {
-      toast.error('Введите email пользователя');
+      toast.error(t('auth.alert.userEmailRequired'));
       return;
     }
 
     if (!user?.companyId || !selectedBuildingForUserModal) {
-      toast.error('Не найден контекст дома или компании');
+      toast.error(t('auth.alert.buildingOrCompanyContextMissing'));
       return;
     }
 
     if (!isMainAdminForBuilding(selectedBuildingForUserModal)) {
-      toast.error('Приглашать пользователей может только главный администратор дома');
+      toast.error(t('auth.alert.onlyMainAdminCanInvite'));
       return;
     }
 
@@ -311,7 +313,7 @@ export default function BuildingsPage() {
 
         const invitationResult = await invitationResponse.json().catch(() => ({}));
         if (!invitationResponse.ok) {
-          throw new Error(invitationResult?.error ?? 'Не удалось отправить приглашение на регистрацию');
+          throw new Error(invitationResult?.error ?? t('auth.alert.registrationInviteSendError'));
         }
 
         setBuildingInvitations((prev) => [
@@ -329,7 +331,7 @@ export default function BuildingsPage() {
           ...prev,
         ]);
 
-        toast.success('Пользователь не найден. Отправлено приглашение на регистрацию.');
+        toast.success(t('auth.alert.userNotFoundInviteSent'));
         setUserEmailToAssign('');
         setRoleToAssign('Accountant');
         return;
@@ -340,14 +342,14 @@ export default function BuildingsPage() {
         companyId: user.companyId,
       });
 
-      const roleLabel = roleToAssign === 'Accountant' ? 'бухгалтер' : 'администратор';
-      toast.success(`Пользователь назначен как ${roleLabel}`);
+      const roleLabel = roleToAssign === 'Accountant' ? 'accountant' : 'administrator';
+      toast.success(t('auth.alert.userAssignedRole', { role: roleLabel }));
 
       setUserEmailToAssign('');
       setRoleToAssign('Accountant');
       setSelectedBuildingForUserModal(null);
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Не удалось назначить роль пользователю');
+      toast.error(err instanceof Error ? err.message : t('auth.alert.userAssignRoleError'));
     } finally {
       setAssigningUser(false);
     }

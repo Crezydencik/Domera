@@ -15,7 +15,8 @@ import type { Building, Meter, MeterReading, WaterMeterData, WaterReadings } fro
 
 export default function BuildingWaterReadingsPage() {
   const { user, loading } = useAuth();
-  const t = useTranslations("dashboard.meterReadings");
+  const t = useTranslations();
+  const tMeter = useTranslations("dashboard.meterReadings");
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -64,13 +65,13 @@ export default function BuildingWaterReadingsPage() {
         const bData = await getBuildingsByCompany(user.companyId);
         setBuildings(bData);
       } catch (error: unknown) {
-        setLoadError(error instanceof Error ? error.message : t("loadError"));
+        setLoadError(error instanceof Error ? error.message : tMeter("loadError"));
       } finally {
         setIsLoadingData(false);
       }
     };
     loadData();
-  }, [user, t]);
+  }, [user, tMeter]);
 
   const selectedBuilding = selectedBuildingId
     ? buildings.find((b) => b.id === selectedBuildingId)
@@ -153,12 +154,12 @@ export default function BuildingWaterReadingsPage() {
 
     try {
       await updateBuilding(selectedBuilding.id, { waterReadings: nextWaterReadings });
-      toast.success("Данные счётчиков сохранены!");
+      toast.success(t('auth.alert.meterDetailsSaved'));
       setDetailsModalOpen(false);
       const bData = await getBuildingsByCompany(user.companyId);
       setBuildings(bData);
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : "Ошибка при сохранении данных счётчиков!");
+      toast.error(e instanceof Error ? e.message : t('auth.alert.meterDetailsSaveError'));
     }
   };
 
@@ -169,7 +170,7 @@ export default function BuildingWaterReadingsPage() {
     const hwmCombined = buildingHwmInt ? `${buildingHwmInt}.${buildingHwmFrac || "0"}` : "";
 
     if (!cwmCombined && !hwmCombined) {
-      toast.error("Введите хотя бы одно показание счётчика");
+      toast.error(t('auth.alert.enterAtLeastOneReading'));
       return;
     }
 
@@ -189,12 +190,12 @@ export default function BuildingWaterReadingsPage() {
     if (cwmCombined) {
       const newVal = parseFloat(cwmCombined);
       if (Number.isNaN(newVal)) {
-        toast.error("Некорректное значение ХВС");
+        toast.error(t('auth.alert.invalidColdValue'));
         return;
       }
       const existing = selectedBuilding.waterReadings?.coldmeterwater;
       if (existing?.history?.some((h) => Number(h.month) === month && Number(h.year) === year)) {
-        toast.error("Показание ХВС за этот месяц уже подано");
+        toast.error(t('auth.alert.coldAlreadySubmitted'));
         return;
       }
       const meterId = `building-${selectedBuilding.id}-cwm`;
@@ -226,12 +227,12 @@ export default function BuildingWaterReadingsPage() {
     if (hwmCombined) {
       const newVal = parseFloat(hwmCombined);
       if (Number.isNaN(newVal)) {
-        toast.error("Некорректное значение ГВС");
+        toast.error(t('auth.alert.invalidHotValue'));
         return;
       }
       const existing = selectedBuilding.waterReadings?.hotmeterwater;
       if (existing?.history?.some((h) => Number(h.month) === month && Number(h.year) === year)) {
-        toast.error("Показание ГВС за этот месяц уже подано");
+        toast.error(t('auth.alert.hotAlreadySubmitted'));
         return;
       }
       const meterId = `building-${selectedBuilding.id}-hwm`;
@@ -263,7 +264,7 @@ export default function BuildingWaterReadingsPage() {
     setIsBuildingReadingSubmitting(true);
     try {
       await updateBuilding(selectedBuilding.id, { waterReadings: newWaterReadings });
-      toast.success("Показания дома сохранены!");
+      toast.success(t('auth.alert.buildingReadingsSaved'));
       setBuildingCwmInt("");
       setBuildingCwmFrac("");
       setBuildingHwmInt("");
@@ -271,7 +272,7 @@ export default function BuildingWaterReadingsPage() {
       const bData = await getBuildingsByCompany(user.companyId);
       setBuildings(bData);
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : "Ошибка при сохранении показаний!");
+      toast.error(e instanceof Error ? e.message : t('auth.alert.buildingReadingsSaveError'));
     } finally {
       setIsBuildingReadingSubmitting(false);
     }
@@ -289,7 +290,7 @@ export default function BuildingWaterReadingsPage() {
       <div className="min-h-screen bg-linear-to-br from-white via-gray-50 to-white flex items-center justify-center">
         <div className="text-center">
           <div className="w-12 h-12 border-3 border-blue-500 border-t-blue-300 rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-700 font-medium">{t("loading")}</p>
+          <p className="text-gray-700 font-medium">{tMeter("loading")}</p>
         </div>
       </div>
     );
@@ -307,13 +308,13 @@ export default function BuildingWaterReadingsPage() {
 
   return (
     <div className="min-h-screen bg-linear-to-br from-white via-gray-50 to-white text-gray-900">
-      <Header userName={user.name || user.email || t("user")} userEmail={user.email} onLogout={handleLogout} pageTitle="Показания дома" />
+      <Header userName={user.name || user.email || tMeter("user")} userEmail={user.email} onLogout={handleLogout} pageTitle="Показания дома" />
 
       <main className="max-w-7xl mx-auto px-4 py-10">
         <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 mb-10">
           <div className="flex-1 max-w-sm">
             <label className="block text-sm font-semibold text-gray-700 mb-3" htmlFor="building-select">
-              {t("selectBuilding") !== "dashboard.meterReadings.selectBuilding" ? t("selectBuilding") : "Выбрать дом"}
+              {tMeter("selectBuilding") !== "dashboard.meterReadings.selectBuilding" ? tMeter("selectBuilding") : "Выбрать дом"}
             </label>
             <select
               id="building-select"
@@ -356,7 +357,7 @@ export default function BuildingWaterReadingsPage() {
 
         {isLoadingData ? (
           <div className="rounded-xl border border-gray-200 bg-gray-50 p-12 text-center shadow-sm animate-pulse">
-            <p className="text-gray-600 text-lg font-medium">{t("loading")}</p>
+            <p className="text-gray-600 text-lg font-medium">{tMeter("loading")}</p>
           </div>
         ) : !selectedBuilding ? (
           <div className="rounded-xl border border-gray-200 bg-gray-50 p-12 text-center shadow-sm">

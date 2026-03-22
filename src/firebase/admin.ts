@@ -34,9 +34,9 @@ const getServiceAccount = () => {
       if (!isPlaceholderServiceAccount(parsed)) {
         return parsed;
       }
-      console.warn('Ignoring placeholder FIREBASE_SERVICE_ACCOUNT_JSON and falling back to local service account file.');
+      console.warn('firebase.admin.service_account.placeholder_ignored');
     } catch (error) {
-      console.warn('Failed to parse FIREBASE_SERVICE_ACCOUNT_JSON, falling back to local service account file.');
+      console.warn('firebase.admin.service_account.parse_failed');
     }
   }
 

@@ -65,8 +65,7 @@ export default function LoginPage() {
         await new Promise(resolve => setTimeout(resolve, 500));
       }
     } catch (err: any) {
-      console.error('Login failed:', toSafeErrorDetails(err));
-      const errorMessage = err.message || t('loginError');
+      console.error('auth.login.failed', toSafeErrorDetails(err));
       // Handle Firebase auth errors
       if (err.code === 'auth/user-not-found') {
         toast.error(t('userNotFound'), { className: 'border border-red-500' });
@@ -76,10 +75,16 @@ export default function LoginPage() {
         toast.error(t('invalidEmail') , { className: 'border border-red-500' });
       } else if (err.code === 'auth/user-disabled') {
         toast.error(t('userDisabled'), { className: 'border border-red-500' });
+      } else if (err.code === 'auth/invalid-credential') {
+        toast.error(t('invalidCredential'), { className: 'border border-red-500' });
+      } else if (err.code === 'auth/too-many-requests') {
+        toast.error(t('tooManyRequests'), { className: 'border border-red-500' });
+      } else if (err.code === 'auth/network-request-failed') {
+        toast.error(t('networkError'), { className: 'border border-red-500' });
       } else if (err.code === 'permission-denied') {
         toast.error(t('noAccess'), { className: 'border border-red-500' });
       } else {
-        toast.error(errorMessage, { className: 'border border-red-500' });
+        toast.error(t('loginError'), { className: 'border border-red-500' });
       }
     } finally {
       setLoading(false);

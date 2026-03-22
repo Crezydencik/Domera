@@ -1,21 +1,25 @@
 'use client';
 
 import { useAuth } from '@/shared/hooks/useAuth';
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import type { Project, ProjectStatus } from '@/shared/types';
 import { createProject, getProjectsByCompany } from '@/modules/projects/services/projectsService';
 
-const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = {
-  planned: 'Запланирован',
-  'in-progress': 'В работе',
-  completed: 'Завершён',
-};
-
 const PROJECT_STATUS_CLASSNAMES: Record<ProjectStatus, string> = {
   planned: 'bg-slate-700 text-slate-200 border border-slate-600',
   'in-progress': 'bg-blue-900/40 text-blue-300 border border-blue-700',
   completed: 'bg-green-900/40 text-green-300 border border-green-700',
+};
+
+const getProjectStatusLabel = (status: ProjectStatus, t: any): string => {
+  const labels: Record<ProjectStatus, string> = {
+    planned: t('projects.statusPlanned'),
+    'in-progress': t('projects.statusInProgress'),
+    completed: t('projects.statusCompleted'),
+  };
+  return labels[status];
 };
 
 const toTimestamp = (value: unknown): number => {
@@ -40,7 +44,7 @@ const toTimestamp = (value: unknown): number => {
 
 const formatDate = (value: unknown): string => {
   const timestamp = toTimestamp(value);
-  if (!timestamp) return 'Дата не указана';
+  if (!timestamp) return 'Date not specified';
 
   return new Intl.DateTimeFormat('ru-RU', {
     day: '2-digit',
@@ -51,6 +55,7 @@ const formatDate = (value: unknown): string => {
 
 export default function ProjectsPage() {
   const { user, loading } = useAuth();
+  const t = useTranslations();
   const [projects, setProjects] = useState<Project[]>([]);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [projectTitle, setProjectTitle] = useState('');
@@ -80,12 +85,12 @@ export default function ProjectsPage() {
     setError('');
 
     if (!user?.companyId) {
-      setError('Не найдена компания пользователя');
+      setError(t('auth.alert.userCompanyNotFound'));
       return;
     }
 
     if (!projectTitle.trim() || !projectDescription.trim()) {
-      setError('Заполните название и описание проекта');
+      setError(t('auth.alert.projectTitleDescriptionRequired'));
       return;
     }
 
@@ -105,18 +110,18 @@ export default function ProjectsPage() {
       setProjectStatus('planned');
       setShowCreateForm(false);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Ошибка при создании проекта');
+      setError(err instanceof Error ? err.message : t('auth.alert.projectCreateError'));
     } finally {
       setSubmitting(false);
     }
   };
 
   if (loading) {
-    return <div className="text-white">Загрузка...</div>;
+    return <div className="text-white">{t('projects.loading')}</div>;
   }
 
   if (!user) {
-    return <div className="text-white">Требуется вход</div>;
+    return <div className="text-white">{t('projects.loginRequired')}</div>;
   }
 
   return (
@@ -124,15 +129,15 @@ export default function ProjectsPage() {
       <header className="bg-slate-800 border-b border-slate-700">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
           <Link href="/dashboard" className="text-gray-400 hover:text-white">
-            ← Вернуться
+            ← {t('projects.back')}
           </Link>
-          <h1 className="text-2xl font-bold text-white">Проекты</h1>
+          <h1 className="text-2xl font-bold text-white">{t('projects.title')}</h1>
           <button
             type="button"
             onClick={() => setShowCreateForm((prev) => !prev)}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
           >
-            + Добавить проект
+            + {t('projects.addProject')}
           </button>
         </div>
       </header>
@@ -140,10 +145,10 @@ export default function ProjectsPage() {
       <main className="max-w-7xl mx-auto px-4 py-8">
         {showCreateForm && (
           <div className="bg-slate-800 border border-slate-700 rounded-lg p-6 mb-8">
-            <h2 className="text-xl font-bold text-white mb-4">Новый проект</h2>
+            <h2 className="text-xl font-bold text-white mb-4">{t('projects.newProject')}</h2>
             <form onSubmit={handleCreateProject} className="space-y-4">
               <div>
-                <label className="block text-sm text-gray-300 mb-2">Название проекта</label>
+                <label className="block text-sm text-gray-300 mb-2">{t('projects.projectName')}</label>
                 <input
                   type="text"
                   value={projectTitle}
@@ -155,7 +160,7 @@ export default function ProjectsPage() {
               </div>
 
               <div>
-                <label className="block text-sm text-gray-300 mb-2">Описание</label>
+                <label className="block text-sm text-gray-300 mb-2">{t('projects.description')}</label>
                 <textarea
                   value={projectDescription}
                   onChange={(e) => setProjectDescription(e.target.value)}
@@ -167,15 +172,15 @@ export default function ProjectsPage() {
               </div>
 
               <div>
-                <label className="block text-sm text-gray-300 mb-2">Статус</label>
+                <label className="block text-sm text-gray-300 mb-2">{t('projects.status')}</label>
                 <select
                   value={projectStatus}
                   onChange={(e) => setProjectStatus(e.target.value as ProjectStatus)}
                   className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white"
                 >
-                  <option value="planned">Запланирован</option>
-                  <option value="in-progress">В работе</option>
-                  <option value="completed">Завершён</option>
+                  <option value="planned">{t('projects.statusPlanned')}</option>
+                  <option value="in-progress">{t('projects.statusInProgress')}</option>
+                  <option value="completed">{t('projects.statusCompleted')}</option>
                 </select>
               </div>
 
@@ -191,14 +196,14 @@ export default function ProjectsPage() {
                   disabled={submitting}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
                 >
-                  {submitting ? 'Сохранение...' : 'Сохранить проект'}
+                  {submitting ? t('projects.saving') : t('projects.save')}
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowCreateForm(false)}
                   className="px-4 py-2 bg-slate-700 text-white rounded-lg border border-slate-600 hover:bg-slate-600 transition"
                 >
-                  Отмена
+                  {t('projects.cancel')}
                 </button>
               </div>
             </form>
@@ -208,14 +213,14 @@ export default function ProjectsPage() {
         {projects.length === 0 ? (
           <div className="text-center py-12">
             <div className="text-6xl mb-4">🛠️</div>
-            <h2 className="text-2xl font-bold text-white mb-2">Нет проектов</h2>
-            <p className="text-gray-400 mb-6">Добавьте первый проект для управления задачами</p>
+            <h2 className="text-2xl font-bold text-white mb-2">{t('projects.noProjects')}</h2>
+            <p className="text-gray-400 mb-6">{t('projects.addFirstProject')}</p>
             <button
               type="button"
               onClick={() => setShowCreateForm(true)}
               className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
             >
-              Создать проект
+              {t('projects.newProject')}
             </button>
           </div>
         ) : (
@@ -233,11 +238,11 @@ export default function ProjectsPage() {
                   <span
                     className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${PROJECT_STATUS_CLASSNAMES[project.status]}`}
                   >
-                    {PROJECT_STATUS_LABELS[project.status]}
+                    {getProjectStatusLabel(project.status, t)}
                   </span>
                 </div>
                 <p className="text-xs text-gray-500 mt-4">
-                  Создано: {formatDate(project.createdAt)}
+                  {t('projects.created')} {formatDate(project.createdAt)}
                 </p>
               </div>
             ))}

@@ -251,7 +251,7 @@ export default function ProfilePage() {
                 <div className="text-lg font-semibold text-black mb-4">{t('personalData')}</div>
                 <div className="divide-y divide-neutral-200">
                   <EditableFieldRow
-                    label={ts('form.name')}
+                    label={ts('form.fullname')}
                     isEditing={editField === 'displayName'}
                     inputValue={formData.displayName}
                     displayValue={user ? getFieldValue(getDisplayName(user)) : '—'}

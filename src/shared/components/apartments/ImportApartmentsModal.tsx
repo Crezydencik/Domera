@@ -2,6 +2,8 @@
 
 import React, { useState } from 'react';
 import { toast } from 'react-toastify';
+import { useTranslations } from 'next-intl';
+import { auth } from '@/firebase/config';
 import type { Building } from '@/shared/types';
 
 interface ImportResults {
@@ -24,6 +26,7 @@ export const ImportApartmentsModal: React.FC<ImportApartmentsModalProps> = ({
   onClose,
   onImportSuccess,
 }) => {
+  const t = useTranslations();
   const [selectedBuildingId, setSelectedBuildingId] = useState<string>('');
   const [file, setFile] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -31,7 +34,9 @@ export const ImportApartmentsModal: React.FC<ImportApartmentsModalProps> = ({
   const [importResults, setImportResults] = useState<ImportResults | null>(null);
 
   const selectedBuilding = buildings.find(b => b.id === selectedBuildingId);
-  const companyId = selectedBuilding?.companyId;
+  const companyId =
+    selectedBuilding?.companyId ||
+    selectedBuilding?.managedBy?.companyId;
 
   const resetState = () => {
     setFile(null);
@@ -47,7 +52,7 @@ export const ImportApartmentsModal: React.FC<ImportApartmentsModalProps> = ({
 
   const handleImport = async () => {
     if (!file || !selectedBuildingId || !companyId) {
-      toast.error('Выберите дом и файл');
+      toast.error(t('auth.alert.selectBuildingAndFile'));
       return;
     }
 
@@ -60,8 +65,20 @@ export const ImportApartmentsModal: React.FC<ImportApartmentsModalProps> = ({
       formData.append('buildingId', selectedBuildingId);
       formData.append('companyId', companyId);
 
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        setProgress('Ошибка: Authentication required');
+        toast.error('Authentication required');
+        return;
+      }
+
+      const idToken = await currentUser.getIdToken();
+
       const response = await fetch('/api/apartments/import', {
         method: 'POST',
+        headers: {
+          Authorization: `Bearer ${idToken}`,
+        },
         body: formData,
       });
 
@@ -69,19 +86,23 @@ export const ImportApartmentsModal: React.FC<ImportApartmentsModalProps> = ({
 
       if (!response.ok) {
         setProgress(`Ошибка: ${data.error}`);
-        toast.error(data.error || 'Ошибка импорта');
+        toast.error(data.error || t('auth.alert.importError'));
         return;
       }
 
       setProgress('✓ Импорт завершен!');
       setImportResults(data.results);
       
+      const details =
+        data.results.errors.length > 0 || data.results.skippedDuplicates.length > 0
+          ? ` (errors: ${data.results.errors.length}, duplicates: ${data.results.skippedDuplicates.length})`
+          : '';
+
       toast.success(
-        `Успешно импортировано ${data.results.imported} квартир${
-          data.results.errors.length > 0 || data.results.skippedDuplicates.length > 0
-            ? ` (Ошибок: ${data.results.errors.length}, дублей: ${data.results.skippedDuplicates.length})`
-            : ''
-        }`
+        t('auth.alert.importSuccessSummary', {
+          imported: data.results.imported,
+          details,
+        })
       );
 
       if (data.results.errors.length > 0) {
@@ -97,7 +118,7 @@ export const ImportApartmentsModal: React.FC<ImportApartmentsModalProps> = ({
 
       onImportSuccess?.();
     } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Ошибка импорта';
+      const errorMsg = error instanceof Error ? error.message : t('auth.alert.importError');
       setProgress(`Ошибка: ${errorMsg}`);
       toast.error(errorMsg);
     } finally {

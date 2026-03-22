@@ -76,6 +76,11 @@ const parsePeriodFromDateCell = (raw: unknown): { month: number; year: number } 
   if (raw === undefined || raw === null || String(raw).trim() === '') return null;
 
   if (typeof raw === 'number' && Number.isFinite(raw)) {
+    // Guardrail: treat numeric value as Excel date only for realistic serial ranges.
+    // Prevent false positives on meter readings like 207.898, 563.000, etc.
+    if (raw < 20000 || raw > 70000) {
+      return null;
+    }
     // Excel serial date -> JS Date (Excel epoch)
     const excelEpoch = new Date(Date.UTC(1899, 11, 30));
     const date = new Date(excelEpoch.getTime() + raw * 24 * 60 * 60 * 1000);
@@ -116,6 +121,37 @@ const extractReadings = (row: Record<string, unknown>, prefix: 'Kartsais' | 'Auk
     const n = normalizeHeader(header);
     return n.startsWith('data') || n.includes('date');
   };
+  const isLikelyDateColumn = (header: string): boolean => {
+    const n = normalizeHeader(header);
+    // XLSX utils often generate __EMPTY / __EMPTY_1 headers for unlabeled columns.
+    return isDateHeader(header) || n === '' || n.startsWith('__empty');
+  };
+
+  const findNearestPeriod = (index: number): { period: { month: number; year: number }; label: string } | null => {
+    let best: { distance: number; period: { month: number; year: number }; label: string } | null = null;
+
+    for (let j = 0; j < entries.length; j++) {
+      if (j === index) continue;
+      const [dateColName, dateValue] = entries[j];
+      if (!isLikelyDateColumn(dateColName)) continue;
+
+      const parsed = parsePeriodFromDateCell(dateValue);
+      if (!parsed) continue;
+
+      const distance = Math.abs(j - index);
+      const candidateLabel = String(dateValue ?? dateColName).trim() || dateColName;
+
+      if (
+        !best ||
+        distance < best.distance ||
+        (distance === best.distance && j > index)
+      ) {
+        best = { distance, period: parsed, label: candidateLabel };
+      }
+    }
+
+    return best ? { period: best.period, label: best.label } : null;
+  };
 
   for (let i = 0; i < entries.length; i++) {
     const [colName, value] = entries[i];
@@ -137,30 +173,12 @@ const extractReadings = (row: Record<string, unknown>, prefix: 'Kartsais' | 'Auk
     let period = parseReadingPeriod(colName);
     let label = colName.trim();
 
-    // 2) If header doesn't contain period, prefer nearest valid date LEFT, then RIGHT
+    // 2) If header doesn't contain period, use nearest valid date column by distance.
     if (!period) {
-      for (let j = i - 1; j >= 0; j--) {
-        const [dateColName, dateValue] = entries[j];
-        if (!isDateHeader(dateColName)) continue;
-        const parsed = parsePeriodFromDateCell(dateValue);
-        if (parsed) {
-          period = parsed;
-          label = String(dateValue ?? dateColName).trim() || colName.trim();
-          break;
-        }
-      }
-
-      if (!period) {
-        for (let j = i + 1; j < entries.length; j++) {
-          const [dateColName, dateValue] = entries[j];
-          if (!isDateHeader(dateColName)) continue;
-          const parsed = parsePeriodFromDateCell(dateValue);
-          if (parsed) {
-            period = parsed;
-            label = String(dateValue ?? dateColName).trim() || colName.trim();
-            break;
-          }
-        }
+      const nearest = findNearestPeriod(i);
+      if (nearest) {
+        period = nearest.period;
+        label = nearest.label || colName.trim();
       }
     }
 
@@ -492,14 +510,14 @@ export async function POST(request: NextRequest) {
         const hotWaterCheckDueDate = findDueDateFromRow(row, 'hot');
         const coldWaterCheckDueDate = findDueDateFromRow(row, 'cold');
 
-        // Create hot water meter if serial number exists
+        // Build hot water group only inside apartment.waterReadings (no separate meters collection)
         if (hotWaterMeterNumber) {
-          const hotWaterMeterRef = doc(collection(db, 'meters'));
+          const hotWaterMeterId = doc(collection(db, 'apartments')).id;
           const hotWaterReadings = extractReadings(row, 'Kartsais');
           const hotGroup = buildWaterReadingGroup({
             apartmentId: apartmentRef.id,
             buildingId,
-            meterId: hotWaterMeterRef.id,
+            meterId: hotWaterMeterId,
             serialNumber: hotWaterMeterNumber,
             checkDueDate: hotWaterCheckDueDate,
             readings: hotWaterReadings,
@@ -513,7 +531,7 @@ export async function POST(request: NextRequest) {
               const fallbackReading = buildFallbackReading({
                 apartmentId: apartmentRef.id,
                 buildingId,
-                meterId: hotWaterMeterRef.id,
+                meterId: hotWaterMeterId,
                 previousValue: hotPrevious ?? 0,
                 currentValue: hotCurrent,
               });
@@ -521,28 +539,17 @@ export async function POST(request: NextRequest) {
             }
           }
 
-          await setDoc(hotWaterMeterRef, {
-            id: hotWaterMeterRef.id,
-            apartmentId: apartmentRef.id,
-            type: 'water',
-            name: 'hwm',
-            serialNumber: hotWaterMeterNumber,
-            checkDueDate: hotWaterCheckDueDate || '',
-            history: hotGroup.history,
-            createdAt: new Date(),
-          });
-
           waterReadings.hotmeterwater = hotGroup;
         }
 
-        // Create cold water meter if serial number exists
+        // Build cold water group only inside apartment.waterReadings (no separate meters collection)
         if (coldWaterMeterNumber) {
-          const coldWaterMeterRef = doc(collection(db, 'meters'));
+          const coldWaterMeterId = doc(collection(db, 'apartments')).id;
           const coldWaterReadings = extractReadings(row, 'Aukstais');
           const coldGroup = buildWaterReadingGroup({
             apartmentId: apartmentRef.id,
             buildingId,
-            meterId: coldWaterMeterRef.id,
+            meterId: coldWaterMeterId,
             serialNumber: coldWaterMeterNumber,
             checkDueDate: coldWaterCheckDueDate,
             readings: coldWaterReadings,
@@ -556,24 +563,13 @@ export async function POST(request: NextRequest) {
               const fallbackReading = buildFallbackReading({
                 apartmentId: apartmentRef.id,
                 buildingId,
-                meterId: coldWaterMeterRef.id,
+                meterId: coldWaterMeterId,
                 previousValue: coldPrevious ?? 0,
                 currentValue: coldCurrent,
               });
               coldGroup.history = [fallbackReading];
             }
           }
-
-          await setDoc(coldWaterMeterRef, {
-            id: coldWaterMeterRef.id,
-            apartmentId: apartmentRef.id,
-            type: 'water',
-            name: 'cwm',
-            serialNumber: coldWaterMeterNumber,
-            checkDueDate: coldWaterCheckDueDate || '',
-            history: coldGroup.history,
-            createdAt: new Date(),
-          });
 
           waterReadings.coldmeterwater = coldGroup;
         }

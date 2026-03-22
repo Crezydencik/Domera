@@ -24,7 +24,7 @@ export const uploadFile = async (file: File, path: string): Promise<string> => {
     const url = await getDownloadURL(storageRef);
     return url;
   } catch (error) {
-    console.error('Error uploading file:', error);
+    console.error('storage.file.upload.error', error);
     throw error;
   }
 };
@@ -38,7 +38,7 @@ export const downloadFile = async (path: string): Promise<Blob> => {
     const bytes = await getBytes(storageRef);
     return new Blob([bytes]);
   } catch (error) {
-    console.error('Error downloading file:', error);
+    console.error('storage.file.download.error', error);
     throw error;
   }
 };
@@ -52,7 +52,7 @@ export const getFileURL = async (path: string): Promise<string> => {
     const url = await getDownloadURL(storageRef);
     return url;
   } catch (error) {
-    console.error('Error getting file URL:', error);
+    console.error('storage.file.url.get.error', error);
     throw error;
   }
 };
@@ -65,7 +65,7 @@ export const deleteFile = async (path: string): Promise<void> => {
     const storageRef = ref(storage, path);
     await deleteObject(storageRef);
   } catch (error) {
-    console.error('Error deleting file:', error);
+    console.error('storage.file.delete.error', error);
     throw error;
   }
 };

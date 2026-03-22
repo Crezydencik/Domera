@@ -143,7 +143,7 @@ export default function RegisterPage() {
       const methods = await fetchSignInMethodsForEmail(auth, email);
       return methods && methods.length > 0;
     } catch (err) {
-      console.error('Ошибка проверки email в Firebase:', err);
+      console.error('auth.register.email_check.firebase.error', err);
       return false;
     }
   }
@@ -172,7 +172,7 @@ export default function RegisterPage() {
       toast.success(t('register.verification.codeSent'));
       return true;
     } catch (error) {
-      console.error('Code request error:', error);
+      console.error('auth.register.code.request.error', error);
       toast.error(t('register.verification.requestError'));
       return false;
     } finally {
@@ -268,7 +268,7 @@ export default function RegisterPage() {
 
       setStep(3);
     } catch (error) {
-      console.error('Code verify error:', error);
+      console.error('auth.register.code.verify.error', error);
       toast.error(t('register.verification.verifyError'));
     } finally {
       setVerifyingCode(false);
