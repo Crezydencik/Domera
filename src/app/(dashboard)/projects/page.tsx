@@ -1,3 +1,4 @@
+import { usePageTitle } from '@/shared/context/PageTitleContext';
 'use client';
 
 import { useAuth } from '@/shared/hooks/useAuth';
@@ -6,6 +7,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import type { Project, ProjectStatus } from '@/shared/types';
 import { createProject, getProjectsByCompany } from '@/modules/projects/services/projectsService';
+import React from 'react';
 
 const PROJECT_STATUS_CLASSNAMES: Record<ProjectStatus, string> = {
   planned: 'bg-slate-700 text-slate-200 border border-slate-600',
@@ -54,8 +56,10 @@ const formatDate = (value: unknown): string => {
 };
 
 export default function ProjectsPage() {
+  const t = useTranslations('dashboard');
+  const { setPageTitle } = usePageTitle();
+  React.useEffect(() => { setPageTitle(t('sidebar.projects')); }, [setPageTitle, t]);
   const { user, loading } = useAuth();
-  const t = useTranslations();
   const [projects, setProjects] = useState<Project[]>([]);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [projectTitle, setProjectTitle] = useState('');

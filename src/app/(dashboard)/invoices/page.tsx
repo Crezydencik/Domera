@@ -1,10 +1,16 @@
 'use client';
+import { usePageTitle } from '@/shared/context/PageTitleContext';
+import { useTranslations } from 'next-intl';
 
 import { useAuth } from '@/shared/hooks/useAuth';
 import Link from 'next/link';
 import { useState } from 'react';
+import React from 'react';
 
 export default function InvoicesPage() {
+  const t = useTranslations('dashboard');
+  const { setPageTitle } = usePageTitle();
+  React.useEffect(() => { setPageTitle(t('myInvoices')); }, [setPageTitle, t]);
   const { user, loading } = useAuth();
   const [invoices, setInvoices] = useState<any[]>([]);
 

@@ -671,7 +671,8 @@
   "profile": {
     "tabs": {
       "profile": "Profils",
-      "notifications": "Paziņojumi"
+    "loading": "Ielāde...",
+    "waterReadings": "Ūdens skaitītāju rādījumi"
     },
     "userAvatar": "Lietotāja attēls",
     "clientNumber": "Klienta numurs",

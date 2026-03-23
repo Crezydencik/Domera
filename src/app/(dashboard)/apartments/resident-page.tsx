@@ -290,13 +290,6 @@ export default function ResidentApartmentsPage() {
 
   return (
     <div className="min-h-screen bg-neutral-100">
-      <Header
-        userName={user?.displayName || user?.email || undefined}
-        userEmail={user?.email || undefined}
-        pageTitle={th('dashboard.apartments.section')}
-        onLogout={handleLogout}
-      />
-
       {!apartment && (
       <main className="mx-auto max-w-5xl px-4 py-8">
         <div className="rounded-xl border border-gray-200 bg-gray-50 p-12 text-center shadow-sm">

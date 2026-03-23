@@ -23,9 +23,9 @@ export default function DashboardPage() {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-white text-2xl mb-4">Требуется вход</h1>
+          <h1 className="text-white text-2xl mb-4">{t('dashboard.noUser')}</h1>
           <Link href="/login" className="text-blue-600 hover:text-blue-500">
-            Перейти на страницу входа
+            {t('dashboard.login')}
           </Link>
         </div>
       </div>

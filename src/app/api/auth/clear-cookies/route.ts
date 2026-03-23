@@ -52,11 +52,16 @@ export async function POST(request: NextRequest) {
 
     const response = NextResponse.json({ success: true });
 
-    // Clear auth cookies
-    response.cookies.delete(SESSION_COOKIE_NAME);
-    response.cookies.delete('userId');
-    response.cookies.delete('userEmail');
-    response.cookies.delete('authToken');
+    // Гарантированно удаляем cookie __session с нужными параметрами
+    response.cookies.delete(SESSION_COOKIE_NAME, {
+      path: '/',
+      httpOnly: true,
+      secure: true,
+      sameSite: 'strict',
+    });
+    response.cookies.delete('userId', { path: '/' });
+    response.cookies.delete('userEmail', { path: '/' });
+    response.cookies.delete('authToken', { path: '/' });
 
     await writeAuditEvent({
       request,

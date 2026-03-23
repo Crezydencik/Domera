@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { NotificationsDropdown, NotificationItem } from '../ui/NotificationsDropdown';
 import { getInvitationByEmail } from '@/modules/invitations/services/invitationsService';
-import Link from 'next/link';
+// import Link from 'next/link';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { useLanguage } from '../../providers/LanguageProvider';
 import { HeaderProps } from '../../types';
@@ -136,19 +136,26 @@ const Header: React.FC<HeaderWithSidebarProps> = ({ userName = '',  userAvatarUr
   const tn = useTranslations('system.notifications');
   const tp = useTranslations('dashboard.profile');
   const { user, refreshUser } = useAuth();
-  // Дефолтная функция выхода, если onLogout не передан
-  const handleLogout = onLogout || (() => { window.location.href = '/login'; });
+  // Новая асинхронная функция выхода
+  const handleLogout = onLogout || (async () => {
+    try {
+      // Вызов API для очистки сессионных cookie
+      await fetch('/api/auth/clear-cookies', { method: 'POST', credentials: 'include' });
+      // Можно добавить client-side logout, если используется Firebase Auth на клиенте:
+      // if (window.firebaseAuth) await window.firebaseAuth.signOut();
+      // Обновить состояние пользователя, если есть refreshUser
+      if (refreshUser) await refreshUser();
+    } catch (e) {
+      // Можно добавить обработку ошибок
+    } finally {
+      window.location.href = '/login';
+    }
+  });
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [pendingInvitation, setPendingInvitation] = useState<null | { id: string; apartmentId: string; token?: string }>(null);
   const [acceptModalOpen, setAcceptModalOpen] = useState(false);
-  const [langDropdownOpen, setLangDropdownOpen] = useState(false);
-  const LANGUAGES = [
-    { code: 'lv', label: 'LV' },
-    { code: 'ru', label: 'RU' },
-    { code: 'en', label: 'EN' },
-  ];
-  const [lang, setLang] = useState('lv'); // TODO: get/set from user/profile/global
+  // Удалены неиспользуемые переменные langDropdownOpen, LANGUAGES, lang
   const dropdownRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
   const { locale, setLocale } = useLanguage();

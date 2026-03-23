@@ -1149,8 +1149,7 @@ export default function MeterReadingsPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      <Header userName={user.name || user.email || tMeter('user')} userEmail={user.email} onLogout={handleLogout} pageTitle={tMeter('waterReadings')} />
-      <main className=" mx-auto px-4 py-8">
+           <main className=" mx-auto px-4 py-8">
         {loadError && (
           <div className="mb-6 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             {loadError}

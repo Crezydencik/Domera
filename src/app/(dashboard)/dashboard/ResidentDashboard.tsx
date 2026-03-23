@@ -61,16 +61,8 @@ export default function ResidentDashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-white via-green-50 to-blue-50">
-      <Header
-        userName={name}
-        userEmail={user?.email}
-        // userAvatarUrl={user?.avatarUrl}
-        onLogout={handleLogout}
-        pageTitle={t('welcome', { name })}
-      />
       <main className="mx-auto max-w-7xl px-4 py-8">
         <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-
         </section>
       </main>
     </div>

@@ -1,4 +1,5 @@
 'use client';
+import { usePageTitle } from '@/shared/context/PageTitleContext';
 
 import { useAuth } from '@/shared/hooks/useAuth';
 import Header from '@/shared/components/layout/heder';
@@ -23,9 +24,11 @@ import { ConfirmationDialog } from '@/shared/components/ui/ConfirmationDialog';
 import { toast } from 'react-toastify';
 
 export default function BuildingsPage() {
+  const t = useTranslations('dashboard');
+  const { setPageTitle } = usePageTitle();
+  React.useEffect(() => { setPageTitle(t('buildings.section')); }, [setPageTitle, t]);
   const { user, loading } = useAuth();
   const router = useRouter();
-  const t = useTranslations();
 
   const handleLogout = async () => {
     await logout();
@@ -373,12 +376,6 @@ export default function BuildingsPage() {
 
   return (
     <div className="min-h-screen bg-linear-to-br from-white via-green-50 to-blue-50">
-      <Header
-        userName={user?.displayName || user?.name || ''}
-        userEmail={user?.email || ''}
-        pageTitle="Управление домами"
-        onLogout={handleLogout}
-      />
       <main className="max-w-7xl mx-auto px-4 py-8">
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="relative w-full sm:max-w-md">

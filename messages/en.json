@@ -163,6 +163,7 @@
   },
     "dashboard": {
       "loading": "Loading...",
+      "waterReadings": "Water readings",
       "sidebar": {
         "manager": "Manager",
         "resident": "Resident",
@@ -251,6 +252,25 @@
         "noApartments": "No apartments assigned. Contact your manager.",
         "viewReadings": "View readings",
         "viewInvoices": "View invoices"
+      },
+      "buildings":{
+        "section": "My buildings",
+        "buildingName": "Building name",
+        "buildingAddress": "Building address",
+        "company": "Management company",
+        "addApartment": "Add apartment",
+        "apartmentNumber": "Apartment number",
+        "floor": "Floor",
+        "apartmentKind": "Apartment type",
+        "owner": "Owner",
+        "ownerEmail": "Owner email",
+        "managerEmail": "Manager email",
+        "companyEmail": "Company email",
+        "companyPhone": "Company phone",
+        "selectBuilding": "Select building",
+        "loading": "Loading...",
+        "noBuildings": "No buildings assigned. Contact your manager.",
+        "viewReadings": "View readings"
       },
       "meterReadings": {
             "submittedAt": "Submitted at",

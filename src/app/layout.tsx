@@ -4,6 +4,7 @@ import "./globals.css";
 import { AuthProvider } from "@/shared/providers/AuthProvider";
 import { ToastProvider } from "@/shared/providers/ToastProvider";
 import { LanguageProvider } from "@/shared/providers/LanguageProvider";
+import Header from "@/shared/components/Header";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,7 +35,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <AuthProvider>
-          <LanguageProvider>
+          <LanguageProvider> 
             {children}
             <ToastProvider />
           </LanguageProvider>

@@ -14,6 +14,8 @@ import { Switch } from '@/shared/components/ui/Switch';
 import Header from '../../../shared/components/layout/heder';
 import { useTranslations } from 'next-intl';
 import { FiCheck, FiX } from 'react-icons/fi';
+import React from 'react';
+import { usePageTitle } from '../../../shared/context/PageTitleContext';
 
 type EditableFieldRowProps = {
   label: string;
@@ -39,6 +41,10 @@ function EditableFieldRow({
   onStartEdit,
 }: EditableFieldRowProps) {
   const ts = useTranslations('system');
+  const t = useTranslations('dashboard');
+   
+    const { setPageTitle } = usePageTitle();
+    React.useEffect(() => { setPageTitle(t('sidebar.profile')); }, [setPageTitle]);
 
   return (
     <div className="flex items-center justify-between py-3">
@@ -206,12 +212,6 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-neutral-100 py-0">
-      <Header
-        userName={getUserName(user)}
-        userEmail={user?.email}
-        onLogout={handleLogout}
-        pageTitle={th('dashboard.sidebar.profile')}
-      />
 
       <main className="max-w-4xl mx-auto px-4 py-10">
         <div className="bg-white rounded-t-xl px-6 pt-4 border border-b-0 border-neutral-200">

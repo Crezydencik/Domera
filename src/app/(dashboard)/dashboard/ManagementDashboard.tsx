@@ -61,17 +61,8 @@ export default function ManagementDashboard() {
 
   return (
     <div className="min-h-screen bg-linear-to-br from-white via-green-50 to-blue-50">
-      <Header
-        userName={name}
-        userEmail={user?.email}
-        userAvatarUrl={(user as { avatarUrl?: string } | null)?.avatarUrl}
-        onLogout={handleLogout}
-        pageTitle={t("welcome", { name })}
-      />
-
       <main className="mx-auto max-w-7xl px-4 py-8">
         <p className="mb-6 text-sm text-gray-600">{t("intro")}</p>
-
         <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
           <article className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
             <p className="text-sm text-gray-500">{t("totalBuildings")}</p>
