@@ -13,6 +13,8 @@ interface SubmitMeterReadingPayload {
   currentValue: number;
   consumption: number;
   buildingId: string;
+  month?: number;
+  year?: number;
 }
 
 export async function POST(request: NextRequest) {

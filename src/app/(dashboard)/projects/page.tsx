@@ -1,5 +1,5 @@
-import { usePageTitle } from '@/shared/context/PageTitleContext';
 'use client';
+import { usePageTitle } from '@/shared/context/PageTitleContext';
 
 import { useAuth } from '@/shared/hooks/useAuth';
 import { useTranslations } from 'next-intl';
