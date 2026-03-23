@@ -10,9 +10,6 @@
     "permissionDenied": "No database access. Check Firebase security rules.",
     "dbError": "Error connecting to the database. Try again.",
     "rememberPassword" : "Remember your password?",
-    "alert":{
-      
-    },
     "notifications": {
       "noNewNotifications": "No new notifications",
       "allEventsViewed": "All events viewed",
@@ -84,10 +81,7 @@
     "viewprofile": "View profile",
     "editProfile": "Edit profile",
     "deleteProfile": "Delete profile",
-    "confirmDeleteProfile": "Confirm profile deletion. This action cannot be undone.",
-    "alert":{
-
-    }
+    "confirmDeleteProfile": "Confirm profile deletion. This action cannot be undone."
   },
   "home": {
     "subtitleManagement": "Manage houses, apartments, and payments in one place",
@@ -422,6 +416,7 @@
       "inProgress": "Logging in...",
       "noAccount": "No account?",
       "forgotPassword": "Forgot password?"
+
     },
     "register": {
       "title": "Registration",
@@ -774,3 +769,4 @@
       "apartments": "Apartments"
     }
   }
+

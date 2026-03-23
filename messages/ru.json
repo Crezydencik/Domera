@@ -380,13 +380,11 @@
       "feature2": "Безопасный доступ с ролевым разделением для управляющих и жильцов",
       "feature3": "Автоматические напоминания и простое отслеживание платежей"
     },
-    "or": "или",
-    "common": {
+      "alert": {},
       "emailPlaceholder": "example@mail.com",
       "passwordPlaceholder": "••••••••",
       "confirmPassword": "Повторите пароль",
-      "sending": "Отправка..."
-    },
+      "sending": "Отправка...",
     "login": {
       "title": "Вход",
       "subtitle": "Введите свой email и пароль, чтобы войти",
@@ -589,8 +587,7 @@
       "projectCreateError": "Ошибка при создании проекта",
       "projectDateNotSpecified": "Дата не указана",
       "emailMismatch": "Вы вошли как {currentEmail}, но приглашение предназначено для {invitationEmail}"
-    }
-  },
+    },
   "projects": {
     "title": "Проекты",
     "noProjects": "Нет проектов",
@@ -608,7 +605,8 @@
     "addFirstProject": "Добавьте свой первый проект для управления задачами",
     "created": "Создано:",
     "back": "Назад"
-  },
+  }
+},
   "ui": {
     "apartmentsManagement": "Управление квартирами",
     "managementCompany": "Управляющая компания",

@@ -263,7 +263,7 @@ export default function ProfilePage() {
                       await refreshUser();
                       setEditField(null);
                       setProfileSaving(false);
-                      showCustomToast({ type: 'success', title: ts('updated') });
+                      showCustomToast({ type: 'success', title: t('updated') });
                       setFormData((f) => ({ ...f, displayName: formData.displayName }));
                     }}
                     onCancel={() => {
@@ -459,9 +459,7 @@ export default function ProfilePage() {
                     <option value="en">{t('notification.lang_en')}</option>
                   </select>
                 </div>
-                {notifSaved && (
-                  <div className="text-green-600 text-sm mt-2">{t('notificationSettingsSaved')}</div>
-                )}
+              
               </div>
             </div>
           )}

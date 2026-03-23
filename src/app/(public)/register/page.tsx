@@ -12,6 +12,7 @@ import { useTranslations } from 'next-intl';
 import { auth } from '@/firebase/config';
 import { useLanguage } from '@/shared/providers/LanguageProvider';
 import PasswordStrengthMeter from '@/shared/components/ui/PasswordStrengthMeter';
+import { ConsentCheckbox } from '@/shared/components/ui/ConsentCheckbox';
 import { getPasswordStrength } from '@/shared/validation';
 
 function EyeIcon({ crossed = false }: { crossed?: boolean }) {
@@ -85,6 +86,8 @@ export default function RegisterPage() {
     phone: '',
   });
   const [loading, setLoading] = useState(false);
+  const [consentChecked, setConsentChecked] = useState(false);
+  const [consentError, setConsentError] = useState<string | undefined>();
   const [verificationCode, setVerificationCode] = useState('');
   const [verificationToken, setVerificationToken] = useState('');
   const [codeExpiresInSeconds, setCodeExpiresInSeconds] = useState(3600);
@@ -277,6 +280,12 @@ export default function RegisterPage() {
 
   const handleFinalRegistration = async (e: React.FormEvent) => {
     e.preventDefault();
+    setConsentError(undefined);
+
+    if (!consentChecked) {
+      setConsentError(ts('validation.requiredConsent') || 'Required');
+      return;
+    }
 
     if (!verificationToken) {
       toast.error(t('register.verification.requiredBeforeContinue'));
@@ -570,6 +579,11 @@ export default function RegisterPage() {
                   />
                 </div>
               </div>
+              <ConsentCheckbox
+                checked={consentChecked}
+                onChange={setConsentChecked}
+                error={consentError}
+              />
             </>
           )}
 
@@ -624,6 +638,11 @@ export default function RegisterPage() {
                 </div>
 
               </div>
+              <ConsentCheckbox
+                checked={consentChecked}
+                onChange={setConsentChecked}
+                error={consentError}
+              />
             </>
 
           )}

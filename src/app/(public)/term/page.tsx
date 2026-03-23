@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { HeaderHome } from './../../../shared/components/layout/HeaderHome';
 
 export const metadata: Metadata = {
   title: 'Lietošanas noteikumi | Domera',
@@ -8,6 +9,14 @@ export const metadata: Metadata = {
 type SectionProps = {
   title: string;
   children: React.ReactNode;
+};
+const companyData = {
+  companyName: "Deniss Kalnins",
+  regNr: "19029910818",
+  controller: "Deniss Kalnins",
+  email: "lumtach@gmail.com",
+  address: "Liepaja, Jekaba Janševska iela 18-1 ",
+  domain: "domera.lv"
 };
 
 function Section({ title, children }: SectionProps) {
@@ -34,6 +43,7 @@ function BulletList({ items }: { items: React.ReactNode[] }) {
 export default function TermsPage() {
   return (
     <main className="bg-slate-50">
+      <HeaderHome/>
       <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
         <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
           <div className="border-b border-slate-200 bg-slate-900 px-6 py-10 text-white sm:px-10 sm:py-12">
@@ -54,12 +64,12 @@ export default function TermsPage() {
               <BulletList
                 items={[
                   <>
-                    <strong>Vietne</strong> – <strong>[domera domēns]</strong> un visi ar to
+                    <strong>Vietne</strong> – <strong>{companyData.domain}</strong> un visi ar to
                     saistītie apakšdomēni.
                   </>,
                   <>
-                    <strong>Vietnes pārzinis</strong> – <strong>[uzņēmuma nosaukums]</strong>,
-                    reģistrācijas numurs <strong>[reģ. nr.]</strong>. E-pasts: <strong>[e-pasts]</strong>.
+                    <strong>Vietnes pārzinis</strong> – <strong>{companyData.companyName}</strong>,
+                    reģistrācijas numurs <strong>{companyData.regNr}</strong>. E-pasts: <strong>{companyData.email} </strong>.
                   </>,
                   <>
                     <strong>E-pakalpojums</strong> – Domera Vietnē piedāvātie elektroniskie
@@ -209,15 +219,6 @@ export default function TermsPage() {
                 e-pastā vai publicējot sistēmas paziņojumu Lietotāja kontā.
               </p>
             </Section>
-
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm leading-7 text-amber-900">
-              <p>
-                <strong>Piezīme:</strong> pirms publicēšanas aizvietojiet vietturus{' '}
-                <strong>[uzņēmuma nosaukums]</strong>, <strong>[reģ. nr.]</strong>,{' '}
-                <strong>[e-pasts]</strong> un <strong>[domera domēns]</strong> ar reālajiem Domera
-                datiem.
-              </p>
-            </div>
           </div>
         </div>
       </div>

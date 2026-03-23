@@ -4,12 +4,17 @@
   import Link from 'next/link';
   import { useTranslations } from 'use-intl';
   import dynamic from 'next/dynamic';
+import { usePageTitle } from '../../../shared/context/PageTitleContext';
+import React from 'react';
 
   const ResidentDashboard = dynamic(() => import('./ResidentDashboard'));
   const ManagementDashboard = dynamic(() => import('./ManagementDashboard'));
 export default function DashboardPage() {
   const { user, loading } = useAuth();
-  const t = useTranslations();
+    const t = useTranslations();
+    const td = useTranslations('dashboard');
+    const { setPageTitle } = usePageTitle();
+    React.useEffect(() => { setPageTitle(td('sidebar.home')); }, [setPageTitle, td]);
 
   if (loading) {
     return (

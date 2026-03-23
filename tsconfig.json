@@ -34,7 +34,7 @@
     "**/*.mts",
     "**/*.ts",
     "**/*.tsx"
-  ],
+, "src/shared/components/layout/HeaderHome.tsx"  ],
   "exclude": [
     "node_modules"
   ]
