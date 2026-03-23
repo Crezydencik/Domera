@@ -164,7 +164,7 @@ export async function POST(request: NextRequest) {
         actorRole: auth.role,
         apartmentId: payload.apartmentId,
         reason: 'duplicate_period_reading',
-        debug: { payloadMonth: month, payloadYear: year, debugHistory },
+        metadata: { payloadMonth: month, payloadYear: year, debugHistory },
       });
       return NextResponse.json({ error: 'Reading already exists for current month', debug: { payloadMonth: month, payloadYear: year, debugHistory } }, { status: 409 });
     }
