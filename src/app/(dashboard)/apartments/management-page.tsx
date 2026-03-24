@@ -18,6 +18,7 @@ import { ApartmentModal } from '@/shared/components/apartments/ApartmentModal';
 import { ImportApartmentsModal } from '@/shared/components/apartments/ImportApartmentsModal';
 import { toast } from 'react-toastify';
 import { toSafeErrorDetails } from '@/shared/lib/safeLog';
+import { Menu } from '@headlessui/react';
 
 export default function ApartmentsManagementPage() {
   const { user } = useAuth();
@@ -39,6 +40,7 @@ export default function ApartmentsManagementPage() {
   const [selectedBuildingId, setSelectedBuildingId] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [isAddingApartment, setIsAddingApartment] = useState(false);
+    const [apartmentSort, setApartmentSort] = useState<{direction: 'asc' | 'desc', active: boolean}>({direction: 'asc', active: false});
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedApartmentFilterId, setSelectedApartmentFilterId] = useState<string>('all');
   const [showGlobalInvite, setShowGlobalInvite] = useState(false);
@@ -62,6 +64,26 @@ export default function ApartmentsManagementPage() {
   // metersByApartmentId removed — not used in current list layout
   // kept import/getMetersByApartment for potential future use
 
+  // Удаление всех квартир
+  const handleDeleteAllApartments = async () => {
+    if (!window.confirm('Вы уверены, что хотите удалить все квартиры? Это действие необратимо!')) return;
+    try {
+      const results = await Promise.allSettled(apartments.map(apartment => deleteApartment(apartment.id)));
+      const failed = results
+        .map((res, idx) => res.status === 'rejected' ? apartments[idx].number : null)
+        .filter(Boolean);
+      if (failed.length === 0) {
+        setApartments([]);
+        toast.success('Все квартиры удалены!');
+      } else {
+        await fetchData();
+        toast.error(`Не удалось удалить квартиры: ${failed.join(', ')}`);
+      }
+    } catch (error) {
+      console.error('Ошибка при удалении всех квартир:', toSafeErrorDetails(error));
+      toast.error('Ошибка при удалении всех квартир');
+    }
+  };
   // Вынес fetchData наружу, чтобы можно было вызывать после добавления квартиры
   const fetchData = async () => {
     try {
@@ -382,7 +404,19 @@ export default function ApartmentsManagementPage() {
       .some((value) => value.includes(normalizedSearch));
   });
 
-  const displayedApartments = filteredApartments;
+  let displayedApartments = filteredApartments;
+  if (apartmentSort.active) {
+    displayedApartments = [...displayedApartments].sort((a, b) => {
+      const numA = a.number?.toString() || '';
+      const numB = b.number?.toString() || '';
+      if (numA === numB) return 0;
+      if (apartmentSort.direction === 'asc') {
+        return numA.localeCompare(numB, undefined, {numeric: true, sensitivity: 'base'});
+      } else {
+        return numB.localeCompare(numA, undefined, {numeric: true, sensitivity: 'base'});
+      }
+    });
+  }
 
   const isValidInviteEmail = (email: string): boolean => /\S+@\S+\.\S+/.test(email.trim());
 
@@ -593,70 +627,102 @@ export default function ApartmentsManagementPage() {
             </select>
           </div>
 
-          <div className="flex items-center gap-2">
-            {/* экмспорт */}
-            <button 
-              type="button"
-              onClick={handleExportVisibleApartments}
-              className="inline-flex items-center justify-center rounded-xl border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-              title="Экспорт"
-              aria-label="Экспорт"
-            >
-              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v1a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-1" />
-              </svg>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setIsImportModalOpen(true)}
-              className="inline-flex items-center justify-center rounded-xl border border-violet-200 px-3 py-2 text-sm font-medium text-violet-700 hover:bg-violet-50"
-              title="Импорт"
-              aria-label="Импорт"
-            >
-              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 21V9m0 0-4 4m4-4 4 4M4 17v1a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-1" />
-              </svg>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setShowGlobalInvite((s) => !s)}
-              className="inline-flex items-center justify-center rounded-xl border border-emerald-200 px-3 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-50"
-              title="Добавить жильца"
-              aria-label="Добавить жильца"
-            >
-              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19a6 6 0 0 0-12 0m6-8a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm8 1v6m3-3h-6" />
-              </svg>
-            </button >
-
-            <button
-              type="button"
-              onClick={() => setIsAddingApartment((prev) => !prev)}
-              className="inline-flex items-center justify-center rounded-xl bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800"
-              title="Добавить квартиру"
-              aria-label="Добавить квартиру"
-            >
-              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v14m7-7H5" />
-              </svg>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                setBulkSelectedApartmentIds(readyBulkInviteRows.map((row) => row.apartmentId));
-                setShowBulkInviteModal(true);
-              }}
-              className="inline-flex items-center justify-center rounded-xl border border-blue-200 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50"
-              title="Список приглашений"
-              aria-label="Список приглашений"
-            >
-              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h8M8 12h8m-8 5h5M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z" />
-              </svg>
-            </button>
+          {/* Dropdown menu for actions */}
+          <div className="relative">
+            <Menu as="div" className="relative inline-block text-left">
+              <Menu.Button className="inline-flex items-center justify-center rounded-xl border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <circle cx="5" cy="12" r="2" />
+                  <circle cx="12" cy="12" r="2" />
+                  <circle cx="19" cy="12" r="2" />
+                </svg>
+              </Menu.Button>
+              <Menu.Items className="absolute right-0 z-10 mt-2 w-56 origin-top-right rounded-xl bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                <div className="py-1">
+                  <Menu.Item>
+                    {({ active }) => (
+                      <button
+                        onClick={handleExportVisibleApartments}
+                        className={`w-full flex items-center gap-2 px-4 py-2 text-sm ${active ? 'bg-gray-100' : ''}`}
+                      >
+                        <svg className="h-5 w-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v1a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-1" />
+                        </svg>
+                        Экспорт
+                      </button>
+                    )}
+                  </Menu.Item>
+                  <Menu.Item>
+                    {({ active }) => (
+                      <button
+                        onClick={() => setIsImportModalOpen(true)}
+                        className={`w-full flex items-center gap-2 px-4 py-2 text-sm ${active ? 'bg-gray-100' : ''}`}
+                      >
+                        <svg className="h-5 w-5 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 21V9m0 0-4 4m4-4 4 4M4 17v1a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-1" />
+                        </svg>
+                        Импорт
+                      </button>
+                    )}
+                  </Menu.Item>
+                  <Menu.Item>
+                    {({ active }) => (
+                      <button
+                        onClick={() => setShowGlobalInvite((s) => !s)}
+                        className={`w-full flex items-center gap-2 px-4 py-2 text-sm ${active ? 'bg-gray-100' : ''}`}
+                      >
+                        <svg className="h-5 w-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19a6 6 0 0 0-12 0m6-8a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm8 1v6m3-3h-6" />
+                        </svg>
+                        Добавить жильца
+                      </button>
+                    )}
+                  </Menu.Item>
+                  <Menu.Item>
+                    {({ active }) => (
+                      <button
+                        onClick={() => setIsAddingApartment((prev) => !prev)}
+                        className={`w-full flex items-center gap-2 px-4 py-2 text-sm ${active ? 'bg-gray-100' : ''}`}
+                      >
+                        <svg className="h-5 w-5 text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v14m7-7H5" />
+                        </svg>
+                        Добавить квартиру
+                      </button>
+                    )}
+                  </Menu.Item>
+                  <Menu.Item>
+                    {({ active }) => (
+                      <button
+                        onClick={handleDeleteAllApartments}
+                        className={`w-full flex items-center gap-2 px-4 py-2 text-sm text-red-700 ${active ? 'bg-red-50' : ''}`}
+                      >
+                        <svg className="h-5 w-5 text-red-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                        Удалить все квартиры
+                      </button>
+                    )}
+                  </Menu.Item>
+                  <Menu.Item>
+                    {({ active }) => (
+                      <button
+                        onClick={() => {
+                          setBulkSelectedApartmentIds(readyBulkInviteRows.map((row) => row.apartmentId));
+                          setShowBulkInviteModal(true);
+                        }}
+                        className={`w-full flex items-center gap-2 px-4 py-2 text-sm ${active ? 'bg-gray-100' : ''}`}
+                      >
+                        <svg className="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h8M8 12h8m-8 5h5M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z" />
+                        </svg>
+                        Список приглашений
+                      </button>
+                    )}
+                  </Menu.Item>
+                </div>
+              </Menu.Items>
+            </Menu>
           </div>
         </div>
 
@@ -984,7 +1050,21 @@ export default function ApartmentsManagementPage() {
               <table className="w-full min-w-275 text-sm">
                 <thead className="bg-gray-50 border-b border-gray-200 text-gray-600">
                   <tr>
-                    <th className="px-4 py-3 text-left font-semibold">Квартира</th>
+                    <th
+                      className="px-4 py-3 text-left font-semibold cursor-pointer select-none hover:text-blue-700"
+                      onClick={() => setApartmentSort(s => ({
+                        direction: s.active ? (s.direction === 'asc' ? 'desc' : 'asc') : 'asc',
+                        active: true
+                      }))}
+                      title="Сортировать по номеру квартиры"
+                    >
+                      Квартира
+                      <span className="ml-1 align-middle">
+                        {apartmentSort.active ? (
+                          apartmentSort.direction === 'asc' ? '▲' : '▼'
+                        ) : ''}
+                      </span>
+                    </th>
                     <th className="px-4 py-3 text-left font-semibold">Имя жильца</th>
                     <th className="px-4 py-3 text-left font-semibold">Email</th>
                     <th className="px-4 py-3 text-left font-semibold">Площадь</th>

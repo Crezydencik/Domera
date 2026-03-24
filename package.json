@@ -20,6 +20,7 @@
     "security:release-gate": "npm run lint && npm run typecheck && npm run build && npm run security:secrets && npm run test:rules && npm run security:regression"
   },
   "dependencies": {
+    "@headlessui/react": "^2.2.9",
     "firebase": "^12.9.0",
     "firebase-admin": "^13.6.1",
     "lucide": "^0.575.0",

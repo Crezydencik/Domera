@@ -243,71 +243,56 @@ export const getApartmentsByBuilding = async (buildingId: string): Promise<Apart
  */
 export const getApartmentsByCompany = async (companyId: string): Promise<Apartment[]> => {
   const apartmentsCollection = collection(db, FIRESTORE_COLLECTIONS.APARTMENTS);
+  const buildingsCollection = collection(db, FIRESTORE_COLLECTIONS.BUILDINGS);
 
-  // Try to fetch apartments that explicitly list the company in companyIds (new schema)
-  const byArrayQuery = query(apartmentsCollection, where('companyIds', 'array-contains', companyId));
-  const byArraySnapshot = await getDocs(byArrayQuery);
+  // Получаем все здания компании одним запросом
+  const [managedBySnap, legacySnap] = await Promise.all([
+    getDocs(query(buildingsCollection, where('managedBy.companyId', '==', companyId))),
+    getDocs(query(buildingsCollection, where('companyId', '==', companyId))),
+  ]);
+  const buildingIds = Array.from(new Set([
+    ...managedBySnap.docs.map((d) => d.id),
+    ...legacySnap.docs.map((d) => d.id),
+  ]));
 
-  // Also fetch apartments that use legacy single companyId field (old schema)
-  const byLegacyQuery = query(apartmentsCollection, where('companyId', '==', companyId));
-  const byLegacySnapshot = await getDocs(byLegacyQuery);
+  // Получаем все квартиры, где buildingId in [...]
+  let apartmentsByBuildings: Apartment[] = [];
+  if (buildingIds.length > 0) {
+    // Firestore ограничивает where('in', ...) до 10 элементов, поэтому делим на чанки
+    const chunkSize = 10;
+    const chunks = [];
+    for (let i = 0; i < buildingIds.length; i += chunkSize) {
+      chunks.push(buildingIds.slice(i, i + chunkSize));
+    }
+    const chunkResults = await Promise.all(
+      chunks.map(chunk =>
+        getDocs(query(apartmentsCollection, where('buildingId', 'in', chunk)))
+      )
+    );
+    apartmentsByBuildings = chunkResults.flatMap(snap =>
+      snap.docs.map((doc) => ({ id: doc.id, ...(doc.data() as Record<string, unknown>) } as Apartment))
+    );
+  }
 
+  // Также получаем квартиры по companyIds (новая схема) и companyId (старая схема)
+  const [byArraySnapshot, byLegacySnapshot] = await Promise.all([
+    getDocs(query(apartmentsCollection, where('companyIds', 'array-contains', companyId))),
+    getDocs(query(apartmentsCollection, where('companyId', '==', companyId))),
+  ]);
   const docs = [
     ...byArraySnapshot.docs.map((doc) => ({ id: doc.id, ...(doc.data() as Record<string, unknown>) })),
     ...byLegacySnapshot.docs.map((doc) => ({ id: doc.id, ...(doc.data() as Record<string, unknown>) })),
+    ...apartmentsByBuildings,
   ];
 
-  // Deduplicate by id
-  const uniqueById: Record<string, Record<string, unknown>> = {};
-  for (const d of docs) {
-    uniqueById[d.id as string] = d;
+  // Приводим к типу Apartment и удаляем дубликаты по id
+  const apartments = mapFirestoreDocsToApartments(docs);
+  const uniqueById: Record<string, Apartment> = {};
+  for (const a of apartments) {
+    uniqueById[a.id] = a;
   }
 
-  // Also include apartments discovered by company-owned buildings.
-  // This covers legacy/partial imports where apartment.companyIds/companyId might be missing,
-  // but apartment.buildingId is valid and building belongs to the company.
-  try {
-    const buildingsCollection = collection(db, FIRESTORE_COLLECTIONS.BUILDINGS);
-    const [managedBySnap, legacySnap] = await Promise.all([
-      getDocs(query(buildingsCollection, where('managedBy.companyId', '==', companyId))),
-      getDocs(query(buildingsCollection, where('companyId', '==', companyId))),
-    ]);
-
-    const buildingIds = Array.from(new Set([
-      ...managedBySnap.docs.map((d) => d.id),
-      ...legacySnap.docs.map((d) => d.id),
-    ]));
-
-    if (buildingIds.length > 0) {
-      const apartmentSnapshots = await Promise.all(
-        buildingIds.map((buildingId) =>
-          getDocs(query(apartmentsCollection, where('buildingId', '==', buildingId)))
-        )
-      );
-
-      for (let i = 0; i < apartmentSnapshots.length; i++) {
-        const snap = apartmentSnapshots[i];
-        const buildingId = buildingIds[i];
-        const ids = snap.docs.map((d) => d.id);
-
-        if (ids.length > 0) {
-          try {
-            await updateDocument(FIRESTORE_COLLECTIONS.BUILDINGS, buildingId, { apartmentIds: ids });
-          } catch {
-            // best-effort consistency update only
-          }
-        }
-
-        for (const ad of snap.docs) {
-          uniqueById[ad.id] = { id: ad.id, ...(ad.data() as Record<string, unknown>) };
-        }
-      }
-    }
-  } catch (err) {
-    console.error('Fallback apartment load failed:', err);
-  }
-
-  return mapFirestoreDocsToApartments(Object.values(uniqueById));
+  return Object.values(uniqueById);
 };
 
 /**
