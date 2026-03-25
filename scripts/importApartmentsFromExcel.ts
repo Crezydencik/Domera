@@ -1,3 +1,5 @@
+// Импортируем генератор именного ID
+import { generateApartmentId } from '../src/modules/apartments/services/apartmentIdGenerator';
 import * as XLSX from 'xlsx';
 import { initializeApp, cert } from 'firebase-admin/app';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
@@ -16,6 +18,7 @@ const db = getFirestore();
 
 interface ApartmentImportData {
   cadastralNumber?: string;
+  houseNumber?: string; // Majas numurs
   address?: string;
   apartmentNumber: string;
   floor?: string;
@@ -302,7 +305,10 @@ async function importApartmentsFromExcel(filePath: string, buildingId: string) {
     const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
     
     console.log(`Found ${rows.length} rows in Excel`);
-    console.log('First row:', rows[0]);
+    if (rows.length > 0) {
+      console.log('First row:', rows[0]);
+      console.log('Row keys:', Object.keys(rows[0]));
+    }
     
     // Parse data
     const apartments: ApartmentImportData[] = [];
@@ -331,6 +337,7 @@ async function importApartmentsFromExcel(filePath: string, buildingId: string) {
 
       const apartmentData: ApartmentImportData = {
         cadastralNumber: row['Kadastra numurs']?.toString() || '',
+        houseNumber: row['Majas numurs']?.toString() || '',
         address: row['Adrese']?.toString() || '',
         apartmentNumber,
         floor: row['Stavs']?.toString() || '',
@@ -359,8 +366,11 @@ async function importApartmentsFromExcel(filePath: string, buildingId: string) {
     // Import to Firestore
     for (const apt of apartments) {
       try {
-        // Pre-generate apartment ID so meters can reference it before apartment is written
-        const apartmentRef = db.collection('apartments').doc();
+
+        // Генерируем именной ID для квартиры
+        const customId = generateApartmentId(apt.address, apt.apartmentNumber, apt.houseNumber);
+        console.log('[IMPORT] Generated apartment ID:', customId, '| address:', apt.address, '| number:', apt.apartmentNumber, '| houseNumber:', apt.houseNumber);
+        const apartmentRef = db.collection('apartments').doc(customId);
         
         const hotWaterReadings = apt.hotWaterReadings;
 
@@ -447,6 +457,7 @@ async function importApartmentsFromExcel(filePath: string, buildingId: string) {
           buildingId,
           number: apt.apartmentNumber,
           cadastralNumber: apt.cadastralNumber,
+          houseNumber: apt.houseNumber,
           address: apt.address,
           floor: apt.floor,
           ownerEmail: apt.ownerEmail,

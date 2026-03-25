@@ -648,7 +648,7 @@ export default function ApartmentsManagementPage() {
                         <svg className="h-5 w-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v1a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-1" />
                         </svg>
-                        Экспорт
+                        <span className="text-gray-700">Экспорт</span>
                       </button>
                     )}
                   </Menu.Item>
@@ -661,7 +661,7 @@ export default function ApartmentsManagementPage() {
                         <svg className="h-5 w-5 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 21V9m0 0-4 4m4-4 4 4M4 17v1a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-1" />
                         </svg>
-                        Импорт
+                        <span className="text-violet-600">Импорт</span>
                       </button>
                     )}
                   </Menu.Item>
@@ -674,7 +674,7 @@ export default function ApartmentsManagementPage() {
                         <svg className="h-5 w-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19a6 6 0 0 0-12 0m6-8a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm8 1v6m3-3h-6" />
                         </svg>
-                        Добавить жильца
+                        <span className="text-emerald-600">Добавить жильца</span>
                       </button>
                     )}
                   </Menu.Item>
@@ -687,7 +687,7 @@ export default function ApartmentsManagementPage() {
                         <svg className="h-5 w-5 text-gray-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v14m7-7H5" />
                         </svg>
-                        Добавить квартиру
+                        <span className="text-gray-900">Добавить квартиру</span>
                       </button>
                     )}
                   </Menu.Item>
@@ -700,7 +700,7 @@ export default function ApartmentsManagementPage() {
                         <svg className="h-5 w-5 text-red-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                         </svg>
-                        Удалить все квартиры
+                        <span className="text-red-700">Удалить все квартиры</span>
                       </button>
                     )}
                   </Menu.Item>
@@ -716,7 +716,7 @@ export default function ApartmentsManagementPage() {
                         <svg className="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h8M8 12h8m-8 5h5M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z" />
                         </svg>
-                        Список приглашений
+                        <span className="text-blue-600">Список приглашений</span>
                       </button>
                     )}
                   </Menu.Item>

@@ -97,7 +97,8 @@ export const removeTenantFromApartment = async (
  * - Delete apartment
  */
 
-import { createDocument, getDocument, updateDocument, deleteDocument } from '@/firebase/services/firestoreService';
+import { createDocument, setDocument, getDocument, updateDocument, deleteDocument } from '@/firebase/services/firestoreService';
+import { generateApartmentId } from './apartmentIdGenerator';
 import { FIRESTORE_COLLECTIONS } from '@/shared/constants';
 import { validateApartmentNumber } from '@/shared/validation';
 import { where, query, collection, getDocs } from 'firebase/firestore';
@@ -153,7 +154,16 @@ export const createApartment = async (
       throw new Error('УК не совпадает с домом');
     }
 
-    const id = await createDocument(FIRESTORE_COLLECTIONS.APARTMENTS, {
+
+    // Получаем адрес компании для генерации ID
+    let companyAddress = '';
+    if (buildingDoc && typeof (buildingDoc as any).address === 'string') {
+      companyAddress = (buildingDoc as any).address;
+    }
+    // Генерируем именной ID
+    const id = generateApartmentId(companyAddress, normalizedNumber, data.floor || undefined);
+
+    await setDocument(FIRESTORE_COLLECTIONS.APARTMENTS, id, {
       ...data,
       companyIds: [companyId],
       number: normalizedNumber,
