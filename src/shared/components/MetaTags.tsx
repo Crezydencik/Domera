@@ -1,24 +1,6 @@
+"use client";
+import { useLanguage } from "@/shared/providers/LanguageProvider";
 
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
-import { AuthProvider } from "@/shared/providers/AuthProvider";
-import { ToastProvider } from "@/shared/providers/ToastProvider";
-import { LanguageProvider } from "@/shared/providers/LanguageProvider";
-import Header from "@/shared/components/Header";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-
-// Мультиязычные метаданные
 const metaByLocale = {
   lv: {
     title: "Domera — dzīvokļu pārvaldība kļuvusi vienkārša",
@@ -37,27 +19,15 @@ const metaByLocale = {
   }
 };
 
-
-
-
-
-
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function MetaTags() {
+  const { locale } = useLanguage();
+  const meta = metaByLocale[locale] || metaByLocale.lv;
   return (
-    <html lang="lv">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <AuthProvider>
-          <LanguageProvider>
-            {/* <MetaTags /> - Removed: use static meta tags in head if needed */}
-            {children}
-            <ToastProvider />
-          </LanguageProvider>
-        </AuthProvider>
-      </body>
-    </html>
+    <>
+      <title>{meta.title}</title>
+      <meta name="description" content={meta.description} />
+      <meta name="keywords" content={meta.keywords} />
+      <link rel="icon" href="/logo home.ico" type="image/x-icon" />
+    </>
   );
 }
