@@ -18,9 +18,7 @@ const FRACTION_LENGTH = 3;
 
 
 export const WaterMeterInput: React.FC<WaterMeterInputProps> = ({
-  value,
   onChange,
-  disabled = false,
   color = 'blue',
   meterNumber,
   previousValue,
@@ -29,11 +27,7 @@ export const WaterMeterInput: React.FC<WaterMeterInputProps> = ({
   const [intArr, setIntArr] = useState<string[]>(() => Array(INTEGER_LENGTH).fill(''));
   const [fracArr, setFracArr] = useState<string[]>(() => Array(FRACTION_LENGTH).fill(''));
 
-  // Гарантируем, что массивы всегда нужной длины
-  useEffect(() => {
-    if (intArr.length !== INTEGER_LENGTH) setIntArr(Array(INTEGER_LENGTH).fill(''));
-    if (fracArr.length !== FRACTION_LENGTH) setFracArr(Array(FRACTION_LENGTH).fill(''));
-  }, [intArr, fracArr]);
+  // useEffect для контроля длины массивов не нужен, так как useState гарантирует нужную длину
 
   // refs для автофокуса (правильно по правилам хуков)
   const intRefs = useRef<Array<HTMLInputElement | null>>([]);
@@ -76,17 +70,17 @@ export const WaterMeterInput: React.FC<WaterMeterInputProps> = ({
   const handleKeyDown = (
     e: React.KeyboardEvent<HTMLInputElement>,
     idx: number,
-    refs: React.RefObject<HTMLInputElement>[],
+    refs: Array<HTMLInputElement | null>,
     maxLen: number
   ) => {
     if (e.key === 'ArrowLeft' && idx > 0) {
-      refs[idx - 1].current?.focus();
+      refs[idx - 1]?.focus();
       e.preventDefault();
     } else if (e.key === 'ArrowRight' && idx < maxLen - 1) {
-      refs[idx + 1].current?.focus();
+      refs[idx + 1]?.focus();
       e.preventDefault();
     } else if ((e.key === 'Backspace' || e.key === 'Delete') && idx > 0 && (e.target as HTMLInputElement).value === '') {
-      refs[idx - 1].current?.focus();
+      refs[idx - 1]?.focus();
       e.preventDefault();
     }
   };
@@ -113,7 +107,7 @@ export const WaterMeterInput: React.FC<WaterMeterInputProps> = ({
           {intArr.map((digit, idx) => (
             <input
               key={idx}
-              ref={el => intRefs.current[idx] = el}
+              ref={(el: HTMLInputElement | null) => { intRefs.current[idx] = el; }}
               type="text"
               inputMode="numeric"
               maxLength={1}
@@ -141,7 +135,7 @@ export const WaterMeterInput: React.FC<WaterMeterInputProps> = ({
           {fracArr.map((digit, idx) => (
             <input
               key={idx}
-              ref={el => fracRefs.current[idx] = el}
+              ref={(el: HTMLInputElement | null) => { fracRefs.current[idx] = el; }}
               type="text"
               inputMode="numeric"
               maxLength={1}

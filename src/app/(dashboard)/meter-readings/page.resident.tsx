@@ -1249,7 +1249,7 @@ export default function MeterReadingsPage() {
                               <WaterMeterInput
                                 value={value}
                                 onChange={val => {
-                                  let clean = val.replace(',', '.');
+                                  const clean = val.replace(',', '.');
                                   const parts = clean.split('.');
                                   let int = parts[0] || '';
                                   let frac = parts[1] || '';
@@ -1258,8 +1258,6 @@ export default function MeterReadingsPage() {
                                   setWaterReadingIntegerByMeterId(prev => ({ ...prev, [meter.id]: int }));
                                   setWaterReadingFractionByMeterId(prev => ({ ...prev, [meter.id]: frac }));
                                 }}
-                                integerLength={5}
-                                fractionLength={3}
                                 disabled={false}
                                 color={isHotMeter(meter) ? 'red' : 'blue'}
                                 meterNumber={wr?.serialNumber || meter.serialNumber || ''}
