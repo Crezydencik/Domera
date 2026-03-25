@@ -455,9 +455,33 @@ export default function MeterReadingsManagerPage() {
 		router.refresh();
 	  };
 
-  const visibleApartments = apartments.filter(
-    (apartment) => !selectedBuildingId || apartment.buildingId === selectedBuildingId
-  );
+  // Сортировка квартир
+  const [sortColumn, setSortColumn] = useState<'number' | 'building'>('number');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+
+  const visibleApartments = useMemo(() => {
+    const filtered = apartments.filter(
+      (apartment) => !selectedBuildingId || apartment.buildingId === selectedBuildingId
+    );
+    const sorted = [...filtered].sort((a, b) => {
+      if (sortColumn === 'number') {
+        const nA = a.number || '';
+        const nB = b.number || '';
+        if (nA < nB) return sortDirection === 'asc' ? -1 : 1;
+        if (nA > nB) return sortDirection === 'asc' ? 1 : -1;
+        return 0;
+      }
+      if (sortColumn === 'building') {
+        const bA = buildingNameById[a.buildingId] || '';
+        const bB = buildingNameById[b.buildingId] || '';
+        if (bA < bB) return sortDirection === 'asc' ? -1 : 1;
+        if (bA > bB) return sortDirection === 'asc' ? 1 : -1;
+        return 0;
+      }
+      return 0;
+    });
+    return sorted;
+  }, [apartments, selectedBuildingId, sortColumn, sortDirection, buildingNameById]);
   
 
   if (loading) {
@@ -632,6 +656,37 @@ export default function MeterReadingsManagerPage() {
                     >
                       {isSaving ? 'Сохранение...' : tMeter('save')}
                     </button>
+                    <button
+                      className="px-6 py-2.5 rounded-lg bg-red-100 text-red-700 font-semibold hover:bg-red-200 transition shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                      onClick={async () => {
+                        if (!selectedBuilding) return;
+                        setIsSaving(true);
+                        try {
+                          const mod = await import('@/modules/invoices/services/buildings/services/buildingsService');
+                          await mod.updateBuilding(selectedBuilding.id, {
+                            waterSubmissionOpenDate: '',
+                            waterSubmissionCloseDate: '',
+                          });
+                          toast.success('Месяц сдачи удалён');
+                          setEditOpenDate('');
+                          setEditCloseDate('');
+                          // Обновить данные о домах после удаления
+                          const bData = await getBuildingsByCompany(user.companyId);
+                          setBuildings(bData);
+                        } catch (e) {
+                          toast.error('Ошибка при удалении месяца сдачи');
+                        } finally {
+                          setIsSaving(false);
+                        }
+                      }}
+                      type="button"
+                      disabled={isSaving || !selectedBuildingId}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0 1 16.138 21H7.862a2 2 0 0 1-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                      </svg>
+                      Удалить месяц сдачи
+                    </button>
                     {!selectedBuildingId && (
                       <p className="text-xs text-red-600 self-center">{tMeter('selectBuildingToSave')}</p>
                     )}
@@ -669,9 +724,36 @@ export default function MeterReadingsManagerPage() {
               <table className="w-full min-w-240 text-sm">
                 <thead className="bg-gray-50 border-b border-gray-200 text-gray-600">
                   <tr>
-                    <th className="px-4 py-3 text-left font-semibold">Квартира</th>
-                    <th className="px-4 py-3 text-left font-semibold">Дом</th>
+                    <th
+                      className="px-4 py-3 text-left font-semibold cursor-pointer select-none"
+                      onClick={() => {
+                        if (sortColumn === 'number') setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                        else { setSortColumn('number'); setSortDirection('asc'); }
+                      }}
+                    >
+                      Квартира
+                      {sortColumn === 'number' && (
+                        <span className="ml-1 inline-block align-middle">
+                          {sortDirection === 'asc' ? '▲' : '▼'}
+                        </span>
+                      )}
+                    </th>
+                    <th
+                      className="px-4 py-3 text-left font-semibold cursor-pointer select-none"
+                      onClick={() => {
+                        if (sortColumn === 'building') setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                        else { setSortColumn('building'); setSortDirection('asc'); }
+                      }}
+                    >
+                      Дом
+                      {sortColumn === 'building' && (
+                        <span className="ml-1 inline-block align-middle">
+                          {sortDirection === 'asc' ? '▲' : '▼'}
+                        </span>
+                      )}
+                    </th>
                     <th className="px-4 py-3 text-left font-semibold">Счётчики</th>
+                    <th className="px-4 py-3 text-center font-semibold">Показания</th>
                     <th className="px-4 py-3 text-right font-semibold">Действия</th>
                   </tr>
                 </thead>
@@ -711,7 +793,6 @@ export default function MeterReadingsManagerPage() {
                             <div className="flex flex-col items-start gap-2">
                               {dedupedMeters.map((meter) => {
                                 const isCold = meter.name?.toLowerCase() === 'cwm';
-                                const latestReading = getLatestReadingForMeter(apartmentReadings, meter.id);
                                 return (
                                   <div key={meter.id} className="flex flex-col items-start gap-1">
                                     <div
@@ -726,12 +807,6 @@ export default function MeterReadingsManagerPage() {
                                       <span className="text-gray-400">•</span>
                                       <span className="font-medium text-gray-900">{getApartmentMeterSerial(apartment, meter) || 'без номера'}</span>
                                     </div>
-
-                                    <div className="pl-1 text-[11px] text-gray-600">
-                                      {latestReading
-                                        ? `Пред: ${formatThreeDecimals(latestReading.previousValue)} • Тек: ${formatThreeDecimals(latestReading.currentValue)} • Расход: ${formatThreeDecimals(latestReading.consumption)}`
-                                        : 'Пред: — • Тек: — • Расход: —'}
-                                    </div>
                                   </div>
                                 );
                               })}
@@ -743,7 +818,62 @@ export default function MeterReadingsManagerPage() {
                           </div>
                         )}
                       </td>
-                      <td className="px-4 py-4">
+                      <td className="px-4 py-4 text-center">
+                        {(() => {
+                          // Определяем текущий месяц и год
+                          const now = new Date();
+                          const curMonth = now.getMonth() + 1;
+                          const curYear = now.getFullYear();
+                          // Период сдачи для дома
+                          const building = buildings.find(b => b.id === apartment.buildingId);
+                          const openDate = building?.waterSubmissionOpenDate ? new Date(building.waterSubmissionOpenDate) : null;
+                          const closeDate = building?.waterSubmissionCloseDate ? new Date(building.waterSubmissionCloseDate) : null;
+                          // Есть ли показания за этот месяц
+                          const readingsThisMonth = apartmentReadings.filter(r => r.year === curYear && r.month === curMonth);
+                          const allSubmitted = dedupedMeters.length > 0 && readingsThisMonth.length === dedupedMeters.length;
+                          let status: 'green' | 'yellow' | 'red' = 'yellow';
+                          let tooltip = '';
+                          if (allSubmitted) {
+                            status = 'green';
+                            tooltip = 'Показания сданы';
+                          } else if (closeDate && now > closeDate) {
+                            status = 'red';
+                            tooltip = 'Период сдачи закрыт, показания не сданы';
+                          } else {
+                            status = 'yellow';
+                            tooltip = 'Показания ещё не сданы';
+                          }
+                          // Формат месяца сдачи как YYYY/MM
+                          let displayMonth = curMonth;
+                          let displayYear = curYear;
+                          if (openDate) {
+                            displayMonth = openDate.getMonth() + 1;
+                            displayYear = openDate.getFullYear();
+                          }
+                          const monthStr = `${displayYear}/${String(displayMonth).padStart(2, '0')}`;
+                          return (
+                            <div className="flex flex-col items-center gap-1">
+                              <span title={tooltip} className={`inline-block w-4 h-4 rounded-full border-2 ${
+                                status === 'green' ? 'bg-green-400 border-green-500' : status === 'yellow' ? 'bg-yellow-300 border-yellow-500' : 'bg-red-400 border-red-500'
+                              }`} />
+                              <div className="flex flex-col gap-1 mt-1">
+                                {dedupedMeters.map((meter) => {
+                                  const latestReading = getLatestReadingForMeter(apartmentReadings, meter.id);
+                                  return (
+                                    <div key={meter.id} className="text-xs text-gray-700">
+                                      {latestReading
+                                        ? `Пред: ${formatThreeDecimals(latestReading.previousValue)} • Тек: ${formatThreeDecimals(latestReading.currentValue)} • Расход: ${formatThreeDecimals(latestReading.consumption)}`
+                                        : 'Пред: — • Тек: — • Расход: —'}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                              <span className="text-xs text-gray-500 mt-1">{monthStr}</span>
+                            </div>
+                          );
+                        })()}
+                      </td>
+                      <td>
                         <div className="flex justify-end gap-2">
                           <button
                             className={`inline-flex h-10 w-10 items-center justify-center rounded-lg border transition ${
@@ -772,10 +902,11 @@ export default function MeterReadingsManagerPage() {
                         </div>
                       </td>
                     </tr>
+                      
 
                     {openHistoryIds.has(apartment.id) && (
                     <tr key={`${apartment.id}-history`} className="bg-slate-50/60">
-                      <td colSpan={4} className="px-6 pb-6 pt-4">
+                      <td colSpan={5} className="px-6 pb-6 pt-4">
                         {apartmentReadings.length === 0 ? (
                           <div className="rounded-xl border border-dashed border-slate-200 bg-white px-5 py-4 text-sm text-slate-500">
                             Нет показаний
@@ -797,9 +928,30 @@ export default function MeterReadingsManagerPage() {
                                           </span>
                                           <span>{label}</span>
                                         </div>
-                                        <svg className="h-4 w-4 text-slate-500 transition-transform group-open/month:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                                        </svg>
+                                        <div className="flex items-center gap-2">
+                                          <button
+                                            type="button"
+                                            title="Удалить все показания за месяц"
+                                            className="p-1 rounded hover:bg-red-100 text-red-600 transition"
+                                            onClick={e => {
+                                              e.stopPropagation();
+                                              setDeleteMulti({
+                                                apartmentId: apartment.id,
+                                                apartmentNumber: apartment.number,
+                                                period: label,
+                                                left: readingsInMonth[0] || null,
+                                                right: readingsInMonth[1] || null,
+                                              });
+                                            }}
+                                          >
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                              <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0 1 16.138 21H7.862a2 2 0 0 1-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                            </svg>
+                                          </button>
+                                          <svg className="h-4 w-4 text-slate-500 transition-transform group-open/month:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                                          </svg>
+                                        </div>
                                       </summary>
                                       <div className="border-t border-slate-100 bg-white p-4">
                                         <table className="w-full text-xs text-slate-700">
