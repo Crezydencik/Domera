@@ -339,7 +339,13 @@
         "invalidDate": "Invalid date. Please enter a correct date.",
         "noReadingsForApartment": "No readings for this apartment",
         "history": "Meter history",
-        "meterConsumptionError": "The new reading cannot be less than the previous one. Please enter a valid value."
+        "meterConsumptionError": "The new reading cannot be less than the previous one. Please enter a valid value.",
+        "insufficientPermissions": "You do not have sufficient permissions to perform this action.",
+        "meterReadingsSaved": "Your readings have been successfully submitted",
+        "meterConsumptionSaved": "Meter consumption saved successfully",
+        "meterReadingsSaveError": "Error saving meter readings. Please check your readings and try again."        
+  ,
+  "submittedForThisMonth": "You have already submitted your water meter readings for this month. Thank you!"
 
       },
       "profile": {

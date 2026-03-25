@@ -17,13 +17,11 @@ import {
 import { METER_READING_RULES } from '@/shared/constants';
 import { getCurrentMonthYear, isMeterSubmissionAllowed } from '@/shared/lib/utils';
 import { validateConsumption, validateMeterReading } from '@/shared/validation';
-import { ConfirmationDialog } from '@/shared/components/ui/ConfirmationDialog';
 import { toast } from 'react-toastify';
 import type { Apartment, Building, Meter, MeterReading, WaterMeterData } from '@/shared/types';
 import { useLocale, useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { logout } from '../../../modules/auth/services/authService';
-import Header from '../../../shared/components/layout/heder';
 import { WaterMeterInput } from '@/shared/components/ui/WaterMeterInput';
 
 
@@ -1204,100 +1202,101 @@ export default function MeterReadingsPage() {
                 </div>
                 <div className="mb-3">
                   <h3 className="text-sm font-medium text-blue-800 mb-2">{tMeter('submitWaterReadings')}</h3>
-                  {!canSubmit ? (
-                    <div className="mt-3 rounded-md border border-yellow-200 bg-yellow-50 px-3 py-2 text-sm text-yellow-800">
-                      {tMeter('submissionUnavailable')}<br />
-                      {(() => {
-                        // Найти здание по id (строгое сравнение строк)
-                        const buildingId = String(residentApartment?.buildingId || '');
-                        const apartmentBuilding = Array.isArray(buildings) ? buildings.find(b => String(b.id) === buildingId) : undefined;
-                        const openDate = apartmentBuilding?.waterSubmissionOpenDate;
-                        const closeDate = apartmentBuilding?.waterSubmissionCloseDate;
-                        const debugIds = Array.isArray(buildings)
-                          ? buildings.map(b => `id: ${b.id} (${typeof b.id}), == buildingId: ${b.id == buildingId}, ===: ${b.id === buildingId}`)
-                          : [];
-                        return (
-                          <>
-                            {openDate && closeDate ? (
+                  {(() => {
+                    const { month: currentMonth, year: currentYear } = getCurrentMonthYear();
+                    const allMetersSubmitted = meters.length > 0 && meters.every(meter => {
+                      const readings = readingsByApartmentId[residentApartment.id] || [];
+                      return readings.some(r => r.meterId === meter.id && r.month === currentMonth && r.year === currentYear);
+                    });
+                    if (!canSubmit) {
+                      return (
+                        <div className="mt-3 rounded-md border border-yellow-200 bg-yellow-50 px-3 py-2 text-sm text-yellow-800">
+                          {tMeter('submissionUnavailable')}<br />
+                          {(() => {
+                            const buildingId = String(residentApartment?.buildingId || '');
+                            const apartmentBuilding = Array.isArray(buildings) ? buildings.find(b => String(b.id) === buildingId) : undefined;
+                            const openDate = apartmentBuilding?.waterSubmissionOpenDate;
+                            const closeDate = apartmentBuilding?.waterSubmissionCloseDate;
+                            return (
                               <>
-                                {tMeter('submissionPeriod', { open: formatDateByLocale(openDate), close: formatDateByLocale(closeDate) })}
+                                {openDate && closeDate ? (
+                                  <>
+                                    {tMeter('submissionPeriod', { open: formatDateByLocale(openDate), close: formatDateByLocale(closeDate) })}
+                                  </>
+                                ) : (
+                                  <span>{tMeter('submissionPeriodNotSet')}</span>
+                                )}
                               </>
-                            ) : (
-                              <span>{tMeter('submissionPeriodNotSet')}</span>
-                            )}
-                          </>
-                        );
-                      })()}
-                    </div>
-                  ) : meters.length === 0 ? (
-                    <p className="mt-3 rounded-md border border-yellow-200 bg-yellow-50 px-3 py-2 text-sm text-yellow-800">{tMeter('noWaterMetersConfigured')}</p>
-                  ) : (
-                    <>
-                      <div className="flex flex-col md:flex-row gap-6">
-                        {/* Render cold meter left, hot meter right */}
-                        {['cold', 'hot'].map((type) => {
-                          const meter = meters.find(m => (type === 'hot' ? isHotMeter(m) : !isHotMeter(m)));
-                          if (!meter) return null;
-                          // Формируем value для WaterMeterInput (целая.др, др всегда 3 цифры)
-                          const intPart = waterReadingIntegerByMeterId[meter.id] ?? '';
-                          const fracPart = (waterReadingFractionByMeterId[meter.id] ?? '').padEnd(3, '0');
-                          const value = `${intPart}.${fracPart}`;
-                          // Найти serialNumber из waterReadings для текущей квартиры и meterId
-                          const wr = getApartmentWaterMeterData(residentApartment, meter.id);
-                          return (
-                            <div key={meter.id} className="flex-1 min-w-0 flex flex-col items-stretch">
-                              <WaterMeterInput
-                                value={value}
-                                onChange={val => {
-                                  const clean = val.replace(',', '.');
-                                  const parts = clean.split('.');
-                                  let int = parts[0] || '';
-                                  let frac = parts[1] || '';
-                                  int = int.replace(/\D/g, '').slice(0, 5);
-                                  frac = frac.replace(/\D/g, '').slice(0, 3);
-                                  setWaterReadingIntegerByMeterId(prev => ({ ...prev, [meter.id]: int }));
-                                  setWaterReadingFractionByMeterId(prev => ({ ...prev, [meter.id]: frac }));
-                                }}
-                                disabled={false}
-                                color={isHotMeter(meter) ? 'red' : 'blue'}
-                                meterNumber={wr?.serialNumber || meter.serialNumber || ''}
-                                previousValue={(() => {
-                                  // Если есть история, ищем показание за прошлый месяц
-                                  if (wr && Array.isArray(wr.history) && wr.history.length > 0) {
-                                    const now = new Date();
-                                    const prevMonth = now.getMonth() === 0 ? 12 : now.getMonth();
-                                    const prevYear = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
-                                    // Найти показание за прошлый месяц
-                                    const prev = wr.history.find(r => r.month === prevMonth && r.year === prevYear);
-                                    if (prev && prev.currentValue !== undefined && prev.currentValue !== null) {
-                                      return String(prev.currentValue);
-                                    }
-                                  }
-                                  // Если нет истории — брать previousValue
-                                  if (wr?.previousValue !== undefined && wr?.previousValue !== null) {
-                                    return String(wr.previousValue);
-                                  }
-                                  return '';
-                                })()}
-                              />
-                            
-                              {/* Debug info for validation */}
-                            
-                            </div>
-                          );
-                        })}
-                      </div>
-                      <div className="flex justify-end mt-4">
-                        <button
-                          className="px-6 py-3 rounded bg-blue-600 text-white font-semibold hover:bg-blue-700 transition disabled:opacity-60"
-                          onClick={() => handleSubmitWaterReading(residentApartment)}
-                          disabled={submittingReadingApartmentId === residentApartment.id}
-                        >
-                          {submittingReadingApartmentId === residentApartment.id ? tMeter('saving') : tMeter('submitWaterReadings')}
-                        </button>
-                      </div>
-                    </>
-                  )}
+                            );
+                          })()}
+                        </div>
+                      );
+                    } else if (meters.length === 0) {
+                      return <p className="mt-3 rounded-md border border-yellow-200 bg-yellow-50 px-3 py-2 text-sm text-yellow-800">{tMeter('noWaterMetersConfigured')}</p>;
+                    } else if (allMetersSubmitted) {
+                      return <div className="mt-3 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-base text-green-800 font-semibold text-center">{tMeter('submittedForThisMonth')}</div>;
+                    } else {
+                      return (
+                        <>
+                          <div className="flex flex-col md:flex-row gap-6">
+                            {/* Render cold meter left, hot meter right */}
+                            {['cold', 'hot'].map((type) => {
+                              const meter = meters.find(m => (type === 'hot' ? isHotMeter(m) : !isHotMeter(m)));
+                              if (!meter) return null;
+                              const intPart = waterReadingIntegerByMeterId[meter.id] ?? '';
+                              const fracPart = (waterReadingFractionByMeterId[meter.id] ?? '').padEnd(3, '0');
+                              const value = `${intPart}.${fracPart}`;
+                              const wr = getApartmentWaterMeterData(residentApartment, meter.id);
+                              return (
+                                <div key={meter.id} className="flex-1 min-w-0 flex flex-col items-stretch">
+                                  <WaterMeterInput
+                                    value={value}
+                                    onChange={val => {
+                                      const clean = val.replace(',', '.');
+                                      const parts = clean.split('.');
+                                      let int = parts[0] || '';
+                                      let frac = parts[1] || '';
+                                      int = int.replace(/\D/g, '').slice(0, 5);
+                                      frac = frac.replace(/\D/g, '').slice(0, 3);
+                                      setWaterReadingIntegerByMeterId(prev => ({ ...prev, [meter.id]: int }));
+                                      setWaterReadingFractionByMeterId(prev => ({ ...prev, [meter.id]: frac }));
+                                    }}
+                                    disabled={false}
+                                    color={isHotMeter(meter) ? 'red' : 'blue'}
+                                    meterNumber={wr?.serialNumber || meter.serialNumber || ''}
+                                    previousValue={(() => {
+                                      if (wr && Array.isArray(wr.history) && wr.history.length > 0) {
+                                        const now = new Date();
+                                        const prevMonth = now.getMonth() === 0 ? 12 : now.getMonth();
+                                        const prevYear = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
+                                        const prev = wr.history.find(r => r.month === prevMonth && r.year === prevYear);
+                                        if (prev && prev.currentValue !== undefined && prev.currentValue !== null) {
+                                          return String(prev.currentValue);
+                                        }
+                                      }
+                                      if (wr?.previousValue !== undefined && wr?.previousValue !== null) {
+                                        return String(wr.previousValue);
+                                      }
+                                      return '';
+                                    })()}
+                                  />
+                                </div>
+                              );
+                            })}
+                          </div>
+                          <div className="flex justify-end mt-4">
+                            <button
+                              className="px-6 py-3 rounded bg-blue-600 text-white font-semibold hover:bg-blue-700 transition disabled:opacity-60"
+                              onClick={() => handleSubmitWaterReading(residentApartment)}
+                              disabled={submittingReadingApartmentId === residentApartment.id}
+                            >
+                              {submittingReadingApartmentId === residentApartment.id ? tMeter('saving') : tMeter('submitWaterReadings')}
+                            </button>
+                          </div>
+                        </>
+                      );
+                    }
+                  })()}
                 </div>
                 <div className="mt-4">
                   <h3 className="text-sm font-medium text-blue-800 mb-2">{tMeter('history')}</h3>

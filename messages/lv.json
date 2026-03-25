@@ -320,7 +320,13 @@
       "invalidDate": "Nederīgs datums. Lūdzu, ievadiet pareizu datumu.",
       "noReadingsForApartment": "Šim dzīvoklim rādījumu nav",
       "history": "Skaitītāju vēsture",
-      "meterConsumptionError": "Jaunais rādījums nevar būt mazāks par iepriekšējo. Lūdzu, ievadiet korektu vērtību."
+      "meterConsumptionError": "Jaunais rādījums nevar būt mazāks par iepriekšējo. Lūdzu, ievadiet korektu vērtību.",
+
+        "meterReadingsSaved": "Jūsu rādījumi ir veiksmīgi nosūtīti",
+        "meterConsumptionSaved": "Patēriņš veiksmīgi saglabāts",
+        "meterReadingsSaveError": "Kļūda, saglabājot rādījumus. Lūdzu, pārbaudiet rādījumus un mēģiniet vēlreiz."        
+      ,
+      "submittedForThisMonth": "Jūs jau esat iesniedzis ūdens skaitītāju rādījumus par šo mēnesi. Paldies!"
     },
     "profile": {
       "profileIncompleteTitle": "Profils nav pilnīgs",

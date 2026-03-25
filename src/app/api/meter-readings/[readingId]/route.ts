@@ -120,6 +120,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 }
 
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ readingId: string }> }) {
+    const { readingId } = await params;
+    const apartmentId = request.nextUrl.searchParams.get('apartmentId')?.trim();
+    console.log('[API] DELETE meter-reading', { readingId, apartmentId });
   try {
     const auth = await requireRequestAuth(request, {
       allowedRoles: ['Resident', 'ManagementCompany', 'Accountant'],
@@ -170,18 +173,63 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     }
 
     const found = findReadingInApartment(apartment, readingId);
+    console.log('[API] Найденное показание:', found);
     if (!found) {
       return NextResponse.json({ error: 'Reading not found' }, { status: 404 });
     }
 
     const reading = (found.group.history as Record<string, unknown>[])[found.index];
-    const submittedAt = new Date(String(reading.submittedAt ?? ''));
+    console.log('[API] Детали показания:', reading);
+    function toDateSafe(ts) {
+      if (ts instanceof Date) return ts;
+      if (ts && typeof ts._seconds === 'number') return new Date(ts._seconds * 1000);
+      return null;
+    }
+    const submittedAt = toDateSafe(reading.submittedAt);
     const now = new Date();
+    let submittedAtLog, submittedYear, submittedMonth;
+    if (submittedAt instanceof Date && !isNaN(submittedAt)) {
+      submittedAtLog = submittedAt.toISOString();
+      submittedYear = submittedAt.getFullYear();
+      submittedMonth = submittedAt.getMonth();
+    } else {
+      submittedAtLog = submittedAt;
+      submittedYear = null;
+      submittedMonth = null;
+    }
+    console.log('[API] Проверка удаления:', {
+      submittedAt: submittedAtLog,
+      now: now.toISOString(),
+      submittedYear,
+      submittedMonth,
+      nowYear: now.getFullYear(),
+      nowMonth: now.getMonth(),
+      reading
+    });
     if (
       Number.isNaN(submittedAt.getTime()) ||
       submittedAt.getFullYear() !== now.getFullYear() ||
       submittedAt.getMonth() !== now.getMonth()
     ) {
+      let submittedAtBlockLog, submittedYearBlock, submittedMonthBlock;
+      if (submittedAt instanceof Date && !isNaN(submittedAt)) {
+        submittedAtBlockLog = submittedAt.toISOString();
+        submittedYearBlock = submittedAt.getFullYear();
+        submittedMonthBlock = submittedAt.getMonth();
+      } else {
+        submittedAtBlockLog = submittedAt;
+        submittedYearBlock = null;
+        submittedMonthBlock = null;
+      }
+      console.log('[API] Блокировка удаления:', {
+        submittedAt: submittedAtBlockLog,
+        now: now.toISOString(),
+        submittedYear: submittedYearBlock,
+        submittedMonth: submittedMonthBlock,
+        nowYear: now.getFullYear(),
+        nowMonth: now.getMonth(),
+        reading
+      });
       return NextResponse.json({ error: 'Cannot delete readings from previous months' }, { status: 409 });
     }
 
@@ -213,6 +261,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    console.error('[API] Ошибка удаления meter reading:', error);
     if (error instanceof Error && error.name === 'ApiAuthError') {
       return toAuthErrorResponse(error);
     }

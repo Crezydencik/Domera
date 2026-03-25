@@ -733,14 +733,16 @@ export const deleteMeterReading = async (
       throw new Error('Показание не найдено');
     }
 
-    // Check if reading is from current month/year
-    const readDate = readingToDelete.submittedAt instanceof Date
-      ? readingToDelete.submittedAt
-      : new Date(String(readingToDelete.submittedAt));
-    const readMonth = readDate.getMonth() + 1;
-    const readYear = readDate.getFullYear();
-
-    if (Number(readMonth) !== Number(currentMonth) || Number(readYear) !== Number(currentYear)) {
+    // Check if reading is from current month/year (by reading's period, not submission date)
+    const readMonth = Number((readingToDelete as any).month);
+    const readYear = Number((readingToDelete as any).year);
+    console.log('[deleteMeterReading] Проверка удаления:', {
+      readMonth, readYear, currentMonth, currentYear, readingToDelete
+    });
+    if (readMonth !== currentMonth || readYear !== currentYear) {
+      console.log('[deleteMeterReading] Блокировка удаления:', {
+        readMonth, readYear, currentMonth, currentYear, readingToDelete
+      });
       throw new Error('Нельзя удалять показания прошлых месяцев');
     }
 

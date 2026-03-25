@@ -45,9 +45,9 @@ export const WaterMeterInput: React.FC<WaterMeterInputProps> = ({
       onChange(arr.join('') + '.' + fracArr.join(''));
       return arr;
     });
-    // Автофокус вперёд
-    if (digit && idx < INTEGER_LENGTH - 1) {
-      intRefs[idx + 1].current?.focus();
+    // Автофокус вперёд только при вводе цифры, но не при удалении
+    if (digit !== '' && idx < INTEGER_LENGTH - 1) {
+      intRefs.current[idx + 1]?.focus();
     }
   };
   // Обработчик изменения одной ячейки дробной части
@@ -59,9 +59,9 @@ export const WaterMeterInput: React.FC<WaterMeterInputProps> = ({
       onChange(intArr.join('') + '.' + arr.join(''));
       return arr;
     });
-    // Автофокус вперёд
-    if (digit && idx < FRACTION_LENGTH - 1) {
-      fracRefs[idx + 1].current?.focus();
+    // Автофокус вперёд только при вводе цифры, но не при удалении
+    if (digit !== '' && idx < FRACTION_LENGTH - 1) {
+      fracRefs.current[idx + 1]?.focus();
     }
   };
 
