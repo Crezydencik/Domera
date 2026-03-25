@@ -230,23 +230,24 @@ const Header: React.FC<HeaderWithSidebarProps> = ({ userName = '',  userAvatarUr
 
   return (
     <header className="bg-white w-full border-b border-gray-100">
-      <div className="max-w-7xl mx-auto px-6 py-5 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 py-3 sm:py-5 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-0">
         {/* Left: Burger + Title */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1 sm:gap-3 min-w-0">
           {/* Кнопка открытия меню только на мобильных */}
           {onOpenSidebar && (
             <button
-              className="md:hidden mr-2 p-2 bg-blue-500 text-white rounded-md shadow-md"
+              className="md:hidden mr-1 p-1 bg-blue-500 text-white rounded-md shadow-md"
+              style={{ minWidth: 36, minHeight: 36 }}
               onClick={onOpenSidebar}
               aria-label="Открыть меню"
             >
-              <svg width="28" height="28" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
+              <svg width="22" height="22" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
             </button>
           )}
-          <span className="text-3xl font-bold text-gray-900 leading-tight">{pageTitle}</span>
+          <span className="text-lg sm:text-2xl font-bold text-gray-900 leading-tight truncate max-w-[55vw] sm:max-w-none">{pageTitle}</span>
         </div>
         {/* Right: custom right prop + Search, theme, bell, user */}
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-4 mt-3 sm:mt-0">
           {right && <div>{right}</div>}
           {/* Search bar */}
           {/* <div className="relative">
@@ -277,7 +278,7 @@ const Header: React.FC<HeaderWithSidebarProps> = ({ userName = '',  userAvatarUr
             </button>
           </div> */}
           {/* Notification bell */}
-          <div className="relative" ref={notifRef}>
+          <div className="relative hidden sm:block" ref={notifRef}>
             <button
               className="relative p-2 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500"
               onClick={() => setNotifOpen((v) => !v)}
@@ -298,7 +299,7 @@ const Header: React.FC<HeaderWithSidebarProps> = ({ userName = '',  userAvatarUr
             />
           </div>
           {/* User avatar, name, dropdown */}
-          <div className="relative" ref={dropdownRef}>
+          <div className="relative hidden sm:block" ref={dropdownRef}>
             <button
               className="flex items-center gap-2 focus:outline-none"
               onClick={() => setDropdownOpen((v) => !v)}
@@ -313,7 +314,7 @@ const Header: React.FC<HeaderWithSidebarProps> = ({ userName = '',  userAvatarUr
                   </svg>
                 )}
               </div>
-              <span className="text-gray-700 font-medium">{userName}</span>
+              <span className="text-gray-700 font-medium max-w-[80px] sm:max-w-none truncate">{userName}</span>
               <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" className={`text-gray-400 ml-1 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`}>
                 <path d="M6 9l6 6 6-6" />
               </svg>
@@ -332,8 +333,8 @@ const Header: React.FC<HeaderWithSidebarProps> = ({ userName = '',  userAvatarUr
                     )}
                   </div>
                   <div className="flex flex-col min-w-0">
-                    <span className="font-semibold text-gray-900 truncate">{userName}</span>
-                    <span className="text-gray-500 text-sm truncate">{userEmail}</span>
+                    <span className="font-semibold text-gray-900 truncate hidden sm:block">{userName}</span>
+                    <span className="text-gray-500 text-sm truncate hidden sm:block">{userEmail}</span>
                   </div>
                 </div>
                 <div className="py-2">
@@ -363,7 +364,9 @@ const Header: React.FC<HeaderWithSidebarProps> = ({ userName = '',  userAvatarUr
             )}
           </div>
           {/* Language selector */}
-                 <LanguageSwitcher value={locale} onChange={handleLanguageChange} />
+          <div className="hidden sm:block">
+            <LanguageSwitcher value={locale} onChange={handleLanguageChange} />
+          </div>
         </div>
       </div>
 

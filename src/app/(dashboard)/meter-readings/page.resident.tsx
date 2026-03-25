@@ -1147,14 +1147,14 @@ export default function MeterReadingsPage() {
 
   return (
     <div className="min-h-screen bg-white">
-           <main className=" mx-auto px-4 py-8">
+      <main className="mx-auto px-2 sm:px-4 py-4 sm:py-8 max-w-full">
         {loadError && (
           <div className="mb-6 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             {loadError}
           </div>
         )}
         {isLoadingData ? (
-          <div className="rounded-lg border border-gray-200 bg-gray-50 p-6 text-gray-600">
+          <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 sm:p-6 text-gray-600 text-base sm:text-lg">
             {tMeter('loadingApartmentsAndReadings')}
           </div>
         ) : (
@@ -1175,13 +1175,13 @@ export default function MeterReadingsPage() {
             return (
               <div>
                 {apartments.length > 1 && (
-                  <div className="mb-4 flex items-center gap-3">
+                  <div className="mb-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
                     <label className="text-sm font-medium text-neutral-600" htmlFor="meter-apartment-select">
                       {tMeter('selectApartment')}:
                     </label>
                     <select
                       id="meter-apartment-select"
-                      className="rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                      className="rounded-xl border border-neutral-300 bg-white px-3 py-2 text-base sm:text-sm text-neutral-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200 w-full sm:w-auto"
                       value={selectedMeterApartmentId ?? ''}
                       onChange={(e) => setSelectedMeterApartmentId(e.target.value)}
                     >
@@ -1194,8 +1194,8 @@ export default function MeterReadingsPage() {
                     </select>
                   </div>
                 )}
-              <div className="rounded-lg border border-gray-200 bg-white p-3">
-                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <div className="rounded-lg border border-gray-200 bg-white p-2 sm:p-3">
+                <div className="mb-2 flex flex-col sm:flex-row flex-wrap items-start sm:items-center justify-between gap-2">
                   <div>
                     <h2 className="text-base font-semibold text-gray-900">{tMeter('apartment')} {residentApartment.number}</h2>
                   </div>
@@ -1238,7 +1238,7 @@ export default function MeterReadingsPage() {
                     } else {
                       return (
                         <>
-                          <div className="flex flex-col md:flex-row gap-6">
+                          <div className="flex flex-col gap-4 md:flex-row md:gap-6">
                             {/* Render cold meter left, hot meter right */}
                             {['cold', 'hot'].map((type) => {
                               const meter = meters.find(m => (type === 'hot' ? isHotMeter(m) : !isHotMeter(m)));
@@ -1286,7 +1286,7 @@ export default function MeterReadingsPage() {
                           </div>
                           <div className="flex justify-end mt-4">
                             <button
-                              className="px-6 py-3 rounded bg-blue-600 text-white font-semibold hover:bg-blue-700 transition disabled:opacity-60"
+                              className="w-full sm:w-auto px-6 py-3 rounded bg-blue-600 text-white font-semibold hover:bg-blue-700 transition disabled:opacity-60 text-base sm:text-base"
                               onClick={() => handleSubmitWaterReading(residentApartment)}
                               disabled={submittingReadingApartmentId === residentApartment.id}
                             >

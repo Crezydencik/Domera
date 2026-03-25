@@ -7,7 +7,9 @@ import { ROUTES } from '@/shared/constants';
 import { FiHome, FiLayers, FiClipboard, FiUsers, FiBarChart2, FiUser } from 'react-icons/fi';
 import type { User } from '@/shared/types';
 import { useTranslations } from 'next-intl';
-
+import { LanguageSwitcher } from './LanguageSwitcher';
+import { useLanguage } from '../../providers/LanguageProvider';
+// import { LanguageSwitcher } from '../../components/LanguageSwitcher';
 
 interface AdminSidebarProps {
   user: User;
@@ -35,7 +37,11 @@ export function AdminSidebar({ user, open, setOpen }: AdminSidebarProps) {
     { href: ROUTES.PROFILE, label: t('sidebar.profile'), icon: <FiUser /> },
   ];
   const roleItems = user.role === 'Resident' ? RESIDENT_NAV_ITEMS : MANAGEMENT_NAV_ITEMS;
-
+ 
+   const { locale, setLocale } = useLanguage();
+     const handleLanguageChange = (newLang: string) => {
+    setLocale(newLang);
+    };
   return (
     <aside
       className={`fixed top-0 left-0 z-40 h-screen w-72 bg-white border-r border-gray-100 flex flex-col shadow-sm transition-transform duration-300
@@ -77,7 +83,31 @@ export function AdminSidebar({ user, open, setOpen }: AdminSidebarProps) {
           })}
         </ul>
       </nav>
+      {/* Mobile-only user controls at the bottom */}
+      <div className="block sm:hidden mt-auto px-4 pb-6">
+        <div className="flex items-center justify-between gap-3 mb-4">
+          {/* Notification bell */}
+          <button
+            className="relative p-2 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500"
+            aria-label="Уведомления"
+            // TODO: Add onClick logic for notifications dropdown if needed
+          >
+            <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            </svg>
+          </button>
+          {/* User avatar */}
+          <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden flex items-center justify-center">
+            {/* TODO: Replace with actual user avatar if available */}
+            <span className="text-lg font-bold text-gray-500">{user?.name?.[0] || user?.displayName?.[0] || 'U'}</span>
+          </div>
+        </div>
+        {/* Language switcher */}
+        <div>
+          {/* Use mobile variant of LanguageSwitcher */}
+               <LanguageSwitcher value={locale} onChange={handleLanguageChange} />
+        </div>
+      </div>
     </aside>
   );
 }
-             
