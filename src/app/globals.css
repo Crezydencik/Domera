@@ -1,3 +1,18 @@
+@media (max-width: 640px) {
+  .auth-mobile-form input,
+  .auth-mobile-form button {
+    font-size: 1.1rem !important;
+    min-height: 48px !important;
+    padding-top: 12px !important;
+    padding-bottom: 12px !important;
+  }
+  .auth-mobile-form .relative {
+    min-height: 48px;
+  }
+  .auth-mobile-form .text-sm {
+    font-size: 1rem !important;
+  }
+}
 /* Мобильная адаптация сайдбара */
 @media (max-width: 767px) {
   aside[class*="w-72"] {
@@ -17,4 +32,39 @@ body {
 
 html, body {
   color-scheme: light;
+}
+
+/* --- Login/AuthLayout Mobile Styles --- */
+@media (max-width: 640px) {
+  .auth-mobile-form {
+    max-width: 100vw !important;
+    min-width: 0;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    padding: 0 8px !important;
+  }
+  .auth-mobile-header {
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+  .auth-mobile-hide-sm {
+    display: none !important;
+  }
+  .auth-mobile-center {
+    align-items: stretch !important;
+    justify-content: flex-start !important;
+    min-height: unset !important;
+    padding-top: 32px;
+  }
+  .auth-mobile-form h1 {
+    font-size: 2rem !important;
+  }
+  .auth-mobile-form p,
+  .auth-mobile-form label {
+    font-size: 1rem !important;
+  }
+  .auth-mobile-form button {
+    font-size: 1rem !important;
+    padding: 0.75rem 0 !important;
+  }
 }

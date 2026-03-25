@@ -10,6 +10,7 @@
     "permissionDenied": "Nav piekļuves datubāzei. Pārbaudiet Firebase drošības noteikumus.",
     "dbError": "Kļūda savienojumā ar datubāzi. Mēģiniet vēlreiz.",
     "rememberPassword": "Atcerēties paroli?",
+    "changeLanguage": "Mainīt valodu",
     "alert": {},
     "notifications": {
       "noNewNotifications": "Nav jaunu paziņojumu",

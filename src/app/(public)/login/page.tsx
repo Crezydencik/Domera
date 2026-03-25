@@ -96,7 +96,7 @@ export default function LoginPage() {
 
   return (
     <AuthLayout>
-      <div className="w-full max-w-md mx-auto">
+      <div className="w-full max-w-md mx-auto auth-mobile-form" style={{ paddingBottom: 20 }}>
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2 text-center">{t('welcome')}</h1>
           <p className="text-gray-500 text-center">{t('login.subtitle')}</p>

@@ -232,7 +232,7 @@ const Header: React.FC<HeaderWithSidebarProps> = ({ userName = '',  userAvatarUr
     <header className="bg-white w-full border-b border-gray-100">
       <div className="max-w-7xl mx-auto px-3 sm:px-6 py-3 sm:py-5 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-0">
         {/* Left: Burger + Title */}
-        <div className="flex items-center gap-1 sm:gap-3 min-w-0">
+        <div className="flex items-center gap-1 sm:gap-3 min-w-0 w-full">
           {/* Кнопка открытия меню только на мобильных */}
           {onOpenSidebar && (
             <button
@@ -245,40 +245,8 @@ const Header: React.FC<HeaderWithSidebarProps> = ({ userName = '',  userAvatarUr
             </button>
           )}
           <span className="text-lg sm:text-2xl font-bold text-gray-900 leading-tight truncate max-w-[55vw] sm:max-w-none">{pageTitle}</span>
-        </div>
-        {/* Right: custom right prop + Search, theme, bell, user */}
-        <div className="flex flex-wrap items-center gap-2 sm:gap-4 mt-3 sm:mt-0">
-          {right && <div>{right}</div>}
-          {/* Search bar */}
-          {/* <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-              <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                <circle cx="11" cy="11" r="8" />
-                <line x1="21" y1="21" x2="16.65" y2="16.65" />
-              </svg>
-            </span>
-            <input
-              type="text"
-              placeholder="Search"
-              className="pl-10 pr-4 py-2 rounded-full bg-gray-100 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-200 w-64"
-            />
-          </div> */}
-          {/* Theme toggle */}
-          {/* <div className="flex items-center bg-gray-100 rounded-full px-2 py-1 gap-1">
-            <button className="p-2 rounded-full hover:bg-gray-200 text-gray-500">
-              <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                <circle cx="12" cy="12" r="5" />
-                <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
-              </svg>
-            </button>
-            <button className="p-2 rounded-full hover:bg-gray-200 text-gray-500">
-              <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                <path d="M21 12.79A9 9 0 1111.21 3a7 7 0 109.79 9.79z" />
-              </svg>
-            </button>
-          </div> */}
-          {/* Notification bell */}
-          <div className="relative hidden sm:block" ref={notifRef}>
+          {/* Notification bell - right of title */}
+          <div className="relative ml-auto" ref={notifRef}>
             <button
               className="relative p-2 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500"
               onClick={() => setNotifOpen((v) => !v)}
@@ -298,6 +266,10 @@ const Header: React.FC<HeaderWithSidebarProps> = ({ userName = '',  userAvatarUr
               notifications={notifications}
             />
           </div>
+        </div>
+        {/* Right: custom right prop + Search, theme, user */}
+        <div className="flex flex-wrap items-center gap-2 sm:gap-4 mt-3 sm:mt-0 w-full sm:w-auto justify-end sm:justify-normal">
+          {right && <div>{right}</div>}
           {/* User avatar, name, dropdown */}
           <div className="relative hidden sm:block" ref={dropdownRef}>
             <button

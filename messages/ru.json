@@ -10,6 +10,7 @@
     "permissionDenied": "Нет доступа к базе данных. Проверьте правила безопасности Firebase.",
     "dbError": "Ошибка подключения к базе данных. Попробуйте еще раз.",
     "rememberPassword": "Запомнить пароль?",
+    "changeLanguage": "Сменить язык",
     "alert": {},
     "notifications": {
       "noNewNotifications": "Нет новых уведомлений",

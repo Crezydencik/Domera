@@ -25,8 +25,6 @@ import { logout } from '../../../modules/auth/services/authService';
 import { WaterMeterInput } from '@/shared/components/ui/WaterMeterInput';
 
 
-
-
 type ReadingTimestampLike =
   | Date
   | string
@@ -880,7 +878,7 @@ export default function MeterReadingsPage() {
     // Проверяем разрешён ли период сдачи показаний
     const canSubmit = isMeterSubmissionAllowed(openDate, closeDate, fallbackOpenDay);
     if (!canSubmit) {
-      let periodMsg = openDate && closeDate
+      const periodMsg = openDate && closeDate
         ? `${tMeter('submissionPeriod', {
             open: formatDateByLocale(openDate),
             close: formatDateByLocale(closeDate),

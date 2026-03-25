@@ -101,15 +101,15 @@ export const WaterMeterInput: React.FC<WaterMeterInputProps> = ({
         </div>
       </div>
       <div
-        className="flex items-center gap-2 sm:gap-2.5 bg-white rounded-lg px-2 py-1 sm:px-3 sm:py-1.5 relative shadow-sm mt-2 w-full"
-        style={{ boxShadow: '0 1px 4px #0001' }}
+        className="flex items-center gap-1 bg-white rounded-lg px-1 py-1 relative shadow-sm mt-2 w-full overflow-x-auto"
+        style={{ boxShadow: '0 1px 4px #0001', WebkitOverflowScrolling: 'touch' }}
       >
         {/* Colored bar */}
         <div
-          className="rounded w-1 h-8 sm:w-1 sm:h-10 mr-2"
+          className="rounded w-1 h-6 mr-2"
           style={{ background: color === 'red' ? '#f87171' : '#3b82f6' }}
         />
-        <div className="flex items-center gap-1 sm:gap-1.5">
+        <div className="flex items-center gap-0.5 flex-nowrap w-full">
           {intArr.map((digit, idx) => (
             <input
               key={idx}
@@ -120,14 +120,14 @@ export const WaterMeterInput: React.FC<WaterMeterInputProps> = ({
               value={digit}
               onChange={e => handleIntChange(idx, e.target.value.replace(/\D/g, ''))}
               onKeyDown={e => handleKeyDown(e, idx, intRefs.current, INTEGER_LENGTH)}
-              className={`text-center font-bold text-[#222] outline-none transition-all border-[1.5px] rounded-md focus:ring-2 focus:ring-blue-200
-                ${color === 'red' ? 'bg-red-50 border-red-500 shadow-[0_1px_4px_#ef444422]' : 'bg-blue-50 border-blue-500 shadow-[0_1px_4px_#3b82f622]'}
-                w-8 h-10 text-xl sm:w-10 sm:h-12 sm:text-2xl
+              className={`text-center font-bold text-[#222] outline-none transition-all border border-gray-300 rounded focus:ring-2 focus:ring-blue-200
+                ${color === 'red' ? 'bg-red-50 border-red-400' : 'bg-blue-50 border-blue-400'}
+                w-[clamp(1.8rem,5vw,2.5rem)] h-[clamp(2.2rem,7vw,2.8rem)] min-w-[1.5rem] min-h-[2rem] text-base sm:text-lg
               `}
               style={{ marginRight: 0 }}
             />
           ))}
-          <span className="text-xl sm:text-2xl mx-1 font-bold text-[#888] align-middle">,</span>
+          <span className="text-base sm:text-lg mx-1 font-bold text-[#888] align-middle">,</span>
           {fracArr.map((digit, idx) => (
             <input
               key={idx}
@@ -138,9 +138,9 @@ export const WaterMeterInput: React.FC<WaterMeterInputProps> = ({
               value={digit}
               onChange={e => handleFracChange(idx, e.target.value.replace(/\D/g, ''))}
               onKeyDown={e => handleKeyDown(e, idx, fracRefs.current, FRACTION_LENGTH)}
-              className={`text-center font-bold text-[#222] outline-none transition-all border-[1.5px] rounded-md focus:ring-2 focus:ring-blue-200
-                ${color === 'red' ? 'bg-red-50 border-red-500 shadow-[0_1px_4px_#ef444422]' : 'bg-blue-50 border-blue-500 shadow-[0_1px_4px_#3b82f622]'}
-                w-8 h-10 text-xl sm:w-10 sm:h-12 sm:text-2xl
+              className={`text-center font-bold text-[#222] outline-none transition-all border border-gray-300 rounded focus:ring-2 focus:ring-blue-200
+                ${color === 'red' ? 'bg-red-50 border-red-400' : 'bg-blue-50 border-blue-400'}
+                w-[clamp(1.8rem,5vw,2.5rem)] h-[clamp(2.2rem,7vw,2.8rem)] min-w-[1.5rem] min-h-[2rem] text-base sm:text-lg
               `}
               style={{ marginRight: 0 }}
             />

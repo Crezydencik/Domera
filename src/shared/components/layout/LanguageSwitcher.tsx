@@ -1,6 +1,7 @@
 'use-client'
 import { useState, useTransition } from 'react';
 import { Globe } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 const LANGUAGES = [
   { code: 'lv', label: 'Latviešu' },
@@ -19,6 +20,7 @@ export function LanguageSwitcher({ variant = 'desk', value = 'lv', onChange }: L
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const currentLang = value;
+  const ts = useTranslations('system');
 
   const changeLanguage = (lang: string) => {
     if (onChange) {
@@ -60,21 +62,23 @@ export function LanguageSwitcher({ variant = 'desk', value = 'lv', onChange }: L
     );
   }
 
-  // MOBILE VARIANT
+  // MOBILE VARIANT (селектор)
   return (
-    <div className="w-full">
-      <span className="block text-lgg text-black mb-3">Выберите язык</span>
+    <div className="w-full relative">
+      <span className="block text-base font-semibold text-black mb-3">{ts('changeLanguage')}</span>
       <button
         onClick={() => setMobileOpen(prev => !prev)}
-        className="w-full flex items-center justify-between px-4 py-3 rounded-m border border-blue-200 text-left"
+        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-blue-200 text-left font-medium text-[#1A2A49] text-lg bg-white relative z-10 shadow"
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={mobileOpen}
       >
-        <div className="flex items-center gap-3">
-          <span className="text-xl"><Globe /></span>
-          <span className="font-medium">{LANGUAGES.find(l => l.code === currentLang)?.label}</span>
-        </div>
+        <span className="text-2xl"><Globe /></span>
+        <span>{LANGUAGES.find(l => l.code === currentLang)?.label}</span>
+        <svg className={`ml-auto w-5 h-5 transition-transform ${mobileOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
       </button>
       {mobileOpen && (
-        <div className="mt-2 flex flex-col gap-2">
+        <div className="absolute top-0 left-0 w-full bg-white rounded-xl border border-gray-200 shadow-2xl z-50 flex flex-col" style={{marginTop: 0}}>
           {LANGUAGES.filter(l => l.code !== currentLang).map(l => (
             <button
               key={l.code}
@@ -82,10 +86,11 @@ export function LanguageSwitcher({ variant = 'desk', value = 'lv', onChange }: L
                 setMobileOpen(false);
                 changeLanguage(l.code);
               }}
-              disabled={l.code === currentLang || isPending}
-              className={`flex items-center gap-3 px-4 py-3 rounded-m border text-left ${l.code === currentLang ? 'border-gray-300 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'}`}
+              disabled={isPending}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left font-medium text-[#1A2A49] text-lg hover:bg-gray-50"
+              role="option"
             >
-              <span className="font-medium">{l.label}</span>
+              <span>{l.label}</span>
             </button>
           ))}
         </div>

@@ -213,9 +213,9 @@ export default function ProfilePage() {
   return (
     <div className="min-h-screen bg-neutral-100 py-0">
 
-      <main className="max-w-4xl mx-auto px-4 py-10">
-        <div className="bg-white rounded-t-xl px-6 pt-4 border border-b-0 border-neutral-200">
-          <nav className="flex gap-2 sm:gap-6 text-sm font-medium">
+      <main className="w-full max-w-4xl mx-auto px-2 sm:px-4 py-4 sm:py-10">
+        <div className="bg-white rounded-t-xl px-2 sm:px-6 pt-2 sm:pt-4 border border-b-0 border-neutral-200">
+          <nav className="flex gap-1 sm:gap-6 text-sm font-medium overflow-x-auto scrollbar-hide">
             {tabs.map((tab) => (
               <button
                 key={tab.key}
@@ -233,22 +233,22 @@ export default function ProfilePage() {
         <div className="bg-white rounded-b-xl border border-t-0 border-neutral-200 p-0">
           {activeTab === 'profile' && (
             <>
-              <div className="flex flex-col items-start sm:flex-row sm:items-center gap-4 px-6 pt-6 pb-2">
-                <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-full bg-neutral-200 flex items-center justify-center text-3xl text-neutral-500">
+              <div className="flex flex-col items-center sm:flex-row sm:items-center gap-2 sm:gap-4 px-2 sm:px-6 pt-4 pb-2">
+                <div className="flex items-center gap-2 sm:gap-4 w-full">
+                  <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-neutral-200 flex items-center justify-center text-2xl sm:text-3xl text-neutral-500">
                     <span className="sr-only">{t('userAvatar')}</span>
                     <span role="img" aria-label="user">👤</span>
                   </div>
-                  <div>
-                    <div className="text-lg font-semibold text-black leading-tight">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-base sm:text-lg font-semibold text-black leading-tight truncate">
                       {user ? (getDisplayName(user) || user.email) : ''}
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="px-6 pt-4 pb-2">
-                <div className="text-lg font-semibold text-black mb-4">{t('personalData')}</div>
+              <div className="px-2 sm:px-6 pt-2 sm:pt-4 pb-2">
+                <div className="text-base sm:text-lg font-semibold text-black mb-2 sm:mb-4">{t('personalData')}</div>
                 <div className="divide-y divide-neutral-200">
                   <EditableFieldRow
                     label={ts('form.fullname')}
@@ -296,12 +296,12 @@ export default function ProfilePage() {
                     onStartEdit={() => setEditField('phone')}
                   />
 
-                  <div className="flex items-center justify-between py-3">
+                  <div className="flex flex-col xs:flex-row xs:items-center justify-between py-2 xs:py-3 gap-1 xs:gap-0">
                     <div className="flex items-center gap-2">
                       <span className="text-neutral-700">{t('email')}</span>
                     </div>
-                    <div className="flex items-center gap-4">
-                      <span className="text-black font-mono">{user ? getFieldValue(user.email) : '—'}</span>
+                    <div className="flex items-center gap-2 xs:gap-4">
+                      <span className="text-black font-mono break-all text-sm xs:text-base">{user ? getFieldValue(user.email) : '—'}</span>
                     </div>
                   </div>
 
@@ -333,8 +333,8 @@ export default function ProfilePage() {
           )}
 
           {activeTab === 'company' && company && (
-            <div className="px-6 pt-6 pb-8">
-              <div className="text-lg font-semibold text-black mb-4">{t('company.companyData')}</div>
+            <div className="px-2 sm:px-6 pt-4 sm:pt-6 pb-6 sm:pb-8">
+              <div className="text-base sm:text-lg font-semibold text-black mb-2 sm:mb-4">{t('company.companyData')}</div>
               <div className="divide-y divide-neutral-200">
                 <EditableFieldRow
                   label={t('company.name')}
@@ -413,10 +413,10 @@ export default function ProfilePage() {
           )}
 
           {activeTab === 'notifications' && (
-            <div className="px-6 py-8">
-              <div className="text-lg font-semibold text-black mb-4">{t('notificationSettings')}</div>
-              <div className="space-y-4 mx-auto">
-                <div className="flex items-center justify-between">
+            <div className="px-2 sm:px-6 py-4 sm:py-8">
+              <div className="text-base sm:text-lg font-semibold text-black mb-2 sm:mb-4">{t('notificationSettings')}</div>
+              <div className="space-y-3 sm:space-y-4 mx-auto">
+                <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-1 xs:gap-0">
                   <span className="text-neutral-700">{t('notification.general')}</span>
                   <Switch
                     checked={notif.general}
@@ -424,7 +424,7 @@ export default function ProfilePage() {
                     disabled={notifSaving}
                   />
                 </div>
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-1 xs:gap-0">
                   <span className="text-neutral-700">{t('notification.meterReminder')}</span>
                   <Switch
                     checked={notif.meterReminder}
@@ -432,7 +432,7 @@ export default function ProfilePage() {
                     disabled={notifSaving}
                   />
                 </div>
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-1 xs:gap-0">
                   <span className="text-neutral-700">{t('notification.paymentReminder')}</span>
                   <Switch
                     checked={notif.paymentReminder}
@@ -440,10 +440,10 @@ export default function ProfilePage() {
                     disabled={notifSaving}
                   />
                 </div>
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-1 xs:gap-0">
                   <span className="text-neutral-700">{t('notification.lang')}</span>
                   <select
-                    className="border rounded px-2 py-1 text-black bg-white"
+                    className="border rounded px-2 py-1 text-black bg-white w-full max-w-[160px]"
                     value={user?.preferredLang || 'ru'}
                     onChange={async (e) => {
                       setNotifSaving(true);
@@ -459,7 +459,6 @@ export default function ProfilePage() {
                     <option value="en">{t('notification.lang_en')}</option>
                   </select>
                 </div>
-              
               </div>
             </div>
           )}

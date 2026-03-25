@@ -10,6 +10,7 @@
     "permissionDenied": "No database access. Check Firebase security rules.",
     "dbError": "Error connecting to the database. Try again.",
     "rememberPassword" : "Remember your password?",
+    "changeLanguage": "Change language",
     "notifications": {
       "noNewNotifications": "No new notifications",
       "allEventsViewed": "All events viewed",
