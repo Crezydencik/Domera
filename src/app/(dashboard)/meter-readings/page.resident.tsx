@@ -1262,6 +1262,25 @@ export default function MeterReadingsPage() {
                                 fractionLength={3}
                                 disabled={false}
                                 color={isHotMeter(meter) ? 'red' : 'blue'}
+                                meterNumber={wr?.serialNumber || meter.serialNumber || ''}
+                                previousValue={(() => {
+                                  // Если есть история, ищем показание за прошлый месяц
+                                  if (wr && Array.isArray(wr.history) && wr.history.length > 0) {
+                                    const now = new Date();
+                                    const prevMonth = now.getMonth() === 0 ? 12 : now.getMonth();
+                                    const prevYear = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
+                                    // Найти показание за прошлый месяц
+                                    const prev = wr.history.find(r => r.month === prevMonth && r.year === prevYear);
+                                    if (prev && prev.currentValue !== undefined && prev.currentValue !== null) {
+                                      return String(prev.currentValue);
+                                    }
+                                  }
+                                  // Если нет истории — брать previousValue
+                                  if (wr?.previousValue !== undefined && wr?.previousValue !== null) {
+                                    return String(wr.previousValue);
+                                  }
+                                  return '';
+                                })()}
                               />
                             
                               {/* Debug info for validation */}

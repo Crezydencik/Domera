@@ -1,78 +1,76 @@
-import React, { useRef } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
+
 
 interface WaterMeterInputProps {
   value: string;
   onChange: (val: string) => void;
-  integerLength?: number;
-  fractionLength?: number;
   disabled?: boolean;
   color?: 'red' | 'blue'; // для палочки слева
+  meterNumber?: string;
+  // validUntil убран
+  previousValue?: string; // прошлое показание
 }
+
+
+// По макету: 5 целых, 3 дробных
+const INTEGER_LENGTH = 5;
+const FRACTION_LENGTH = 3;
+
+
 export const WaterMeterInput: React.FC<WaterMeterInputProps> = ({
   value,
   onChange,
-  integerLength = 5,
-  fractionLength = 3,
   disabled = false,
   color = 'blue',
+  meterNumber,
+  previousValue,
 }) => {
-  // Разделяем value на целую и дробную части
-  const [intPart, fracPart] = value.split('.') as [string, string?];
-  const intArr = (intPart || '').padStart(integerLength, '0').slice(-integerLength).split('');
-  const fracArr = (fracPart || '').padEnd(fractionLength, '0').slice(0, fractionLength).split('');
+  // Локальное состояние для каждой ячейки (всегда длина 5 и 3)
+  const [intArr, setIntArr] = useState<string[]>(() => Array(INTEGER_LENGTH).fill(''));
+  const [fracArr, setFracArr] = useState<string[]>(() => Array(FRACTION_LENGTH).fill(''));
 
-  // refs для автофокуса
-  const intRefs = Array.from({ length: integerLength }, () => useRef<HTMLInputElement>(null));
-  const fracRefs = Array.from({ length: fractionLength }, () => useRef<HTMLInputElement>(null));
-  // refs для хранения предыдущего значения ячейки
-  const intPrevVals = useRef<string[]>([...intArr]);
-  const fracPrevVals = useRef<string[]>([...fracArr]);
+  // Гарантируем, что массивы всегда нужной длины
+  useEffect(() => {
+    if (intArr.length !== INTEGER_LENGTH) setIntArr(Array(INTEGER_LENGTH).fill(''));
+    if (fracArr.length !== FRACTION_LENGTH) setFracArr(Array(FRACTION_LENGTH).fill(''));
+  }, [intArr, fracArr]);
 
-  // Обработчик изменения одной ячейки
+  // refs для автофокуса (правильно по правилам хуков)
+  const intRefs = useRef<Array<HTMLInputElement | null>>([]);
+  const fracRefs = useRef<Array<HTMLInputElement | null>>([]);
 
+  // Не синхронизируем с value — всегда пусто
+
+
+  // Обработчик изменения одной ячейки целой части
   const handleIntChange = (idx: number, digit: string) => {
     if (!/^[0-9]?$/.test(digit)) return;
-    const arr = [...intArr];
-    // Если был '0' и вводится новая цифра, заменяем '0' на цифру
-    if (arr[idx] === '0' && digit.length === 1 && digit !== '0') {
+    setIntArr(prev => {
+      const arr = [...prev];
       arr[idx] = digit;
-    } else {
-      arr[idx] = digit || '';
-    }
-    onChange(arr.join('') + '.' + fracArr.join(''));
+      onChange(arr.join('') + '.' + fracArr.join(''));
+      return arr;
+    });
     // Автофокус вперёд
-    if (digit && idx < integerLength - 1) {
+    if (digit && idx < INTEGER_LENGTH - 1) {
       intRefs[idx + 1].current?.focus();
     }
   };
-  const handleIntFocus = (idx: number, e: React.FocusEvent<HTMLInputElement>) => {
-    intPrevVals.current[idx] = e.target.value;
-  };
-  const handleIntBlur = (idx: number, e: React.FocusEvent<HTMLInputElement>) => {
-    // Разрешаем пустое значение, не сбрасываем к 0
-  };
-
+  // Обработчик изменения одной ячейки дробной части
   const handleFracChange = (idx: number, digit: string) => {
     if (!/^[0-9]?$/.test(digit)) return;
-    const arr = [...fracArr];
-    // Если был '0' и вводится новая цифра, заменяем '0' на цифру
-    if (arr[idx] === '0' && digit.length === 1 && digit !== '0') {
+    setFracArr(prev => {
+      const arr = [...prev];
       arr[idx] = digit;
-    } else {
-      arr[idx] = digit || '';
-    }
-    onChange(intArr.join('') + '.' + arr.join(''));
+      onChange(intArr.join('') + '.' + arr.join(''));
+      return arr;
+    });
     // Автофокус вперёд
-    if (digit && idx < fractionLength - 1) {
+    if (digit && idx < FRACTION_LENGTH - 1) {
       fracRefs[idx + 1].current?.focus();
     }
   };
-  const handleFracFocus = (idx: number, e: React.FocusEvent<HTMLInputElement>) => {
-    fracPrevVals.current[idx] = e.target.value;
-  };
-  const handleFracBlur = (idx: number, e: React.FocusEvent<HTMLInputElement>) => {
-    // Разрешаем пустое значение, не сбрасываем к 0
-  };
+
 
   // Обработчик стрелок и backspace
   const handleKeyDown = (
@@ -93,71 +91,91 @@ export const WaterMeterInput: React.FC<WaterMeterInputProps> = ({
     }
   };
 
+
+
+
+
+
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#fff', borderRadius: 8, padding: '4px 12px', position: 'relative', boxShadow: '0 1px 4px #0001' }}>
-      {/* Colored bar */}
-      <div style={{ width: 4, height: 40, borderRadius: 2, marginRight: 8, background: color === 'red' ? '#f87171' : '#3b82f6' }} />
-      {intArr.map((digit, idx) => (
-        <input
-          key={idx}
-          ref={intRefs[idx]}
-          type="text"
-          inputMode="numeric"
-          maxLength={1}
-          value={digit}
-          disabled={disabled}
-          onChange={e => handleIntChange(idx, e.target.value.replace(/\D/g, ''))}
-          onFocus={e => handleIntFocus(idx, e)}
-          onBlur={e => handleIntBlur(idx, e)}
-          onKeyDown={e => handleKeyDown(e, idx, intRefs, integerLength)}
-          style={{
-            width: 36,
-            height: 44,
-            textAlign: 'center',
-            fontSize: 28,
-            fontWeight: 700,
-            color: '#222',
-            background: '#fff',
-            border: 'none',
-            outline: 'none',
-            borderBottom: '2px solid #bbb',
-            marginRight: idx === intArr.length - 1 ? 0 : 4,
-            boxShadow: '0 1px 2px #0001',
-            borderRadius: 4,
-          }}
-        />
-      ))}
-      <span style={{ fontSize: 28, margin: '0 4px', fontWeight: 700, color: '#888' }}>,</span>
-      {fracArr.map((digit, idx) => (
-        <input
-          key={idx}
-          ref={fracRefs[idx]}
-          type="text"
-          inputMode="numeric"
-          maxLength={1}
-          value={digit}
-          disabled={disabled}
-          onChange={e => handleFracChange(idx, e.target.value.replace(/\D/g, ''))}
-          onFocus={e => handleFracFocus(idx, e)}
-          onBlur={e => handleFracBlur(idx, e)}
-          onKeyDown={e => handleKeyDown(e, idx, fracRefs, fractionLength)}
-          style={{
-            width: 36,
-            height: 44,
-            textAlign: 'center',
-            fontSize: 28,
-            fontWeight: 700,
-            color: '#222',
-            background: '#fff',
-            border: 'none',
-            outline: 'none',
-            borderBottom: '2px solid #bbb',
-            marginRight: idx === fracArr.length - 1 ? 0 : 4,
-            boxShadow: '0 1px 2px #0001',
-            borderRadius: 4,
-          }}
-        />
-      ))}
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4 }}>
+      {/* Крупное предыдущее показание удалено по просьбе пользователя */}
+      <div style={{ display: 'flex', flexDirection: 'row', width: '100%' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 180 }}>
+          <div style={{ fontSize: 14, color: '#222', fontWeight: 400 }}>
+            Iepriekšējais skaitītājs: <span style={{ fontWeight: 700 }}>{previousValue !== undefined && previousValue !== '' ? previousValue : '________'}</span>
+          </div>
+        </div>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#fff', borderRadius: 8, padding: '4px 12px', position: 'relative', boxShadow: '0 1px 4px #0001', marginTop: 8 }}>
+        {/* Colored bar */}
+        <div style={{ width: 4, height: 40, borderRadius: 2, marginRight: 8, background: color === 'red' ? '#f87171' : '#3b82f6' }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {intArr.map((digit, idx) => (
+            <input
+              key={idx}
+              ref={el => intRefs.current[idx] = el}
+              type="text"
+              inputMode="numeric"
+              maxLength={1}
+              value={digit}
+              onChange={e => handleIntChange(idx, e.target.value.replace(/\D/g, ''))}
+              onKeyDown={e => handleKeyDown(e, idx, intRefs.current, INTEGER_LENGTH)}
+              style={{
+                width: 40,
+                height: 48,
+                textAlign: 'center',
+                fontSize: 30,
+                fontWeight: 700,
+                color: '#222',
+                background: color === 'red' ? '#fff5f5' : '#f6faff',
+                border: `1.5px solid ${color === 'red' ? '#ef4444' : '#3b82f6'}`,
+                outline: 'none',
+                marginRight: 0,
+                boxShadow: color === 'red' ? '0 1px 4px #ef444422' : '0 1px 4px #3b82f622',
+                borderRadius: 7,
+                transition: 'border-color 0.2s, box-shadow 0.2s',
+              }}
+            />
+          ))}
+          <span style={{ fontSize: 28, margin: '0 4px', fontWeight: 700, color: '#888', alignSelf: 'center' }}>,</span>
+          {fracArr.map((digit, idx) => (
+            <input
+              key={idx}
+              ref={el => fracRefs.current[idx] = el}
+              type="text"
+              inputMode="numeric"
+              maxLength={1}
+              value={digit}
+              onChange={e => handleFracChange(idx, e.target.value.replace(/\D/g, ''))}
+              onKeyDown={e => handleKeyDown(e, idx, fracRefs.current, FRACTION_LENGTH)}
+              style={{
+                width: 40,
+                height: 48,
+                textAlign: 'center',
+                fontSize: 30,
+                fontWeight: 700,
+                color: '#222',
+                background: color === 'red' ? '#fff5f5' : '#f6faff',
+                border: `1.5px solid ${color === 'red' ? '#ef4444' : '#3b82f6'}`,
+                outline: 'none',
+                marginRight: 0,
+                boxShadow: color === 'red' ? '0 1px 4px #ef444422' : '0 1px 4px #3b82f622',
+                borderRadius: 7,
+                transition: 'border-color 0.2s, box-shadow 0.2s',
+              }}
+            />
+          ))}
+        </div>
+      </div>
+      {/* Подпись только с номером счетчика */}
+      <div style={{ display: 'flex', flexDirection: 'row', width: '100%', marginTop: 2, marginLeft: 18 }}>
+        <div style={{ fontSize: 14, color: '#222', fontWeight: 400, minWidth: 120 }}>
+          Karstais: Nr. <span style={{ fontWeight: 700 }}>{meterNumber || '________'}</span>
+        </div>
+      </div>
     </div>
   );
 };
+
+
+
