@@ -188,7 +188,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     const submittedAt = toDateSafe(reading.submittedAt);
     const now = new Date();
     let submittedAtLog, submittedYear, submittedMonth;
-    if (submittedAt instanceof Date && !isNaN(submittedAt)) {
+    if (submittedAt instanceof Date && !isNaN(submittedAt.getTime())) {
       submittedAtLog = submittedAt.toISOString();
       submittedYear = submittedAt.getFullYear();
       submittedMonth = submittedAt.getMonth();
@@ -212,7 +212,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
       submittedAt.getMonth() !== now.getMonth()
     ) {
       let submittedAtBlockLog, submittedYearBlock, submittedMonthBlock;
-      if (submittedAt instanceof Date && !isNaN(submittedAt)) {
+      if (submittedAt instanceof Date && !isNaN(submittedAt.getTime())) {
         submittedAtBlockLog = submittedAt.toISOString();
         submittedYearBlock = submittedAt.getFullYear();
         submittedMonthBlock = submittedAt.getMonth();

@@ -325,11 +325,11 @@ export default function ResidentApartmentsPage() {
         )}
         <div className="mb-6 grid gap-4 sm:grid-cols-3">
           <div className={`${cardClass} p-5 sm:col-span-2`}>
-            <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500">{t('apartmentNumber')}</div>
-            <div className="mt-1 text-2xl font-bold text-neutral-900">#{apartment?.number || '—'}</div>
-            <div className="mt-3 text-sm text-neutral-600">
+            <div className="text-2xs font-bold uppercase tracking-wide text-neutral-900">{t('apartmentNumber')} {apartment?.number || '—'}</div>
+            {/* <div className="mt-1 text-2xl font-bold text-neutral-900">#</div> */}
+            {/* <div className="mt-3 text-sm text-neutral-600">
               {t('building')}: <span className="font-medium text-neutral-800">{building?.address || '—'}</span>
-            </div>
+            </div> */}
 
             <div className="mt-4 border-t border-neutral-200 pt-4">
               <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500">{t('basicInfo')}</div>
@@ -340,18 +340,16 @@ export default function ResidentApartmentsPage() {
                 <div className="text-sm text-neutral-700">
                   {t('floor')}: <span className="font-medium text-neutral-900">{displayValue(apartment.floor)}</span>
                 </div>
-                <div className="text-sm text-neutral-700">
+                {/* <div className="text-sm text-neutral-700">
                   {t('apartmentKind')}: <span className="font-medium text-neutral-900">{displayValue(apartment.apartmentType)}</span>
-                </div>
+                </div> */}
                 <div className="text-sm text-neutral-700">
                   {t('owner')}: <span className="font-medium text-neutral-900">{displayValue(apartment.owner)}</span>
                 </div>
                 <div className="text-sm text-neutral-700">
                   {t('ownerEmail')}: <span className="font-medium text-neutral-900">{displayValue(apartment.ownerEmail)}</span>
                 </div>
-                <div className="text-sm text-neutral-700">
-                  {t('managerEmail')}: <span className="font-medium text-neutral-900">{displayValue(companyContact?.managerEmail || building?.managedBy?.managerEmail)}</span>
-                </div>
+    
               </div>
             </div>
           </div>
