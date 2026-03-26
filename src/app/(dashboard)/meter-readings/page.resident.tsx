@@ -1234,8 +1234,20 @@ export default function MeterReadingsPage() {
                     } else if (allMetersSubmitted) {
                       return <div className="mt-3 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-base text-green-800 font-semibold text-center">{tMeter('submittedForThisMonth')}</div>;
                     } else {
-                      return (
-                        <>
+                        return (
+                          <>
+                            {/* Новый блок: если показания не поданы */}
+                            <div className="mb-4 p-4 rounded-md border border-blue-300 bg-blue-50 flex flex-col items-center">
+                              <div className="text-blue-900 text-base font-medium mb-2">Подайте показание за этот месяц</div>
+                              <button
+                                className="px-5 py-2 rounded bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"
+                                onClick={() => {
+                                  // Прокрутка к форме (фокус на первом инпуте)
+                                  const input = document.querySelector('input[type="text"], input[type="number"]');
+                                  if (input) (input as HTMLElement).focus();
+                                }}
+                              >Показания</button>
+                            </div>
                           <div className="flex flex-col gap-4 md:flex-row md:gap-6">
                             {/* Render cold meter left, hot meter right */}
                             {['cold', 'hot'].map((type) => {

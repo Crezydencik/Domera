@@ -270,8 +270,8 @@ const Header: React.FC<HeaderWithSidebarProps> = ({ userName = '',  userAvatarUr
         {/* Right: custom right prop + Search, theme, user */}
         <div className="flex flex-wrap items-center gap-2 sm:gap-4 mt-3 sm:mt-0 w-full sm:w-auto justify-end sm:justify-normal">
           {right && <div>{right}</div>}
-          {/* User avatar, name, dropdown */}
-          <div className="relative hidden sm:block" ref={dropdownRef}>
+          {/* User avatar, name/email, dropdown, language - desktop */}
+          <div className="relative hidden sm:flex items-center gap-2" ref={dropdownRef}>
             <button
               className="flex items-center gap-2 focus:outline-none"
               onClick={() => setDropdownOpen((v) => !v)}
@@ -286,13 +286,19 @@ const Header: React.FC<HeaderWithSidebarProps> = ({ userName = '',  userAvatarUr
                   </svg>
                 )}
               </div>
-              <span className="text-gray-700 font-medium max-w-[80px] sm:max-w-none truncate">{userName}</span>
+              <div className="flex flex-col min-w-0 text-left">
+                <span className="text-gray-700 font-medium max-w-[120px] truncate">{userName}</span>
+                <span className="text-gray-500 text-xs max-w-[140px] truncate">{userEmail}</span>
+              </div>
               <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" className={`text-gray-400 ml-1 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`}>
                 <path d="M6 9l6 6 6-6" />
               </svg>
             </button>
+            <div className="ml-2">
+              <LanguageSwitcher value={locale} onChange={handleLanguageChange} />
+            </div>
             {dropdownOpen && (
-              <div className="absolute right-0 mt-3 w-72 bg-white rounded-xl shadow-xl border border-gray-100 z-50 animate-fade-in" data-dropdown-interactive>
+              <div className="absolute right-0 top-full w-72 bg-white rounded-xl shadow-xl border border-gray-100 z-50 animate-fade-in" data-dropdown-interactive>
                 <div className="flex items-center gap-3 px-5 pt-5 pb-3 border-b border-gray-100">
                   <div className="w-12 h-12 rounded-full bg-gray-200 overflow-hidden">
                     {userAvatarUrl ? (
@@ -334,10 +340,6 @@ const Header: React.FC<HeaderWithSidebarProps> = ({ userName = '',  userAvatarUr
                 </div>
               </div>
             )}
-          </div>
-          {/* Language selector */}
-          <div className="hidden sm:block">
-            <LanguageSwitcher value={locale} onChange={handleLanguageChange} />
           </div>
         </div>
       </div>
