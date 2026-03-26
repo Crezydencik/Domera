@@ -269,8 +269,8 @@
       },
       "meterReadings": {
             "submittedAt": "Submitted at",
-            "previousValue": "Previous",
-            "currentValue": "Current",
+            "previousValue": "Previous value",
+            "currentValue": "Current value",
             "consumption": "Consumption (m³)",
             "isMissing": "No meter",
             "yes": "Yes",
@@ -346,7 +346,7 @@
         "meterConsumptionSaved": "Meter consumption saved successfully",
         "meterReadingsSaveError": "Error saving meter readings. Please check your readings and try again."        
   ,
-  "submittedForThisMonth": "You have already submitted your water meter readings for this month. Thank you!"
+  "submittedForThisMonth": "Thank you, your readings for this month have been received."
 
       },
       "profile": {

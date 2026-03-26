@@ -249,8 +249,8 @@
     },
     "meterReadings": {
       "submittedAt": "Iesniegts",
-      "previousValue": "Iepriekšējais",
-      "currentValue": "Pašreizējais",
+      "previousValue": "Iepriekšējais rādījums",
+      "currentValue": "Pašreizējais rādījums",
       "consumption": "Patēriņš (m³)",
       "isMissing": "Nav skaitītāja",
       "yes": "Jā",
@@ -265,6 +265,7 @@
       "selectBuildingToSave": "Izvēlieties ēku, lai saglabātu periodu!",
       "hotWater": "Karstais ūdens",
       "coldWater": "Aukstais ūdens",
+
       "difference": "Starpība",
       "submissionUnavailable": "Rādījumu iesniegšana pašlaik nav pieejama.",
       "submissionPeriod": "Iesniegšana ir pieejama no {open} līdz {close}.",
@@ -327,7 +328,7 @@
         "meterConsumptionSaved": "Patēriņš veiksmīgi saglabāts",
         "meterReadingsSaveError": "Kļūda, saglabājot rādījumus. Lūdzu, pārbaudiet rādījumus un mēģiniet vēlreiz."        
       ,
-      "submittedForThisMonth": "Jūs jau esat iesniedzis ūdens skaitītāju rādījumus par šo mēnesi. Paldies!"
+      "submittedForThisMonth": "Paldies, jūsu rādījumi šim mēnesim ir saņemti."
     },
     "profile": {
       "profileIncompleteTitle": "Profils nav pilnīgs",

@@ -250,8 +250,8 @@
     },
     "meterReadings": {
       "submittedAt": "Подано",
-      "previousValue": "Предыдущее",
-      "currentValue": "Текущее",
+      "previousValue": "Предыдущее показание",
+      "currentValue": "Текущее показание",
       "consumption": "Потребление (м³)",
       "isMissing": "Нет счетчика",
       "yes": "Да",
@@ -326,7 +326,7 @@
       "meterConsumptionSaved": "Потребление успешно сохранено",
         "meterReadingsSaveError": "Ошибка при сохранении показаний. Пожалуйста, проверьте ваши показания и попробуйте снова."        
       ,
-      "submittedForThisMonth": "Вы уже подали показания счетчиков воды за этот месяц. Спасибо!"
+      "submittedForThisMonth": "Спасибо, ваши показания за этот месяц получены."
     },
     "profile": {
       "profileIncompleteTitle": "Профиль не заполнен",

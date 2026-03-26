@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
+import { useTranslations } from 'use-intl';
 
 
 interface WaterMeterInputProps {
@@ -9,6 +10,7 @@ interface WaterMeterInputProps {
   meterNumber?: string;
   // validUntil убран
   previousValue?: string; // прошлое показание
+  waterType?: 'hot' | 'cold'; // тип воды для подписи
 }
 
 
@@ -22,7 +24,9 @@ export const WaterMeterInput: React.FC<WaterMeterInputProps> = ({
   color = 'blue',
   meterNumber,
   previousValue,
+  waterType = 'hot',
 }) => {
+  const t = useTranslations('dashboard.meterReadings');
   // Локальное состояние для каждой ячейки (всегда длина 5 и 3)
   const [intArr, setIntArr] = useState<string[]>(() => Array(INTEGER_LENGTH).fill(''));
   const [fracArr, setFracArr] = useState<string[]>(() => Array(FRACTION_LENGTH).fill(''));
@@ -96,7 +100,7 @@ export const WaterMeterInput: React.FC<WaterMeterInputProps> = ({
       <div className="flex flex-row w-full">
         <div className="flex flex-col items-start min-w-[120px] sm:min-w-[180px]">
           <div className="text-[13px] sm:text-[14px] text-[#222] font-normal">
-            Iepriekšējais skaitītājs: <span className="font-bold">{previousValue !== undefined && previousValue !== '' ? previousValue : '________'}</span>
+            {t('previousValue')}: <span className="font-bold">{previousValue !== undefined && previousValue !== '' ? previousValue : '________'}</span>
           </div>
         </div>
       </div>
@@ -147,10 +151,10 @@ export const WaterMeterInput: React.FC<WaterMeterInputProps> = ({
           ))}
         </div>
       </div>
-      {/* Подпись только с номером счетчика */}
+      {/* Подпись только с номером счетчика и типом воды */}
       <div className="flex flex-row w-full mt-1 ml-4 sm:mt-0 sm:ml-5">
         <div className="text-[13px] sm:text-[14px] text-[#222] font-normal min-w-[80px] sm:min-w-[120px]">
-          Karstais: Nr. <span className="font-bold">{meterNumber || '________'}</span>
+          {waterType === 'hot' ? t('hotWater') : t('coldWater')}: Nr. <span className="font-bold">{meterNumber || '________'}</span>
         </div>
       </div>
     </div>

@@ -1277,6 +1277,7 @@ export default function MeterReadingsPage() {
                                       }
                                       return '';
                                     })()}
+                                    waterType={type as 'hot' | 'cold'}
                                   />
                                 </div>
                               );
