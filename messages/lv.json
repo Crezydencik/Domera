@@ -328,7 +328,7 @@
         "meterConsumptionSaved": "Patēriņš veiksmīgi saglabāts",
         "meterReadingsSaveError": "Kļūda, saglabājot rādījumus. Lūdzu, pārbaudiet rādījumus un mēģiniet vēlreiz."        
       ,
-      "submittedForThisMonth": "Paldies, jūsu rādījumi šim mēnesim ir saņemti."
+      "submittedForThisMonth": "Paldies, jūsu rādījumi saņemti."
     },
     "profile": {
       "profileIncompleteTitle": "Profils nav pilnīgs",

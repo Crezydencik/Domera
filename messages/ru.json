@@ -326,7 +326,7 @@
       "meterConsumptionSaved": "Потребление успешно сохранено",
         "meterReadingsSaveError": "Ошибка при сохранении показаний. Пожалуйста, проверьте ваши показания и попробуйте снова."        
       ,
-      "submittedForThisMonth": "Спасибо, ваши показания за этот месяц получены."
+      "submittedForThisMonth": "Спасибо, ваши показания получены."
     },
     "profile": {
       "profileIncompleteTitle": "Профиль не заполнен",
