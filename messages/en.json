@@ -346,7 +346,7 @@
         "meterConsumptionSaved": "Meter consumption saved successfully",
         "meterReadingsSaveError": "Error saving meter readings. Please check your readings and try again."        
   ,
-  "submittedForThisMonth": "Thank you, your readings for this month have been received."
+  "submittedForThisMonth": "Thank you, your readings have been received."
 
       },
       "profile": {
