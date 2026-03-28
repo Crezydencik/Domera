@@ -9,9 +9,11 @@ import { getBuildingsByCompany } from "@/modules/invoices/services/buildings/ser
 import { getMeterReadingsByCompany, getMetersByApartment, deleteMeterReading } from "@/modules/meters/services/metersService";
 import { ConfirmationDialog } from "@/shared/components/ui/ConfirmationDialog";
 import { MeterDetailsModal } from "./components/MeterDetailsModal";
+import { Modal } from "@/shared/components/ui/Modal";
 import { toast } from "react-toastify";
 import type { Apartment, Building, Meter, MeterReading, WaterMeterData, WaterReadings } from "@/shared/types";
 import Header from "../../../shared/components/layout/heder";
+
 import { useRouter } from 'next/navigation';
 import { logout } from "../../../modules/auth/services/authService";
 
@@ -91,6 +93,10 @@ const getApartmentMeterSerial = (apartment: Apartment, meter?: Meter | null): st
 
 
 export default function MeterReadingsManagerPage() {
+  // Состояния для модалки экспорта
+  const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [exportFormat, setExportFormat] = useState<'csv' | 'xlsx'>('csv');
+  const [exportMonth, setExportMonth] = useState<string>(''); // формат YYYY-MM
     // Состояния для модального окна редактирования счетчиков
     const [editModalOpen, setEditModalOpen] = useState(false);
     const [openHistoryIds, setOpenHistoryIds] = useState<Set<string>>(new Set());
@@ -333,6 +339,8 @@ export default function MeterReadingsManagerPage() {
       const meterName = meter ? getMeterDisplayName(meter) : reading.meterId;
       const period = `${reading.year}. gads ${String(reading.month).padStart(2, '0')}`;
       return {
+        apartmentId: reading.apartmentId,
+        meterId: reading.meterId,
         apartmentNumber,
         buildingName,
         meterName,
@@ -524,32 +532,142 @@ export default function MeterReadingsManagerPage() {
           <div className="flex flex-row gap-3 items-center">
             <button
               type="button"
-              onClick={() => router.push(`/meter-readings/building${selectedBuildingId ? `?buildingId=${selectedBuildingId}` : ''}`)}
-              className="inline-flex items-center gap-2 rounded-lg border border-cyan-300 px-4 py-2.5 text-sm font-medium text-cyan-700 bg-cyan-50 hover:bg-cyan-100 transition shadow-md"
+              onClick={() => setExportModalOpen(true)}
+              className="inline-flex items-center gap-2 rounded-lg border border-green-400 px-4 py-2.5 text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100 transition shadow-md"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 2C12 2 7 9 7 13a5 5 0 0010 0c0-4-5-11-5-11z" />
-              </svg>
-              Nodot ūdens rādījumus
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
+              Экспорт
             </button>
-            <button
-              type="button"
-              onClick={handleExportCsv}
-              disabled={exportRows.length === 0}
-              className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 transition shadow-md disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-white"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-              CSV
-            </button>
-            <button
-              type="button"
-              onClick={handleExportXlsx}
-              disabled={exportRows.length === 0}
-              className="inline-flex items-center gap-2 rounded-lg bg-linear-to-r from-blue-500 to-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg hover:from-blue-600 hover:to-blue-700 hover:shadow-xl transition disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-              XLSX
-            </button>
+                  {/* Модалка экспорта */}
+                  <Modal isOpen={exportModalOpen} onClose={() => setExportModalOpen(false)}>
+                    <div className="flex flex-col gap-4 min-w-[280px]">
+                      <h2 className="text-lg font-bold mb-2">Экспорт данных</h2>
+                      <label className="block">
+                        <span className="text-sm font-semibold text-gray-700 mb-2 block">Формат</span>
+                        <select
+                          className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-900 shadow-md"
+                          value={exportFormat}
+                          onChange={e => setExportFormat(e.target.value as 'csv' | 'xlsx')}
+                        >
+                          <option value="csv">CSV</option>
+                          <option value="xlsx">Excel (XLSX)</option>
+                        </select>
+                      </label>
+                      <label className="block">
+                        <span className="text-sm font-semibold text-gray-700 mb-2 block">Месяц</span>
+                        <input
+                          type="month"
+                          className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-900 shadow-md"
+                          value={exportMonth}
+                          onChange={e => setExportMonth(e.target.value)}
+                        />
+                      </label>
+                      <div className="flex gap-2 mt-2">
+                        <button
+                          className="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"
+                          onClick={() => {
+                            if (!exportMonth) return;
+                            const [year, month] = exportMonth.split('-').map(Number);
+                            // Фильтруем показания по выбранному месяцу
+                            const filteredRows = exportRows.filter(row => {
+                              // row.period: "2026. gads 03"
+                              const periodMatch = row.period.match(/(\d{4})\. gads (\d{2})/);
+                              if (!periodMatch) return false;
+                              const y = Number(periodMatch[1]);
+                              const m = Number(periodMatch[2]);
+                              return y === year && m === month;
+                            });
+                            if (filteredRows.length === 0) {
+                              toast.info('Нет данных за выбранный месяц');
+                              setExportModalOpen(false);
+                              return;
+                            }
+                            if (exportFormat === 'csv') {
+                              // CSV экспорт
+                              const headers = [
+                                'Номер квартиры',
+                                'Email жильца',
+                                'Номера счётчика',
+                                'Тип счётчика',
+                                'Показание за прошлый месяц',
+                                'Показание за текущий месяц',
+                                'Разница',
+                              ];
+                              const rows = filteredRows.map(row => {
+                                const apartment = apartmentById && apartmentById[row.apartmentId];
+                                const meter = meterById && meterById[row.meterId];
+                                return [
+                                  row.apartmentNumber,
+                                  apartment?.ownerEmail || '',
+                                  meter?.serialNumber || '',
+                                  meter?.name || meter?.type || '',
+                                  row.previousValue,
+                                  row.currentValue,
+                                  row.consumption,
+                                ];
+                              });
+                              const csv = [headers, ...rows]
+                                .map(line => line.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+                                .join('\n');
+                              const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                              const url = URL.createObjectURL(blob);
+                              const a = document.createElement('a');
+                              a.href = url;
+                              a.download = `meter-readings-${exportMonth}.csv`;
+                              a.click();
+                              URL.revokeObjectURL(url);
+                            } else {
+                              // XLSX экспорт (корректно для браузера)
+                              const worksheet = XLSX.utils.aoa_to_sheet([
+                                [
+                                  'Номер квартиры',
+                                  'Email жильца',
+                                  'Номера счётчика',
+                                  'Показание за прошлый месяц',
+                                  'Показание за текущий месяц',
+                                  'Разница',
+                                ],
+                                ...filteredRows.map(row => {
+                                  const apartment = apartmentById && apartmentById[row.apartmentId];
+                                  const meter = meterById && meterById[row.meterId];
+                                  return [
+                                    row.apartmentNumber,
+                                    apartment?.ownerEmail || '',
+                                    meter?.serialNumber || '',
+                                    meter?.name || meter?.type || '',
+                                    row.previousValue,
+                                    row.currentValue,
+                                    row.consumption,
+                                  ];
+                                }),
+                              ]);
+                              const workbook = XLSX.utils.book_new();
+                              XLSX.utils.book_append_sheet(workbook, worksheet, 'Экспорт');
+                              // Генерируем бинарный массив для Blob
+                              const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+                              const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                              const url = URL.createObjectURL(blob);
+                              const a = document.createElement('a');
+                              a.href = url;
+                              a.download = `meter-readings-${exportMonth}.xlsx`;
+                              a.click();
+                              URL.revokeObjectURL(url);
+                            }
+                            setExportModalOpen(false);
+                          }}
+                          disabled={!exportMonth}
+                        >
+                          Экспортировать
+                        </button>
+                        <button
+                          className="px-4 py-2 rounded-lg bg-gray-200 text-gray-700 font-semibold hover:bg-gray-300 transition"
+                          onClick={() => setExportModalOpen(false)}
+                        >
+                          Отмена
+                        </button>
+                      </div>
+                    </div>
+                  </Modal>
           </div>
         </div>
 
