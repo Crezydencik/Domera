@@ -86,13 +86,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [isAuthenticated]);
 
+  // Корректное определение isResident: только если не управляющая компания и не владелец
+  const isManagementCompany = user?.role === 'ManagementCompany';
+  // Можно добавить сюда проверку на ownerEmail, если есть в user
+  const isResident =
+    user?.role === 'Resident' &&
+    !isManagementCompany;
+
   const value: UseAuthReturn = {
     user,
     uid,
     loading,
     isAuthenticated,
-    isManagementCompany: user?.role === 'ManagementCompany',
-    isResident: user?.role === 'Resident',
+    isManagementCompany,
+    isResident,
     refreshUser,
   };
 

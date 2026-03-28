@@ -11,6 +11,7 @@
     "dbError": "Error connecting to the database. Try again.",
     "rememberPassword" : "Remember your password?",
     "changeLanguage": "Change language",
+    "resendInvitation": "Resend invitation",
     "notifications": {
       "noNewNotifications": "No new notifications",
       "allEventsViewed": "All events viewed",
@@ -78,6 +79,9 @@
       "companyInfo": "Company information",
       "personalInfo": "Personal information",
       "confirmation": "Confirmation"
+    },
+    "alerts":{
+      "invitationSentToEmail": "Invitation sent to {email}"
     },
     "viewprofile": "View profile",
     "editProfile": "Edit profile",
@@ -159,6 +163,13 @@
     "dashboard": {
       "loading": "Loading...",
       "waterReadings": "Water readings",
+      "waterBlockTitleNew": "Submit new readings",
+      "waterBlockTitleDone": "Readings submitted",
+      "waterBlockTitleHistory": "Reading history",
+      "waterBlockDescDone": "Your readings have been submitted. Thank you!",
+      "waterBlockBtnDone": "Submit new readings",
+      "waterBlockBtnNew": "Submit readings",
+      
       "sidebar": {
         "manager": "Manager",
         "resident": "Resident",
@@ -224,6 +235,7 @@
           "resident": "Resident",
           "type": "Type",
           "actions": "Actions",
+          "resendInvitation": "Resend invitation",
           "delete": "Delete",
           "successSaveInfo": "Apartment info saved!",
           "errorSaveInfo": "Error saving apartment info.",

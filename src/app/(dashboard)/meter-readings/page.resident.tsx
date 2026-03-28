@@ -23,7 +23,8 @@ import { useLocale, useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { logout } from '../../../modules/auth/services/authService';
 import { WaterMeterInput } from '@/shared/components/ui/WaterMeterInput';
-
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import { db } from '@/firebase/config';
 
 type ReadingTimestampLike =
   | Date
@@ -413,7 +414,7 @@ export default function MeterReadingsPage() {
     if (!reading) {
       return (
         <div className="flex items-center justify-between rounded-md border border-slate-700 bg-slate-900/50 p-3 min-h-16">
-          <div className="text-sm text-gray-400">—</div>
+          <div className="text-sm text-gray-400">{tMeter('noValueDash', { defaultValue: '—' })}</div>
         </div>
       );
     }
@@ -467,7 +468,7 @@ export default function MeterReadingsPage() {
                 </span>
               ) : (
                 <span className="text-xs text-slate-400 flex items-center gap-2">
-                  <span>Nr. {(() => {
+                  <span>{tMeter('meterNumber', { defaultValue: 'Nr.' })} {(() => {
                     // Найти waterReading для текущей квартиры и meterId
                     const apartment = apartments.find(a => a.id === reading.apartmentId);
                     const wr = getApartmentWaterMeterData(apartment, meter.id);
@@ -579,12 +580,13 @@ export default function MeterReadingsPage() {
         let buildingsData: Building[] = [];
         let readingsData: MeterReading[] = [];
 
+        // --- Исправленная логика: всегда показывать владельцу его квартиры ---
         if (user.role === 'Resident') {
           const residentApartmentIds: string[] = (user.apartmentIds && user.apartmentIds.length > 0)
             ? user.apartmentIds
             : user.apartmentId ? [user.apartmentId] : [];
 
-          // Also query by residentId to catch apartments not yet in the user's apartmentIds array
+          // Получаем все квартиры, где residentId = user.uid
           const [byIds, byResidentId] = await Promise.all([
             residentApartmentIds.length > 0
               ? Promise.all(residentApartmentIds.map((id) => getApartment(id)))
@@ -592,12 +594,41 @@ export default function MeterReadingsPage() {
             getApartmentsByResidentId(user.uid),
           ]);
 
+          // Получаем все квартиры, где ownerEmail совпадает с email пользователя
+          const apartmentsCollection = collection(db, 'apartments');
+          const q = query(apartmentsCollection, where('ownerEmail', '==', user.email));
+          const snapshot = await getDocs(q);
+          const byOwnerEmail = snapshot.docs.map((doc) => {
+            const data = doc.data() as Record<string, unknown>;
+            return {
+              id: doc.id,
+              buildingId: data.buildingId as string ?? '',
+              number: data.number as string ?? '',
+              ...data,
+            } as Apartment;
+          });
+
+          // Объединяем все найденные квартиры без дубликатов
           const merged: Record<string, Apartment> = {};
           for (const a of byResidentId) if (a) merged[a.id] = a;
-          // Fallback by user.apartmentIds only when resident binding still belongs to current user
+          for (const a of byOwnerEmail) if (a) merged[a.id] = a;
           for (const a of byIds) if (a && a.residentId === user.uid) merged[a.id] = a;
-          const apts = Object.values(merged);
-
+          let apts = Object.values(merged);
+          // Если после объединения квартир ничего не найдено, явно ищем по ownerEmail
+          if (apts.length === 0 && user.email) {
+            const apartmentsCollection = collection(db, 'apartments');
+            const q = query(apartmentsCollection, where('ownerEmail', '==', user.email));
+            const snapshot = await getDocs(q);
+            apts = snapshot.docs.map((doc) => {
+              const data = doc.data() as Record<string, unknown>;
+              return {
+                id: doc.id,
+                buildingId: data.buildingId as string ?? '',
+                number: data.number as string ?? '',
+                ...data,
+              } as Apartment;
+            });
+          }
           apartmentsData = apts;
           const buildingIdSet = new Set(apts.map((a) => a.buildingId).filter(Boolean));
           const bArr = (await Promise.all(Array.from(buildingIdSet).map((id) => getBuilding(id)))).filter((b): b is Building => b !== null);
@@ -613,9 +644,13 @@ export default function MeterReadingsPage() {
           // readingsData = await getMeterReadingsByCompany(user.companyId);
         }
 
-        // Ensure apartments come from DB and include buildingId
-        // For residents, apartmentsData is already filtered/merged above; for managers use all
-        const visibleApartments = user.role === 'Resident' ? apartmentsData : apartmentsData;
+        // Явно фильтруем квартиры для владельца по ownerEmail
+        let visibleApartments = apartmentsData;
+        if (user.email) {
+          visibleApartments = apartmentsData.filter(
+            (a) => a.ownerEmail === user.email || (a.tenants && a.tenants.some(t => t.email === user.email))
+          );
+        }
 
         // If some apartments reference buildings that weren't returned by getBuildingsByCompany
         // (e.g., legacy docs or missing companyId on building), fetch those buildings individually
@@ -687,18 +722,30 @@ export default function MeterReadingsPage() {
 
 
 
+  // Filter readings for renters (arendators) to only their own submissions
   const sortedReadings = useMemo(() => {
+    let filtered = readings;
+    // Если пользователь — арендатор (tenant), показывать только его показания
+    if (user && user.role !== 'Resident' && user.role !== 'ManagementCompany') {
+      // Найти квартиры, где этот пользователь — арендатор с submitMeter
+      const allowedApartmentIds = apartments
+        .filter(apartment => Array.isArray(apartment.tenants) && apartment.tenants.some(
+          t => t.userId === user.uid && t.permissions.includes('submitMeter')
+        ))
+        .map(a => a.id);
+      // Фильтровать показания: только по этим квартирам и только те, что отправил этот арендатор
+      filtered = readings.filter(r => allowedApartmentIds.includes(r.apartmentId) && r.buildingId && r.apartmentId && r && r.userId === user.uid);
+    }
     // sort chronologically: oldest -> newest
-    return [...readings].sort((a, b) => {
+    return [...filtered].sort((a, b) => {
       const periodDiff = a.year - b.year || a.month - b.month;
       if (periodDiff !== 0) return periodDiff;
-
       return (
         toTimestampMs(a.submittedAt as ReadingTimestampLike) -
         toTimestampMs(b.submittedAt as ReadingTimestampLike)
       );
     });
-  }, [readings]);
+  }, [readings, user, apartments]);
 
   const readingsByApartmentId = useMemo(() => {
     return sortedReadings.reduce<Record<string, MeterReading[]>>((acc, reading) => {
@@ -970,7 +1017,7 @@ export default function MeterReadingsPage() {
 
       const createdReadings: MeterReading[] = [];
       for (const reading of preparedReadings) {
-        const created = await submitMeterReading(reading);
+        const created = await submitMeterReading({ ...reading, userId: user.uid });
         createdReadings.push(created);
       }
 
@@ -1097,7 +1144,17 @@ export default function MeterReadingsPage() {
                 onClick={() => setOpenAccordionKey(openAccordionKey === key ? '' : key)}
               >
                 <span className="font-semibold text-gray-900">{monthLabel}</span>
-                <span className="text-blue-600 text-sm">{openAccordionKey === key ? '▲' : '▼'}</span>
+                <span className="text-blue-600 text-sm">
+                  {openAccordionKey === key ? (
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M5 12l5-5 5 5" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  ) : (
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M5 8l5 5 5-5" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  )}
+                </span>
               </button>
               {openAccordionKey === key && (
                 <div className="px-4 py-3 space-y-3 bg-white">
@@ -1124,7 +1181,7 @@ export default function MeterReadingsPage() {
                           </svg>
                         </div>
                         <div className="flex-1">
-                          <div className="text-xs text-gray-500">{isHot ? tMeter('hotWater') : tMeter('coldWater')} Nr. <b>{meter?.serialNumber || reading.serialNumber || reading.WMETNUM || reading.meterId || '—'}</b></div>
+                          <div className="text-xs text-gray-500">{isHot ? tMeter('hotWater') : tMeter('coldWater')} {tMeter('meterNumber', { defaultValue: 'Nr.' })} <b>{meter?.serialNumber || reading.serialNumber || reading.WMETNUM || reading.meterId || tMeter('noValueDash', { defaultValue: '—' })}</b></div>
                         </div>
                         <div className="text-right">
                           <div className="text-lg font-bold text-gray-900">{formatNumberDot(reading.currentValue ?? 0, 3)}</div>
@@ -1148,7 +1205,7 @@ export default function MeterReadingsPage() {
       <main className="mx-auto px-2 sm:px-4 py-4 sm:py-8 max-w-full">
         {loadError && (
           <div className="mb-6 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {loadError}
+            {tMeter('loadError', { defaultValue: loadError })}
           </div>
         )}
         {isLoadingData ? (
@@ -1162,7 +1219,20 @@ export default function MeterReadingsPage() {
               return <div className="rounded-lg border border-gray-200 bg-gray-50 p-8 text-center"><p className="text-gray-600">{tMeter('noApartmentsFound')}</p></div>;
             }
             const meters = getWaterMetersByApartment(residentApartment.id);
-            const readings = readingsByApartmentId[residentApartment.id] ?? [];
+            let readings = readingsByApartmentId[residentApartment.id] ?? [];
+            // For renters (arendators), filter readings to only those apartments where user is a tenant with submitMeter
+            if (user && user.role !== 'Resident' && user.role !== 'ManagementCompany') {
+              const isTenantWithSubmit = Array.isArray(residentApartment.tenants)
+                && residentApartment.tenants.some(t => t.userId === user.uid && t.permissions.includes('submitMeter'));
+              if (isTenantWithSubmit) {
+                // Only show readings if the user is a tenant with submitMeter
+                // (in future, if readings had author, could filter more precisely)
+                // For now, show all readings for this apartment (since we can't distinguish by author)
+                // If you want to show only readings submitted by this user, filter here if possible
+              } else {
+                readings = [];
+              }
+            }
             // --- Новая логика: вычисляем доступность сдачи ---
             const apartmentBuilding = buildings.find((building) => building.id === residentApartment.buildingId);
             const openDate = apartmentBuilding?.waterSubmissionOpenDate;
@@ -1234,20 +1304,8 @@ export default function MeterReadingsPage() {
                     } else if (allMetersSubmitted) {
                       return <div className="mt-3 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-base text-green-800 font-semibold text-center">{tMeter('submittedForThisMonth')}</div>;
                     } else {
-                        return (
-                          <>
-                            {/* Новый блок: если показания не поданы */}
-                            <div className="mb-4 p-4 rounded-md border border-blue-300 bg-blue-50 flex flex-col items-center">
-                              <div className="text-blue-900 text-base font-medium mb-2">Подайте показание за этот месяц</div>
-                              <button
-                                className="px-5 py-2 rounded bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"
-                                onClick={() => {
-                                  // Прокрутка к форме (фокус на первом инпуте)
-                                  const input = document.querySelector('input[type="text"], input[type="number"]');
-                                  if (input) (input as HTMLElement).focus();
-                                }}
-                              >Показания</button>
-                            </div>
+                      return (
+                        <>
                           <div className="flex flex-col gap-4 md:flex-row md:gap-6">
                             {/* Render cold meter left, hot meter right */}
                             {['cold', 'hot'].map((type) => {

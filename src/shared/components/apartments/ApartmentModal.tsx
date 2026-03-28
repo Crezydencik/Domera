@@ -4,6 +4,7 @@ import { useTranslations } from 'next-intl';
 import { sendPasswordResetEmail } from '@/modules/auth/services/authService';
 import type { Apartment } from '../../types';
 import type { ApartmentInvitationMeta, ApartmentAccountStatus } from '../../types/index';
+import { TenantInviteForm } from './TenantInviteForm';
 
 type FirestoreDateLike = Date | string | number | { toDate?: () => Date } | null | undefined;
 
@@ -164,6 +165,51 @@ export const ApartmentModal: React.FC<ApartmentModalProps> = ({
             </button>
           </div>
 
+          {/* Email хозяина и арендатора */}
+          <div className="mb-6 flex flex-wrap gap-6 p-4 border-b border-gray-100 bg-gray-50 rounded-2xl">
+            <div className="flex flex-col">
+              <span className="text-xs text-gray-500 font-semibold">Email жильца</span>
+              <div className="flex items-center gap-2">
+                <span className="text-base text-gray-900 font-mono">{apartment?.ownerEmail || '—'}</span>
+                {apartment?.ownerEmail && (
+                  <button
+                    className="text-xs text-blue-600 underline hover:text-blue-800"
+                    onClick={async () => {
+                      await fetch('/api/invitations/send', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ apartmentId: apartment.id, email: apartment.ownerEmail, legalBasisConfirmed: true })
+                      });
+                      toast.success('Приглашение отправлено повторно владельцу!');
+                    }}
+                  >
+                    Повторить приглашение
+                  </button>
+                )}
+              </div>
+              {/* Если есть арендатор — показать под жильцом */}
+              {apartment?.tenants && apartment.tenants.length > 0 && (
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-xs text-gray-500 font-semibold">Арендатор:</span>
+                  <span className="text-base text-cyan-900 font-mono">{apartment.tenants[0].email}</span>
+                  <button
+                    className="text-xs text-blue-600 underline hover:text-blue-800"
+                    onClick={async () => {
+                      await fetch('/api/invitations/send', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ apartmentId: apartment.id, email: apartment.tenants[0].email, legalBasisConfirmed: true })
+                      });
+                      toast.success('Приглашение отправлено повторно арендатору!');
+                    }}
+                  >
+                    Повторить приглашение
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Информационные блоки */}
           <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
             <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
@@ -275,36 +321,47 @@ export const ApartmentModal: React.FC<ApartmentModalProps> = ({
           </div>
         )}
 
-        {/* Форма приглашения нового жильца */}
-        {(showInviteSection || accountStatus !== 'activated') && (
-          <div className="mb-6 rounded-2xl bg-linear-to-br from-emerald-50 to-green-50 border-2 border-emerald-200 p-4">
+        {/* Форма приглашения нового жильца — всегда видна */}
+        <div className="mb-6 rounded-2xl bg-linear-to-br from-emerald-50 to-green-50 border-2 border-emerald-200 p-4">
+          <h4 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
+            <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+            </svg>
+            Пригласить нового жильца
+          </h4>
+          <div className="flex gap-2 items-center flex-wrap">
+            <input
+              type="email"
+              value={inviteEmail}
+              onChange={e => setInviteEmail(e.target.value)}
+              placeholder="Email нового жильца"
+              className="flex-1 min-w-50 rounded-xl bg-white border-2 border-gray-200 text-gray-900 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              disabled={sendingInvite}
+            />
+            <button
+              type="button"
+              onClick={async () => {
+                await handleSendInvite();
+              }}
+              disabled={sendingInvite || !inviteEmail}
+              className="rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-600 disabled:opacity-50 transition"
+            >
+              {sendingInvite ? 'Отправка...' : 'Отправить'}
+            </button>
+          </div>
+          {inviteError && <p className="text-red-600 mt-2 text-sm font-medium">{inviteError}</p>}
+        </div>
+
+        {/* Форма приглашения арендатора — всегда видна */}
+        {apartment && (
+          <div className="mb-6 rounded-2xl bg-linear-to-br from-cyan-50 to-blue-50 border-2 border-cyan-200 p-4">
             <h4 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
-              <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
               </svg>
-              Пригласить нового жильца
+              Пригласить арендатора
             </h4>
-            <div className="flex gap-2 items-center flex-wrap">
-              <input
-                type="email"
-                value={inviteEmail}
-                onChange={e => setInviteEmail(e.target.value)}
-                placeholder="Email нового жильца"
-                className="flex-1 min-w-50 rounded-xl bg-white border-2 border-gray-200 text-gray-900 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                disabled={sendingInvite}
-              />
-              <button
-                type="button"
-                onClick={async () => {
-                  await handleSendInvite();
-                }}
-                disabled={sendingInvite || !inviteEmail}
-                className="rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-600 disabled:opacity-50 transition"
-              >
-                {sendingInvite ? 'Отправка...' : 'Отправить'}
-              </button>
-            </div>
-            {inviteError && <p className="text-red-600 mt-2 text-sm font-medium">{inviteError}</p>}
+            <TenantInviteForm apartmentId={apartment.id} />
           </div>
         )}
 

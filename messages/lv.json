@@ -11,7 +11,15 @@
     "dbError": "Kļūda savienojumā ar datubāzi. Mēģiniet vēlreiz.",
     "rememberPassword": "Atcerēties paroli?",
     "changeLanguage": "Mainīt valodu",
-    "alert": {},
+    
+    "resendInvitation": "Atkārtoti nosūtīt uzaicinājumu",
+
+    "alerts": {
+      "invitationSentToEmail": "Uzaicinājums nosūtīts uz {email}",
+      "invitationResentToEmail": "Uzaicinājums atkārtoti nosūtīts uz {email}",
+      "invitationSendError": "Kļūda, sūtot uzaicinājumu. Lūdzu, mēģiniet vēlreiz.",
+      "invitationResendError": "Kļūda, sūtot atkārtoti uzaicinājumu. Lūdzu, mēģiniet vēlreiz."
+    },
     "notifications": {
       "noNewNotifications": "Nav jaunu paziņojumu",
       "allEventsViewed": "Visi notikumi apskatīti",
@@ -158,6 +166,14 @@
   },
   "dashboard": {
     "loading": "Ielāde...",
+          "waterReadings": "Ūdens rādījumi",
+      "waterBlockTitleNew": "Iesniegt jaunus rādījumus",
+      "waterBlockTitleDone": "Rādījumi iesniegti",
+      "waterBlockTitleHistory": "Rādījumu vēsture",
+      "waterBlockDescDone": "Jūsu rādījumi ir iesniegti. Paldies!",
+      "waterBlockBtnDone": "Iesniegt jaunus rādījumus",
+      "waterBlockBtnNew": "Iesniegt rādījumus",
+      
     "sidebar": {
       "manager": "Pārvaldnieks",
       "resident": "Iedzīvotājs",

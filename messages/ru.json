@@ -11,7 +11,11 @@
     "dbError": "Ошибка подключения к базе данных. Попробуйте еще раз.",
     "rememberPassword": "Запомнить пароль?",
     "changeLanguage": "Сменить язык",
-    "alert": {},
+    "resendInvitation": "Отправить приглашение повторно",
+    "alerts": {
+      "invitationSentToEmail": "Приглашение успешно отправлено на {email}",
+      "invitationSendError": "Ошибка при отправке приглашения. Пожалуйста, попробуйте еще раз."
+    },
     "notifications": {
       "noNewNotifications": "Нет новых уведомлений",
       "allEventsViewed": "Все события просмотрены",
@@ -158,6 +162,15 @@
   },
   "dashboard": {
     "loading": "Загрузка...",
+          "waterReadings": "Показания воды",
+      "waterBlockTitleNew": "Подать новые показания",
+      "waterBlockTitleDone": "Показания поданы",
+      "waterBlockDescNew": "Пожалуйста, введите текущие показания счетчиков воды для вашей квартиры.",
+      "waterBlockTitleHistory": "История показаний",
+      "waterBlockDescDone": "Ваши показания были поданы. Спасибо!",
+      "waterBlockBtnDone": "Подать новые показания",
+      "waterBlockBtnNew": "Подать показания",
+      
     "sidebar": {
       "manager": "Управляющий",
       "resident": "Жилец",
@@ -177,6 +190,12 @@
       "loggingOut": "Выход из системы..."
     },
     "resident": {
+      "waterBlockTitleNew": "Пора подать показания за воду!",
+      "waterBlockTitleDone": "Показания за этот месяц уже поданы",
+      "waterBlockDescNew": "Пожалуйста, введите текущие показания счётчиков воды для вашей квартиры.",
+      "waterBlockDescDone": "Вы можете просмотреть или изменить свои показания за текущий месяц.",
+      "waterBlockBtnNew": "Подать показания",
+      "waterBlockBtnDone": "Посмотреть показания",
       "welcome": "Добро пожаловать, {name}!",
       "apartmentInfo": "Информация о квартире",
       "buildingInfo": "Информация о здании",
@@ -223,6 +242,7 @@
       "resident": "Жилец",
       "type": "Тип",
       "actions": "Действия",
+      "resendInvitation": "Отправить повторно",
       "delete": "Удалить",
       "successSaveInfo": "Информация о квартире сохранена!",
       "errorSaveInfo": "Ошибка при сохранении информации о квартире.",

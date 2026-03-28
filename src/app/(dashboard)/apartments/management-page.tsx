@@ -51,6 +51,7 @@ export default function ApartmentsManagementPage() {
   const [globalInviteEmail, setGlobalInviteEmail] = useState('');
   const [globalInviteApartmentId, setGlobalInviteApartmentId] = useState<string | undefined>(undefined);
   const [invitedApartmentIds, setInvitedApartmentIds] = useState<string[]>([]);
+  const [inviteType, setInviteType] = useState<'resident' | 'renter'>('resident');
   const [pendingInvitationByApartmentId, setPendingInvitationByApartmentId] = useState<Record<string, string>>({});
   const [newApartment, setNewApartment] = useState({
     number: '',
@@ -773,6 +774,17 @@ export default function ApartmentsManagementPage() {
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:items-end">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Email адрес</label>
+                              <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">Тип приглашения</label>
+                                <select
+                                  value={inviteType}
+                                  onChange={e => setInviteType(e.target.value as 'resident' | 'renter')}
+                                  className="w-full rounded-lg bg-gray-50 border-2 border-gray-200 text-gray-900 px-4 py-3 focus:border-emerald-500 focus:outline-none transition"
+                                >
+                                  <option value="resident">Жилец (полный доступ)</option>
+                                  <option value="renter">Арендатор (только показания)</option>
+                                </select>
+                              </div>
                 <input
                   type="email"
                   value={globalInviteEmail}
@@ -801,6 +813,7 @@ export default function ApartmentsManagementPage() {
                 </select>
               </div>
               <div className="flex gap-2">
+
                 <button
                   type="button"
                   onClick={async () => {
@@ -814,8 +827,26 @@ export default function ApartmentsManagementPage() {
                       return;
                     }
                     try {
-                      await sendApartmentInvitation(globalInviteApartmentId, email);
-                      toast.success(t('auth.alert.invitationSentToEmail', { email }));
+                      if (inviteType === 'renter') {
+                        // Отправить приглашение арендатора с inviteType и permissions
+                        const response = await fetch('/api/invitations/send', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            apartmentId: globalInviteApartmentId,
+                            email,
+                            legalBasisConfirmed: true,
+                            permissions: ['submitMeter'],
+                            inviteType: 'renter',
+                          }),
+                        });
+                        if (!response.ok) throw new Error('Ошибка при отправке приглашения');
+                        toast.success('Арендатор приглашён!');
+                      } else {
+                        // Обычное приглашение жильца
+                        await sendApartmentInvitation(globalInviteApartmentId, email);
+                        toast.success(t('auth.alert.invitationSentToEmail', { email }));
+                      }
                       setGlobalInviteEmail('');
                       setInvitedApartmentIds(prev => Array.from(new Set([...prev, globalInviteApartmentId])));
                       setGlobalInviteApartmentId(undefined);
@@ -1076,13 +1107,19 @@ export default function ApartmentsManagementPage() {
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {displayedApartments.map((apartment) => {
-                    const tenant0 = apartment.tenants?.[0] as unknown;
-                    const residentName = (typeof tenant0 === 'object' && tenant0 !== null && 'name' in tenant0)
-                      ? (tenant0 as { name?: string }).name
-                      : apartment.owner;
-                    const residentEmail = (typeof tenant0 === 'object' && tenant0 !== null && 'email' in tenant0)
-                      ? (tenant0 as { email?: string }).email
-                      : apartment.ownerEmail;
+                    // Показываем только tenant с accepted статусом, иначе owner
+                    let residentName = apartment.owner;
+                    let residentEmail = apartment.ownerEmail;
+                    if (Array.isArray(apartment.tenants) && apartment.tenants.length > 0) {
+                      // Берём первого accepted арендатора
+                      const acceptedTenant = apartment.tenants.find(
+                        (t: any) => t && (t.status === 'accepted' || t.acceptedAt)
+                      );
+                      if (acceptedTenant) {
+                        residentName = acceptedTenant.name || residentName;
+                        residentEmail = acceptedTenant.email || residentEmail;
+                      }
+                    }
                     const area = apartment.area ?? apartment.managementArea ?? apartment.heatingArea;
                     const hasTenant = Boolean(apartment.tenants && apartment.tenants.length > 0);
                     const hasResidentBinding = typeof apartment.residentId === 'string' && apartment.residentId.trim() !== '';

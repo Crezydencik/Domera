@@ -211,6 +211,7 @@ export default function BuildingWaterReadingsPage() {
         month,
         year,
         submittedAt: now,
+        userId: user.uid,
       };
       const coldData: WaterMeterData = {
         meterId,
@@ -248,6 +249,7 @@ export default function BuildingWaterReadingsPage() {
         month,
         year,
         submittedAt: now,
+        userId: user.uid
       };
       const hotData: WaterMeterData = {
         meterId,

@@ -67,7 +67,7 @@ export const createInvitation = async (
       throw new Error('Не подтверждено правовое основание обработки персональных данных');
     }
 
-    await syncApartmentOwnerEmailIfNeeded(apartmentId, normalizedEmail);
+    // Удалено: не меняем ownerEmail при приглашении жильца/арендатора
 
     // Генерируем уникальный токен
     const token = generateToken();

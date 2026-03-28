@@ -10,18 +10,14 @@ import { getUserById } from '@/modules/auth/services/authService';
 import type { Apartment, Building, TenantAccess } from '@/shared/types';
 import { useTranslations } from 'next-intl';
 import Loading from '../../../shared/components/ui/loading';
-import Header from '../../../shared/components/layout/heder';
-import { logout } from '@/modules/auth/services/authService';
-import { useRouter } from 'next/navigation';
+// import Header from '../../../shared/components/layout/heder';
+// import { useRouter } from 'next/navigation';
 
 export default function ResidentApartmentsPage() {
   const { user, loading, isResident } = useAuth();
-  const router = useRouter();
-
-  const handleLogout = async () => {
-    await logout();
-    router.push('/login');
-  };
+  // isOwner вычисляется по ownerEmail (если apartment уже загружен)
+  // const [isOwner, setIsOwner] = useState(false);
+  // const router = useRouter();
 
   const [allApartments, setAllApartments] = useState<Apartment[]>([]);
   const [selectedApartmentId, setSelectedApartmentId] = useState<string | null>(null);
@@ -45,10 +41,38 @@ export default function ResidentApartmentsPage() {
   const [renterDateFrom, setRenterDateFrom] = useState('');
   const [renterDateTo, setRenterDateTo] = useState('');
   const [showAddRenterForm, setShowAddRenterForm] = useState(false);
-  const th = useTranslations();
+  const ts = useTranslations("system");
   const t = useTranslations('dashboard.apartments');
   const getErrorMessage = (err: unknown, fallback: string) => err instanceof Error ? err.message : fallback;
-
+  
+  // Повторная отправка приглашения арендатору
+  const handleResendInvitation = async (tenant: TenantAccess) => {
+    if (!apartment?.id || !tenant?.email) return;
+    setSaving(true);
+    setErrorMsg('');
+    setSuccessMsg('');
+    try {
+      // Вызов API для повторной отправки приглашения
+      const response = await fetch('/api/invitations/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          apartmentId: apartment.id,
+          email: tenant.email,
+          legalBasisConfirmed: true
+        })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || t('auth.alert.invitationSendError'));
+      }
+      setSuccessMsg(ts('alerts.invitationSentToEmail', { email: tenant.email }));
+    } catch (err: unknown) {
+      setErrorMsg(getErrorMessage(err, t('auth.alert.invitationSendError')));
+    } finally {
+      setSaving(false);
+    }
+  };
   // Build the list of all apartment IDs for this resident
   const apartmentIds: string[] = user
     ? (user.apartmentIds && user.apartmentIds.length > 0
@@ -61,8 +85,9 @@ export default function ResidentApartmentsPage() {
   useEffect(() => {
     let cancelled = false;
 
+
     const loadAllApartments = async () => {
-      if (!isResident || !user) {
+      if (!user) {
         if (!cancelled) {
           setAllApartments([]);
           setApartment(null);
@@ -89,7 +114,30 @@ export default function ResidentApartmentsPage() {
         for (const a of byIds) {
           if (a && a.residentId === user.uid) merged[a.id] = a;
         }
-        const valid = Object.values(merged);
+        let valid = Object.values(merged);
+
+        // Если ничего не найдено, ищем квартиры по ownerEmail
+        if (valid.length === 0 && user.email) {
+          try {
+            const { collection, query, where, getDocs } = await import('firebase/firestore');
+            const { db } = await import('@/firebase/config');
+            const apartmentsCollection = collection(db, 'apartments');
+            const q = query(apartmentsCollection, where('ownerEmail', '==', user.email));
+            const snapshot = await getDocs(q);
+            valid = snapshot.docs.map((doc) => {
+              const data = (doc.data() as Record<string, unknown>) || {};
+              return {
+                id: doc.id,
+                ...data,
+                // Если вдруг нет обязательных полей, подставляем null (но не пустую строку)
+                buildingId: data.buildingId ?? null,
+                number: data.number ?? null,
+              };
+            }) as Apartment[];
+          } catch {
+            // ignore
+          }
+        }
 
         if (cancelled) return;
         setAllApartments(valid);
@@ -130,7 +178,8 @@ export default function ResidentApartmentsPage() {
     setCompanyContact(null);
     setSuccessMsg('');
     setErrorMsg('');
-  }, [selectedApartmentId, allApartments]);
+    // Проверка владельца больше не требуется (isOwner удалён)
+  }, [selectedApartmentId, allApartments, user]);
 
   useEffect(() => {
     if (apartment?.buildingId) {
@@ -201,7 +250,7 @@ export default function ResidentApartmentsPage() {
 
   if (loading) return <Loading text={t('loading')} />;
   if (!user) return <AccessError type="loginRequired" />;
-  if (!isResident) return <AccessError type="noAccess" />;
+  // Доступ разрешён для любого залогиненного пользователя
   if (!apartmentResolved) return <Loading text={t('loading')} />;
 
   const handleRemoveTenant = async (userId: string) => {
@@ -224,9 +273,15 @@ export default function ResidentApartmentsPage() {
   };
 
   // Проверка: текущий пользователь — арендатор (только submitMeter)
-  const currentUserIsRenter = tenants.some(
-    (t) => t.userId === user?.uid && t.permissions.length === 1 && t.permissions[0] === 'submitMeter'
-  );
+  // Кнопка 'Отправить повторно' только для владельца квартиры
+  // Владелец определяется по ownerEmail
+  const currentUserIsOwner = apartment?.ownerEmail && user?.email && apartment.ownerEmail === user.email;
+  // Арендатор определяется по permissions (но для владельца нет ограничений)
+  const currentUserIsRenter = currentUserIsOwner
+    ? false
+    : tenants.some(
+        (t) => t.userId === user?.uid && t.permissions.length === 1 && t.permissions[0] === 'submitMeter'
+      );
 
   // Добавление арендатора с правом только submitMeter
   const handleAddRenter = async (e: React.FormEvent) => {
@@ -343,12 +398,17 @@ export default function ResidentApartmentsPage() {
                 {/* <div className="text-sm text-neutral-700">
                   {t('apartmentKind')}: <span className="font-medium text-neutral-900">{displayValue(apartment.apartmentType)}</span>
                 </div> */}
-                <div className="text-sm text-neutral-700">
-                  {t('owner')}: <span className="font-medium text-neutral-900">{displayValue(apartment.owner)}</span>
-                </div>
-                <div className="text-sm text-neutral-700">
-                  {t('ownerEmail')}: <span className="font-medium text-neutral-900">{displayValue(apartment.ownerEmail)}</span>
-                </div>
+                {/* Информация о владельце видна только владельцу */}
+                {!currentUserIsRenter && (
+                  <>
+                    <div className="text-sm text-neutral-700">
+                      {t('owner')}: <span className="font-medium text-neutral-900">{displayValue(apartment.owner)}</span>
+                    </div>
+                    <div className="text-sm text-neutral-700">
+                      {t('ownerEmail')}: <span className="font-medium text-neutral-900">{displayValue(apartment.ownerEmail)}</span>
+                    </div>
+                  </>
+                )}
     
               </div>
             </div>
@@ -423,8 +483,8 @@ export default function ResidentApartmentsPage() {
             </div>
           )} */}
 
-          {/* Добавить арендатора — только не для арендатора */}
-          {!currentUserIsRenter && (
+          {/* Добавить арендатора — только для владельца, не для арендатора */}
+          {currentUserIsOwner && !currentUserIsRenter && (
             <div className="mb-8">
               <div className="flex items-center justify-between rounded-2xl border border-blue-200 bg-blue-50/60 px-4 py-3">
                 <h3 className="text-lg font-semibold text-neutral-900">{t('addRenter')}</h3>
@@ -556,7 +616,12 @@ export default function ResidentApartmentsPage() {
                           )}
                         </td>
                         {!currentUserIsRenter && (
-                          <td className="px-3 py-3 text-center">
+                          <td className="px-3 py-3 text-center flex gap-2 justify-center">
+                            <button
+                              className="rounded-lg border border-blue-200 px-3 py-1.5 text-xs font-semibold text-blue-700 transition hover:bg-blue-50 disabled:opacity-50"
+                              onClick={() => handleResendInvitation(tenant)}
+                              disabled={saving}
+                            >{ts('resendInvitation')}</button>
                             <button
                               className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-50"
                               onClick={() => handleRemoveTenant(tenant.userId)}
@@ -564,6 +629,8 @@ export default function ResidentApartmentsPage() {
                             >{t('delete')}</button>
                           </td>
                         )}
+                        
+
                       </tr>
                     );
                   })}

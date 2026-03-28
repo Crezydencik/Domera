@@ -18,10 +18,13 @@ export default function AcceptInvitationPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get('token') ?? '';
+  const inviteType = searchParams.get('inviteType');
   const { user, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [email, setEmail] = useState('');
+  // По умолчанию определяем тип приглашения через inviteType из URL
+  const [isTenantInvitation, setIsTenantInvitation] = useState(inviteType === 'renter');
   const [existingAccountDetected, setExistingAccountDetected] = useState(false);
   const [shouldLoginInstead, setShouldLoginInstead] = useState(false);
   const [formData, setFormData] = useState({
@@ -59,7 +62,8 @@ export default function AcceptInvitationPage() {
           return;
         }
 
-        const invitation = resolveData.invitation as { email: string };
+
+        const invitation = resolveData.invitation as { email: string; permissions?: string[] };
 
         if (!invitation) {
           setError(t('invitation.invalidToken'));
@@ -73,6 +77,14 @@ export default function AcceptInvitationPage() {
         }
 
         setEmail(invitation.email);
+        // Если явно указан inviteType в URL, используем его, иначе определяем по permissions
+        if (inviteType === 'renter') {
+          setIsTenantInvitation(true);
+        } else if (Array.isArray(invitation.permissions) && invitation.permissions.includes('submitMeter')) {
+          setIsTenantInvitation(true);
+        } else {
+          setIsTenantInvitation(false);
+        }
 
         // Если пользователь уже авторизован
         if (user?.uid) {
@@ -201,9 +213,14 @@ export default function AcceptInvitationPage() {
   return (
     <AuthLayout>
       <div className="w-full max-w-md mx-auto">
+
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2 text-center">{t('invitation.acceptInvitation')}</h1>
-          <p className="text-gray-600 text-center">{t('invitation.invitedAsResident')}</p>
+          <p className="text-gray-600 text-center">
+            {isTenantInvitation
+              ? t('invitation.invitedAsTenant') || t('invitation.invitedAsResident')
+              : t('invitation.invitedAsResident')}
+          </p>
         </div>
         <div className="mb-6 rounded-xl border border-indigo-200 bg-white px-3 py-3 text-sm text-gray-900">
           <div className="mb-1 inline-flex items-center gap-2 text-xs uppercase tracking-wide text-indigo-400">

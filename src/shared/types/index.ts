@@ -170,6 +170,7 @@ export interface MeterReading {
   month: number; // 1-12
   year: number;
   submittedAt: Date;
+  userId: string; // <-- Added for user tracking
   isMissing?: boolean;
   note?: string;
   // optional helper fields stored with readings in apartment.waterReadings

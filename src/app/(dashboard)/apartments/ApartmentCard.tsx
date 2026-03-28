@@ -51,7 +51,21 @@ export function ApartmentCard({
     <div className="rounded-xl border-2 border-gray-100 bg-white overflow-hidden hover:border-blue-300 hover:shadow-lg transition">
       {/* Header с номером и статусом */}
       <div className="h-1 bg-linear-to-r from-blue-500 to-cyan-500"></div>
-      
+
+      {/* Email владельца и арендатора */}
+      <div className="flex flex-wrap gap-4 p-4 border-b border-gray-100 bg-gray-50">
+        <div className="flex flex-col">
+          <span className="text-xs text-gray-500 font-semibold">Email владельца</span>
+          <span className="text-base text-gray-900 font-mono">{apartment.ownerEmail || '—'}</span>
+        </div>
+        {apartment.tenants && apartment.tenants.length > 0 && (
+          <div className="flex flex-col">
+            <span className="text-xs text-gray-500 font-semibold">Email арендатора</span>
+            <span className="text-base text-gray-900 font-mono">{apartment.tenants[0].email}</span>
+          </div>
+        )}
+      </div>
+
       <div className="p-5">
         <div className="flex items-start justify-between mb-4">
           <div>
@@ -109,6 +123,7 @@ export function ApartmentCard({
                 <th className="border border-gray-200 px-3 py-2 text-left font-semibold text-gray-700">Статус</th>
                 <th className="border border-gray-200 px-3 py-2 text-left font-semibold text-gray-700">Имя жильца</th>
                 <th className="border border-gray-200 px-3 py-2 text-left font-semibold text-gray-700">Email</th>
+                 <th className="border border-gray-200 px-3 py-2 text-left font-semibold text-gray-700">Арендатор</th>
                 <th className="border border-gray-200 px-3 py-2 text-left font-semibold text-gray-700">Площадь</th>
                 <th className="border border-gray-200 px-3 py-2 text-left font-semibold text-gray-700">Декларированные</th>
                 <th className="border border-gray-200 px-3 py-2 text-left font-semibold text-gray-700">Этаж</th>
@@ -121,6 +136,7 @@ export function ApartmentCard({
                 <td className="border border-gray-200 px-3 py-2 text-gray-700">{isOccupied ? 'Занята' : 'Свободна'}</td>
                 <td className="border border-gray-200 px-3 py-2 text-gray-900">{residentName || '—'}</td>
                 <td className="border border-gray-200 px-3 py-2 text-gray-900">{residentEmail || '—'}</td>
+                 <td className="border border-gray-200 px-3 py-2 text-gray-900">{apartment.tenants && apartment.tenants.length > 0 ? apartment.tenants[0].email : '—'}</td>
                 <td className="border border-gray-200 px-3 py-2 text-gray-900">{typeof apartmentArea === 'number' ? `${apartmentArea} м²` : '—'}</td>
                 <td className="border border-gray-200 px-3 py-2 text-gray-900">{typeof declaredResidents === 'number' ? declaredResidents : '—'}</td>
                 <td className="border border-gray-200 px-3 py-2 text-gray-900">{apartment.floor || '—'}</td>

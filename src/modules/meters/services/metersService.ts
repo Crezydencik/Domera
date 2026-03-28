@@ -334,7 +334,7 @@ export const deleteMeter = async (meterId: string): Promise<void> => {
  * Submit meter reading
  */
 export const submitMeterReading = async (
-  data: Omit<MeterReading, 'id'> & { meterKey?: 'coldmeterwater' | 'hotmeterwater' }
+  data: Omit<MeterReading, 'id'> & { meterKey?: 'coldmeterwater' | 'hotmeterwater'; userId: string }
 ): Promise<MeterReading> => {
   if (typeof window !== 'undefined') {
     const response = await fetch('/api/meter-readings', {
@@ -371,6 +371,7 @@ export const submitMeterReading = async (
       buildingId: data.buildingId,
       month: submittedDate.getMonth() + 1,
       year: submittedDate.getFullYear(),
+      userId: data.userId,
     } as MeterReading;
 
     // Find named key for this meter in waterReadings

@@ -11,8 +11,11 @@ import { LanguageSwitcher } from './LanguageSwitcher';
 import { useLanguage } from '../../providers/LanguageProvider';
 // import { LanguageSwitcher } from '../../components/LanguageSwitcher';
 
+import type { Apartment } from '@/shared/types';
+
 interface AdminSidebarProps {
   user: User;
+  apartments?: Apartment[];
   open?: boolean;
   setOpen?: (open: boolean) => void;
 }
@@ -20,11 +23,24 @@ interface AdminSidebarProps {
 
 
 
-export function AdminSidebar({ user, open, setOpen }: AdminSidebarProps) {
+export function AdminSidebar({ user, apartments, open, setOpen }: AdminSidebarProps) {
   // Оверлей для мобильного сайдбара
   const showOverlay = typeof open === 'boolean' && open && !!setOpen;
   const pathname = usePathname();
    const t = useTranslations('dashboard');
+  // Если у пользователя есть только право submitMeter (арендатор), показываем только раздел сдачи показаний
+  const isRenter = Array.isArray(apartments) && apartments.some(apartment =>
+    Array.isArray(apartment.tenants) &&
+    apartment.tenants.some(
+      t => t.userId === user.uid &&
+        Array.isArray(t.permissions) &&
+        t.permissions.length === 1 &&
+        t.permissions[0] === 'submitMeter'
+    )
+  );
+  const RENTER_NAV_ITEMS = [
+    { href: ROUTES.METER_READINGS, label: t('sidebar.readings'), icon: <FiBarChart2 /> },
+  ];
   const MANAGEMENT_NAV_ITEMS = [
     { href: ROUTES.DASHBOARD, label: t('sidebar.home'), icon: <FiHome /> },
     { href: ROUTES.BUILDINGS, label: t('sidebar.buildings'), icon: <FiLayers /> },
@@ -38,7 +54,7 @@ export function AdminSidebar({ user, open, setOpen }: AdminSidebarProps) {
     { href: ROUTES.METER_READINGS, label: t('sidebar.readings'), icon: <FiBarChart2 /> },
     { href: ROUTES.PROFILE, label: t('sidebar.profile'), icon: <FiUser /> },
   ];
-  const roleItems = user.role === 'Resident' ? RESIDENT_NAV_ITEMS : MANAGEMENT_NAV_ITEMS;
+  const roleItems = isRenter ? RENTER_NAV_ITEMS : (user.role === 'Resident' ? RESIDENT_NAV_ITEMS : MANAGEMENT_NAV_ITEMS);
  
    const { locale, setLocale } = useLanguage();
      const handleLanguageChange = (newLang: string) => {
