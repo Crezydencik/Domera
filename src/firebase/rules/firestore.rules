@@ -121,7 +121,8 @@ service cloud.firestore {
         || (isResident() && hasApartmentAccess(resource.data.apartmentId))
       );
 
-      allow create: if isManagementStaff() && hasCompanyAccess(request.resource.data.companyId);
+      allow create: if (isManagementStaff() && hasCompanyAccess(request.resource.data.companyId))
+        || (isResident() && hasApartmentAccess(request.resource.data.apartmentId));
       allow update: if isManagementStaff() && hasCompanyAccess(resource.data.companyId);
       allow delete: if isManagementStaff() && hasCompanyAccess(resource.data.companyId);
     }

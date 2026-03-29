@@ -10,6 +10,7 @@ import { getMeterReadingsByCompany, getMetersByApartment, deleteMeterReading } f
 import { ConfirmationDialog } from "@/shared/components/ui/ConfirmationDialog";
 import { MeterDetailsModal } from "./components/MeterDetailsModal";
 import { Modal } from "@/shared/components/ui/Modal";
+import { WaterMeterInput } from "@/shared/components/ui/WaterMeterInput";
 import { toast } from "react-toastify";
 import type { Apartment, Building, Meter, MeterReading, WaterMeterData, WaterReadings } from "@/shared/types";
 import Header from "../../../shared/components/layout/heder";
@@ -93,6 +94,20 @@ const getApartmentMeterSerial = (apartment: Apartment, meter?: Meter | null): st
 
 
 export default function MeterReadingsManagerPage() {
+  const [manualLoading, setManualLoading] = useState(false);
+  // --- Состояния для ручной сдачи показаний ---
+  const [manualReadings, setManualReadings] = useState<Record<string, string>>({});
+  // --- Для ручной сдачи показаний менеджером ---
+  const [manualModalOpen, setManualModalOpen] = useState(false);
+  const [manualApartmentId, setManualApartmentId] = useState<string|null>(null);
+  const openManualSubmitModal = (apartmentId: string) => {
+    setManualApartmentId(apartmentId);
+    setManualModalOpen(true);
+  };
+  const closeManualSubmitModal = () => {
+    setManualModalOpen(false);
+    setManualApartmentId(null);
+  };
   // Состояния для модалки экспорта
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [exportFormat, setExportFormat] = useState<'csv' | 'xlsx'>('csv');
@@ -530,6 +545,26 @@ export default function MeterReadingsManagerPage() {
             </select>
           </div>
           <div className="flex flex-row gap-3 items-center">
+              <button
+                type="button"
+                className="inline-flex items-center gap-2 rounded-lg border border-blue-400 px-4 py-2.5 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 transition shadow-md"
+                onClick={() => setManualModalOpen(true)}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                </svg>
+                Сдать показание
+              </button>
+              <button
+                type="button"
+                onClick={() => router.push(`/meter-readings/building${selectedBuildingId ? `?buildingId=${selectedBuildingId}` : ''}`)}
+                className="inline-flex items-center gap-2 rounded-lg border border-cyan-300 px-4 py-2.5 text-sm font-medium text-cyan-700 bg-cyan-50 hover:bg-cyan-100 transition shadow-md"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 2C12 2 7 9 7 13a5 5 0 0010 0c0-4-5-11-5-11z" />
+                </svg>
+                Nodot ūdens rādījumus
+              </button>
             <button
               type="button"
               onClick={() => setExportModalOpen(true)}
@@ -563,6 +598,7 @@ export default function MeterReadingsManagerPage() {
                         />
                       </label>
                       <div className="flex gap-2 mt-2">
+                        
                         <button
                           className="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"
                           onClick={() => {
@@ -929,6 +965,16 @@ export default function MeterReadingsManagerPage() {
                                 );
                               })}
                             </div>
+                              <button
+                                type="button"
+                                className="mt-2 inline-flex items-center gap-2 rounded-lg border border-blue-400 px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 transition shadow-sm"
+                                onClick={() => openManualSubmitModal(apartment.id)}
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                                </svg>
+                                Сдать показание
+                              </button>
                           </div>
                         ) : (
                           <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-500">
@@ -1144,6 +1190,127 @@ export default function MeterReadingsManagerPage() {
           onCancel={() => setDeleteTarget(null)}
           onConfirm={handleDeleteReading}
         />
+
+          {/* Модалка ручной сдачи показаний менеджером */}
+          <Modal isOpen={manualModalOpen} onClose={closeManualSubmitModal} overlayClassName="!bg-[rgba(30,32,38,0.25)]">
+            <div className="flex flex-col gap-4 min-w-[340px]">
+              <h2 className="text-lg font-bold mb-2">Сдать показание за квартиру</h2>
+              {/* Селектор квартиры */}
+              <label className="block text-sm font-semibold text-gray-700 mb-1" htmlFor="manual-apartment-select">
+                Выбрать квартиру:
+              </label>
+              <select
+                id="manual-apartment-select"
+                className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-900 shadow-md mb-2"
+                value={manualApartmentId ?? ''}
+                onChange={e => setManualApartmentId(e.target.value)}
+              >
+                <option value="">—</option>
+                {apartments.map(a => (
+                  <option key={a.id} value={a.id}>Кв. {a.number} {a.ownerEmail ? `(${a.ownerEmail})` : ''}</option>
+                ))}
+              </select>
+              {/* WaterMeterInput для всех счётчиков квартиры (холодная и горячая вода) */}
+              {manualApartmentId && metersByApartmentId[manualApartmentId] && (
+                <div className="flex flex-col gap-4 mt-2">
+                  {metersByApartmentId[manualApartmentId]
+                    .filter(m => m.name?.toLowerCase() === 'cwm' || m.name?.toLowerCase() === 'hwm')
+                    .map((meter) => {
+                      // Найти последнее показание для этого счётчика
+                      const prevReading = (readingsByApartmentId[manualApartmentId] || [])
+                        .filter(r => r.meterId === meter.id)
+                        .sort((a, b) => toTimestampMs(b.submittedAt) - toTimestampMs(a.submittedAt))[0];
+                      return (
+                        <WaterMeterInput
+                          key={meter.id}
+                          value={manualReadings[meter.id] ?? ''}
+                          onChange={val => setManualReadings(prev => ({ ...prev, [meter.id]: val }))}
+                          color={meter.name?.toLowerCase() === 'hwm' ? 'red' : 'blue'}
+                          meterNumber={meter.serialNumber}
+                          previousValue={prevReading && prevReading.currentValue !== undefined && prevReading.currentValue !== null ? String(prevReading.currentValue) : ''}
+                          waterType={meter.name?.toLowerCase() === 'hwm' ? 'hot' : 'cold'}
+                        />
+                      );
+                    })}
+                </div>
+              )}
+              <div className="flex gap-2 mt-4 justify-end">
+                <button
+                  className="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition"
+                  onClick={closeManualSubmitModal}
+                >
+                  Закрыть
+                </button>
+                <button
+                  className="px-4 py-2 rounded-lg bg-green-600 text-white font-semibold hover:bg-green-700 transition disabled:opacity-60 disabled:cursor-not-allowed"
+                  onClick={async () => {
+                    setManualLoading(true);
+                    try {
+                      if (!manualApartmentId || !user) throw new Error('Нет выбранной квартиры или пользователя');
+                      const meters = metersByApartmentId[manualApartmentId]?.filter(m => m.name?.toLowerCase() === 'cwm' || m.name?.toLowerCase() === 'hwm') || [];
+                      const apartment = apartmentById[manualApartmentId];
+                      if (!apartment) throw new Error('Квартира не найдена');
+                      const now = new Date();
+                      const month = now.getMonth() + 1;
+                      const year = now.getFullYear();
+                      const submittedAt = now;
+                      const readingsToSubmit = meters
+                        .map((meter) => {
+                          const valueStr = manualReadings[meter.id];
+                          if (!valueStr || valueStr.trim() === '') return null;
+                          const clean = valueStr.replace(',', '.');
+                          const parts = clean.split('.');
+                          let int = parts[0] || '';
+                          let frac = parts[1] || '';
+                          int = int.replace(/\D/g, '').slice(0, 5);
+                          frac = frac.replace(/\D/g, '').slice(0, 3);
+                          const currentValue = Number(`${int}.${frac.padEnd(3, '0')}`);
+                          if (isNaN(currentValue)) return null;
+                          const prevReading = (readingsByApartmentId[manualApartmentId] || [])
+                            .filter(r => r.meterId === meter.id)
+                            .sort((a, b) => toTimestampMs(b.submittedAt) - toTimestampMs(a.submittedAt))[0];
+                          const previousValue = prevReading && prevReading.currentValue !== undefined && prevReading.currentValue !== null ? Number(prevReading.currentValue) : 0;
+                          const consumption = currentValue - previousValue;
+                          const meterKey: 'hotmeterwater' | 'coldmeterwater' = meter.name?.toLowerCase() === 'hwm' ? 'hotmeterwater' : 'coldmeterwater';
+                          return {
+                            apartmentId: manualApartmentId,
+                            meterId: meter.id,
+                            meterKey,
+                            previousValue,
+                            currentValue,
+                            consumption,
+                            buildingId: apartment.buildingId,
+                            userId: user.uid,
+                            month,
+                            year,
+                            submittedAt,
+                          };
+                        })
+                        .filter(Boolean);
+                      if (readingsToSubmit.length === 0) throw new Error('Нет заполненных показаний');
+                      const { submitMeterReading } = await import('@/modules/meters/services/metersService');
+                      for (const reading of readingsToSubmit) {
+                        await submitMeterReading(reading);
+                      }
+                      toast.success('Показания отправлены!');
+                      setManualReadings({});
+                      setManualModalOpen(false);
+                      // Обновить показания после отправки
+                      const readingsData = await getMeterReadingsByCompany(user.companyId);
+                      setReadings(readingsData);
+                    } catch (e) {
+                      toast.error(e instanceof Error ? e.message : 'Ошибка при отправке');
+                    } finally {
+                      setManualLoading(false);
+                    }
+                  }}
+                  disabled={!manualApartmentId || manualLoading}
+                >
+                  {manualLoading ? 'Отправка...' : 'Отправить показания'}
+                </button>
+              </div>
+            </div>
+          </Modal>
 
         <ConfirmationDialog
           isOpen={Boolean(deleteMulti)}

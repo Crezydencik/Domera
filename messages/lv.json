@@ -339,6 +339,9 @@
       "noReadingsForApartment": "Šim dzīvoklim rādījumu nav",
       "history": "Skaitītāju vēsture",
       "meterConsumptionError": "Jaunais rādījums nevar būt mazāks par iepriekšējo. Lūdzu, ievadiet korektu vērtību.",
+      "insufficientPermissions": "Nepietiekamas tiesības, lai skatītu rādījumus. Lūdzu, sazinieties ar pārvaldnieku.",
+      
+
 
         "meterReadingsSaved": "Jūsu rādījumi ir veiksmīgi nosūtīti",
         "meterConsumptionSaved": "Patēriņš veiksmīgi saglabāts",

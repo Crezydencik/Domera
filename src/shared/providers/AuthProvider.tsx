@@ -71,11 +71,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isAuthenticated = !!user && !!uid;
   useEffect(() => {
     if (!isAuthenticated) return;
+    // Определяем, управляющая ли компания
+    const isManagementCompany = user?.role === 'ManagementCompany';
+    // 40 минут для управляющей компании, 10 минут для остальных
+    const sessionTimeoutMs = isManagementCompany ? 40 * 60 * 1000 : 10 * 60 * 1000;
     const resetTimer = () => {
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => {
         logout();
-      }, 10 * 60 * 1000); // 10 минут
+      }, sessionTimeoutMs);
     };
     const events = ['mousemove', 'keydown', 'mousedown', 'scroll', 'touchstart'];
     events.forEach((event) => window.addEventListener(event, resetTimer));
@@ -84,7 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (timerRef.current) clearTimeout(timerRef.current);
       events.forEach((event) => window.removeEventListener(event, resetTimer));
     };
-  }, [isAuthenticated]);
+  }, [isAuthenticated, user]);
 
   // Корректное определение isResident: только если не управляющая компания и не владелец
   const isManagementCompany = user?.role === 'ManagementCompany';
