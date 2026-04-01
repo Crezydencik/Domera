@@ -1,3 +1,4 @@
+
 "use client";
 import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/shared/hooks/useAuth";
@@ -64,7 +65,7 @@ const isPreviousCalendarMonth = (year: number, month: number): boolean => {
     prevMonth = 12;
     prevYear -= 1;
   }
-
+  
   return year === prevYear && month === prevMonth;
 };
 const getMeterDisplayName = (meter?: Meter | null): string => {
@@ -90,10 +91,11 @@ const getApartmentMeterSerial = (apartment: Apartment, meter?: Meter | null): st
     || apartment.hotWaterMeterNumber
     || meter.serialNumber
     || '';
-};
-
-
-export default function MeterReadingsManagerPage() {
+  };
+  
+  
+  export default function MeterReadingsManagerPage() {
+  
   const [manualLoading, setManualLoading] = useState(false);
   // --- Состояния для ручной сдачи показаний ---
   const [manualReadings, setManualReadings] = useState<Record<string, string>>({});
@@ -481,11 +483,56 @@ export default function MeterReadingsManagerPage() {
   // Сортировка квартир
   const [sortColumn, setSortColumn] = useState<'number' | 'building'>('number');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
-
+    // Фильтр по цвету статуса
+  const [statusFilter, setStatusFilter] = useState<'all' | 'green' | 'yellow' | 'red'>('all');
+  // Фильтрация и сортировка квартир с учётом фильтра по цвету
   const visibleApartments = useMemo(() => {
-    const filtered = apartments.filter(
-      (apartment) => !selectedBuildingId || apartment.buildingId === selectedBuildingId
-    );
+    const filtered = apartments.filter((apartment) => {
+      if (selectedBuildingId && apartment.buildingId !== selectedBuildingId) return false;
+      if (statusFilter === 'all') return true;
+      // Определяем статус для фильтрации (логика аналогична отображению статуса)
+      const now = new Date();
+      const curMonth = now.getMonth() + 1;
+      const curYear = now.getFullYear();
+      const building = buildings.find(b => b.id === apartment.buildingId);
+      const openDate = building?.waterSubmissionOpenDate ? new Date(building.waterSubmissionOpenDate) : null;
+      const closeDate = building?.waterSubmissionCloseDate ? new Date(building.waterSubmissionCloseDate) : null;
+      let statusMonth = curMonth;
+      let statusYear = curYear;
+      if (openDate && closeDate) {
+        if (now < openDate) {
+          statusMonth = curMonth - 1;
+          statusYear = curYear;
+          if (statusMonth === 0) { statusMonth = 12; statusYear -= 1; }
+        } else if (now > closeDate) {
+          statusMonth = closeDate.getMonth() + 1;
+          statusYear = closeDate.getFullYear();
+        } else {
+          statusMonth = openDate.getMonth() + 1;
+          statusYear = openDate.getFullYear();
+        }
+      }
+      const apartmentReadings = readingsByApartmentId[apartment.id] || [];
+      const meters = metersByApartmentId[apartment.id] || [];
+      const dedupedMeters = meters.reduce((acc, meter) => {
+        const normalizedName = meter.name?.toLowerCase() === 'hwm' ? 'hwm' : meter.name?.toLowerCase() === 'cwm' ? 'cwm' : meter.id;
+        if (!acc.some((item) => (item.name?.toLowerCase() || item.id) === normalizedName)) {
+          acc.push(meter);
+        }
+        return acc;
+      }, []);
+      const readingsThisPeriod = apartmentReadings.filter(r => r.year === statusYear && r.month === statusMonth);
+      const allSubmitted = dedupedMeters.length > 0 && readingsThisPeriod.length === dedupedMeters.length;
+      let status: 'green' | 'yellow' | 'red' = 'yellow';
+      if (allSubmitted) {
+        status = 'green';
+      } else if (closeDate && now > closeDate) {
+        status = 'red';
+      } else {
+        status = 'yellow';
+      }
+      return status === statusFilter;
+    });
     const sorted = [...filtered].sort((a, b) => {
       if (sortColumn === 'number') {
         const nA = a.number || '';
@@ -494,17 +541,10 @@ export default function MeterReadingsManagerPage() {
         if (nA > nB) return sortDirection === 'asc' ? 1 : -1;
         return 0;
       }
-      if (sortColumn === 'building') {
-        const bA = buildingNameById[a.buildingId] || '';
-        const bB = buildingNameById[b.buildingId] || '';
-        if (bA < bB) return sortDirection === 'asc' ? -1 : 1;
-        if (bA > bB) return sortDirection === 'asc' ? 1 : -1;
-        return 0;
-      }
       return 0;
     });
     return sorted;
-  }, [apartments, selectedBuildingId, sortColumn, sortDirection, buildingNameById]);
+  }, [apartments, selectedBuildingId, sortColumn, sortDirection, buildings, readingsByApartmentId, metersByApartmentId, statusFilter]);
   
 
   if (loading) {
@@ -771,6 +811,7 @@ export default function MeterReadingsManagerPage() {
                 </summary>
 
                 <div className="border-t border-blue-100 px-6 pb-6 lg:px-8 lg:pb-8">
+                          
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 mt-6">
                     <label className="block">
                       <span className="text-sm font-semibold text-gray-700 mb-2 block">{tMeter('openDate')}</span>
@@ -850,7 +891,22 @@ export default function MeterReadingsManagerPage() {
             </div>
           );
         })()}
-
+          {/* Селектор фильтра по цвету статуса — отдельным блоком под периодом сдачи */}
+                          <div className="flex flex-row gap-3 items-center mb-8 mt-2 px-6 lg:px-8">
+                            <label htmlFor="status-filter" className="text-sm text-gray-600 font-medium">Фильтр по статусу:</label>
+                            <select
+                              id="status-filter"
+                              className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-md focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition"
+                              value={statusFilter}
+                              onChange={e => setStatusFilter(e.target.value as 'all' | 'green' | 'yellow' | 'red')}
+                              style={{ minWidth: 120 }}
+                            >
+                              <option value="all">Все</option>
+                              <option value="green">🟢 Зелёные</option>
+                              <option value="yellow">🟡 Жёлтые</option>
+                              <option value="red">🔴 Красные</option>
+                            </select>
+                          </div>
         {loadError && (
           <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-6 py-4 text-base text-red-700 shadow-sm animate-fade-in">
             {loadError}
@@ -873,7 +929,9 @@ export default function MeterReadingsManagerPage() {
             <p className="text-gray-600 text-lg font-medium">Нет квартир для выбранного дома</p>
           </div>
         ) : (
+          
           <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+            
             <div className="overflow-x-auto">
               <table className="w-full min-w-240 text-sm">
                 <thead className="bg-gray-50 border-b border-gray-200 text-gray-600">
@@ -887,20 +945,6 @@ export default function MeterReadingsManagerPage() {
                     >
                       Квартира
                       {sortColumn === 'number' && (
-                        <span className="ml-1 inline-block align-middle">
-                          {sortDirection === 'asc' ? '▲' : '▼'}
-                        </span>
-                      )}
-                    </th>
-                    <th
-                      className="px-4 py-3 text-left font-semibold cursor-pointer select-none"
-                      onClick={() => {
-                        if (sortColumn === 'building') setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-                        else { setSortColumn('building'); setSortDirection('asc'); }
-                      }}
-                    >
-                      Дом
-                      {sortColumn === 'building' && (
                         <span className="ml-1 inline-block align-middle">
                           {sortDirection === 'asc' ? '▲' : '▼'}
                         </span>
@@ -937,64 +981,87 @@ export default function MeterReadingsManagerPage() {
                 return (
                   <>
                     <tr key={`${apartment.id}-main`} className="align-top bg-white transition hover:bg-blue-50/20">
-                      <td className="px-4 py-4">
-                        <div className="text-lg font-bold text-gray-900">#{apartment.number}</div>
+                      <td className="px-4 py-4 align-top">
+                        <div className="flex flex-col gap-1 min-w-[120px]">
+                          <div className="text-lg font-bold text-gray-900">#{apartment.number}</div>
+                          <div className="text-xs text-gray-600 whitespace-pre-line break-words max-w-[160px]">{buildingName}</div>
+                        </div>
                       </td>
-                      <td className="px-4 py-4 text-gray-900">{buildingName}</td>
-                      <td className="px-4 py-4 w-full">
+                      <td className="px-4 py-4 align-top">
                         {dedupedMeters.length > 0 ? (
-                          <div>
-                            <div className="flex flex-col items-start gap-2">
-                              {dedupedMeters.map((meter) => {
-                                const isCold = meter.name?.toLowerCase() === 'cwm';
-                                return (
-                                  <div key={meter.id} className="flex flex-col items-start gap-1">
-                                    <div
-                                      className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold ${
-                                        isCold
-                                          ? 'border-blue-200 bg-blue-50 text-blue-700'
-                                          : 'border-rose-200 bg-rose-50 text-rose-700'
-                                      }`}
-                                    >
-                                      <span className={`inline-flex h-2.5 w-2.5 rounded-full ${isCold ? 'bg-blue-500' : 'bg-rose-500'}`} />
-                                      <span>{getMeterDisplayName(meter)}</span>
-                                      <span className="text-gray-400">•</span>
-                                      <span className="font-medium text-gray-900">{getApartmentMeterSerial(apartment, meter) || 'без номера'}</span>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                              <button
-                                type="button"
-                                className="mt-2 inline-flex items-center gap-2 rounded-lg border border-blue-400 px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 transition shadow-sm"
-                                onClick={() => openManualSubmitModal(apartment.id)}
-                              >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                                </svg>
-                                Сдать показание
-                              </button>
+                          <div className="flex flex-col gap-2">
+                            {dedupedMeters.map((meter) => {
+                              const isCold = meter.name?.toLowerCase() === 'cwm';
+                              return (
+                                <div key={meter.id} className="flex items-center gap-2 text-xs">
+                                  <span className={`inline-flex h-2.5 w-2.5 rounded-full ${isCold ? 'bg-blue-500' : 'bg-rose-500'}`} />
+                                  <span className={`font-semibold ${isCold ? 'text-blue-700' : 'text-rose-700'}`}>{getMeterDisplayName(meter)}</span>
+                                  <span className="text-gray-400">•</span>
+                                  <span className="font-medium text-gray-900">{getApartmentMeterSerial(apartment, meter) || 'без номера'}</span>
+                                </div>
+                              );
+                            })}
+                            <button
+                              type="button"
+                              className="mt-1 inline-flex items-center gap-2 rounded border border-blue-300 px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 transition shadow-sm"
+                              onClick={() => openManualSubmitModal(apartment.id)}
+                            >
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                              </svg>
+                              Сдать показание
+                            </button>
                           </div>
                         ) : (
-                          <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-500">
+                          <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 px-4 py-3 text-xs text-gray-500">
                             Счётчики не найдены
                           </div>
                         )}
                       </td>
-                      <td className="px-4 py-4 text-center">
+                      <td className="px-4 py-4 align-top text-center">
                         {(() => {
-                          // Определяем текущий месяц и год
+                          // Новая логика статуса сдачи
+                          // 1. Определяем текущий месяц и год
                           const now = new Date();
                           const curMonth = now.getMonth() + 1;
                           const curYear = now.getFullYear();
-                          // Период сдачи для дома
+                          // 2. Период сдачи для дома
                           const building = buildings.find(b => b.id === apartment.buildingId);
                           const openDate = building?.waterSubmissionOpenDate ? new Date(building.waterSubmissionOpenDate) : null;
                           const closeDate = building?.waterSubmissionCloseDate ? new Date(building.waterSubmissionCloseDate) : null;
-                          // Есть ли показания за этот месяц
-                          const readingsThisMonth = apartmentReadings.filter(r => r.year === curYear && r.month === curMonth);
-                          const allSubmitted = dedupedMeters.length > 0 && readingsThisMonth.length === dedupedMeters.length;
+
+                          // 3. Определяем последний завершённый период сдачи (месяц)
+                          // Если сейчас период сдачи открыт (openDate <= now <= closeDate), то отображаем статус за текущий месяц
+                          // Если период сдачи закрыт (now > closeDate), то отображаем статус за только что завершённый месяц
+                          // Если период сдачи ещё не начался (now < openDate), то отображаем статус за предыдущий месяц
+
+                          // По умолчанию — текущий месяц
+                          let statusMonth = curMonth;
+                          let statusYear = curYear;
+                          let statusLabel = '';
+                          if (openDate && closeDate) {
+                            if (now < openDate) {
+                              // Период сдачи ещё не начался — показываем предыдущий месяц
+                              statusMonth = curMonth - 1;
+                              statusYear = curYear;
+                              if (statusMonth === 0) { statusMonth = 12; statusYear -= 1; }
+                              statusLabel = 'Период сдачи ещё не начался — показывается предыдущий месяц';
+                            } else if (now > closeDate) {
+                              // Период сдачи завершён — показываем только что завершённый месяц
+                              statusMonth = closeDate.getMonth() + 1;
+                              statusYear = closeDate.getFullYear();
+                              statusLabel = 'Период сдачи завершён — показывается завершённый месяц';
+                            } else {
+                              // Период сдачи открыт — показываем текущий месяц
+                              statusMonth = openDate.getMonth() + 1;
+                              statusYear = openDate.getFullYear();
+                              statusLabel = 'Период сдачи открыт — показывается текущий месяц';
+                            }
+                          }
+
+                          // 4. Для выбранного месяца определяем статус сдачи
+                          const readingsThisPeriod = apartmentReadings.filter(r => r.year === statusYear && r.month === statusMonth);
+                          const allSubmitted = dedupedMeters.length > 0 && readingsThisPeriod.length === dedupedMeters.length;
                           let status: 'green' | 'yellow' | 'red' = 'yellow';
                           let tooltip = '';
                           if (allSubmitted) {
@@ -1007,32 +1074,31 @@ export default function MeterReadingsManagerPage() {
                             status = 'yellow';
                             tooltip = 'Показания ещё не сданы';
                           }
+
                           // Формат месяца сдачи как YYYY/MM
-                          let displayMonth = curMonth;
-                          let displayYear = curYear;
-                          if (openDate) {
-                            displayMonth = openDate.getMonth() + 1;
-                            displayYear = openDate.getFullYear();
-                          }
-                          const monthStr = `${displayYear}/${String(displayMonth).padStart(2, '0')}`;
+                          const monthStr = `${statusYear}/${String(statusMonth).padStart(2, '0')}`;
                           return (
                             <div className="flex flex-col items-center gap-1">
-                              <span title={tooltip} className={`inline-block w-4 h-4 rounded-full border-2 ${
+                              <span title={tooltip} className={`inline-block w-4 h-4 rounded-full border-2 mb-2 ${
                                 status === 'green' ? 'bg-green-400 border-green-500' : status === 'yellow' ? 'bg-yellow-300 border-yellow-500' : 'bg-red-400 border-red-500'
                               }`} />
-                              <div className="flex flex-col gap-1 mt-1">
+                              <div className="flex flex-col gap-1 bg-gray-50 rounded-lg px-2 py-1 min-w-[120px]">
                                 {dedupedMeters.map((meter) => {
                                   const latestReading = getLatestReadingForMeter(apartmentReadings, meter.id);
                                   return (
-                                    <div key={meter.id} className="text-xs text-gray-700">
+                                    <div key={meter.id} className="flex flex-col text-xs text-gray-700 border-b last:border-b-0 border-gray-200 pb-1 last:pb-0 mb-1 last:mb-0">
                                       {latestReading
-                                        ? `Пред: ${formatThreeDecimals(latestReading.previousValue)} • Тек: ${formatThreeDecimals(latestReading.currentValue)} • Расход: ${formatThreeDecimals(latestReading.consumption)}`
-                                        : 'Пред: — • Тек: — • Расход: —'}
+                                        ? <>
+                                            <span><span className="text-gray-400">Пред:</span> <span className="font-mono">{formatThreeDecimals(latestReading.previousValue)}</span></span>
+                                            <span><span className="text-gray-400">Тек:</span> <span className="font-mono">{formatThreeDecimals(latestReading.currentValue)}</span></span>
+                                            <span><span className="text-gray-400">Расход:</span> <span className="font-mono">{formatThreeDecimals(latestReading.consumption)}</span></span>
+                                          </>
+                                        : <span className="text-gray-400">Нет данных</span>}
                                     </div>
                                   );
                                 })}
                               </div>
-                              <span className="text-xs text-gray-500 mt-1">{monthStr}</span>
+                              <span className="text-xs text-gray-400 mt-1">{monthStr}</span>
                             </div>
                           );
                         })()}
