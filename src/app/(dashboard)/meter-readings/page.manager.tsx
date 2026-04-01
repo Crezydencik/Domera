@@ -535,10 +535,17 @@ const getApartmentMeterSerial = (apartment: Apartment, meter?: Meter | null): st
     });
     const sorted = [...filtered].sort((a, b) => {
       if (sortColumn === 'number') {
-        const nA = a.number || '';
-        const nB = b.number || '';
-        if (nA < nB) return sortDirection === 'asc' ? -1 : 1;
-        if (nA > nB) return sortDirection === 'asc' ? 1 : -1;
+        // Сортировка по номеру квартиры как по числу, если возможно
+        const nA = Number(a.number);
+        const nB = Number(b.number);
+        if (!isNaN(nA) && !isNaN(nB)) {
+          return sortDirection === 'asc' ? nA - nB : nB - nA;
+        }
+        // Если не число — сортировать как строку
+        const sA = a.number || '';
+        const sB = b.number || '';
+        if (sA < sB) return sortDirection === 'asc' ? -1 : 1;
+        if (sA > sB) return sortDirection === 'asc' ? 1 : -1;
         return 0;
       }
       return 0;
