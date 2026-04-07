@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getFirebaseAdminDb } from '@/firebase/admin';
 import { requireRequestAuth, toAuthErrorResponse } from '@/shared/lib/serverAuth';
 import { writeAuditEvent } from '@/shared/lib/auditLog';
+import { buildMeterHistorySnapshot } from '@/shared/lib/meterReadingHistory';
 import { buildRateLimitKey, consumeRateLimit } from '@/shared/lib/rateLimit';
 
 interface SubmitMeterReadingPayload {
@@ -170,6 +171,8 @@ export async function POST(request: NextRequest) {
     }
 
     history.push(reading);
+    const { history: recalculatedHistory, latestReading } = buildMeterHistorySnapshot(history as never[]);
+    const savedReading = recalculatedHistory.find((item) => String(item.id ?? '') === reading.id) ?? reading;
 
     await apartmentRef.set(
       {
@@ -178,10 +181,10 @@ export async function POST(request: NextRequest) {
           [key]: {
             ...meterGroup,
             meterId: payload.meterId,
-            history,
-            currentValue: payload.currentValue,
-            previousValue: payload.previousValue,
-            submittedAt: now,
+            history: recalculatedHistory,
+            currentValue: latestReading?.currentValue ?? null,
+            previousValue: latestReading?.previousValue ?? null,
+            submittedAt: latestReading?.submittedAt ?? null,
           },
         },
       },
@@ -199,7 +202,7 @@ export async function POST(request: NextRequest) {
       metadata: { meterId: payload.meterId, month, year },
     });
 
-    return NextResponse.json({ success: true, reading });
+    return NextResponse.json({ success: true, reading: savedReading });
   } catch (error) {
     if (error instanceof Error && error.name === 'ApiAuthError') {
       await writeAuditEvent({ request, action: 'meter_reading.submit', status: 'denied', reason: error.message });

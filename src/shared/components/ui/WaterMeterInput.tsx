@@ -10,6 +10,8 @@ interface WaterMeterInputProps {
   meterNumber?: string;
   // validUntil убран
   previousValue?: string; // прошлое показание
+  previousPeriodLabel?: string;
+  currentPeriodLabel?: string;
   waterType?: 'hot' | 'cold'; // тип воды для подписи
 }
 
@@ -24,6 +26,8 @@ export const WaterMeterInput: React.FC<WaterMeterInputProps> = ({
   color = 'blue',
   meterNumber,
   previousValue,
+  previousPeriodLabel,
+  currentPeriodLabel,
   waterType = 'hot',
 }) => {
   const t = useTranslations('dashboard.meterReadings');
@@ -100,7 +104,10 @@ export const WaterMeterInput: React.FC<WaterMeterInputProps> = ({
       <div className="flex flex-row w-full">
         <div className="flex flex-col items-start min-w-[120px] sm:min-w-[180px]">
           <div className="text-[13px] sm:text-[14px] text-[#222] font-normal">
-            {t('previousValue')}: <span className="font-bold">{previousValue !== undefined && previousValue !== '' ? previousValue : '________'}</span>
+            {t('previousValue')}{previousPeriodLabel ? ` > ${previousPeriodLabel}` : ''}: <span className="font-bold">{previousValue !== undefined && previousValue !== '' ? previousValue : '________'}</span>
+          </div>
+          <div className="text-[13px] sm:text-[14px] text-[#222] font-normal mt-1">
+            {t('currentValue')}{currentPeriodLabel ? ` > ${currentPeriodLabel}` : ''}
           </div>
         </div>
       </div>

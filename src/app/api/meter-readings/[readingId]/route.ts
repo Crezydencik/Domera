@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getFirebaseAdminDb } from '@/firebase/admin';
 import { requireRequestAuth, toAuthErrorResponse } from '@/shared/lib/serverAuth';
 import { writeAuditEvent } from '@/shared/lib/auditLog';
+import { buildMeterHistorySnapshot } from '@/shared/lib/meterReadingHistory';
 import { buildRateLimitKey, consumeRateLimit } from '@/shared/lib/rateLimit';
 
 const findReadingInApartment = (
@@ -78,6 +79,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     const history = [...(found.group.history as Record<string, unknown>[])];
     history[found.index] = { ...history[found.index], ...payload.data, id: history[found.index].id };
+    const { history: recalculatedHistory, latestReading } = buildMeterHistorySnapshot(history as never[]);
 
     const wr = (apartment.waterReadings ?? {}) as Record<string, unknown>;
     await apartmentRef.set(
@@ -86,7 +88,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
           ...wr,
           [found.key]: {
             ...found.group,
-            history,
+            history: recalculatedHistory,
+            currentValue: latestReading?.currentValue ?? null,
+            previousValue: latestReading?.previousValue ?? null,
+            submittedAt: latestReading?.submittedAt ?? null,
           },
         },
       },
@@ -234,6 +239,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     }
 
     const history = (found.group.history as Record<string, unknown>[]).filter((h) => String(h.id ?? '') !== readingId);
+    const { history: recalculatedHistory, latestReading } = buildMeterHistorySnapshot(history as never[]);
     const wr = (apartment.waterReadings ?? {}) as Record<string, unknown>;
     await apartmentRef.set(
       {
@@ -241,7 +247,10 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
           ...wr,
           [found.key]: {
             ...found.group,
-            history,
+            history: recalculatedHistory,
+            currentValue: latestReading?.currentValue ?? null,
+            previousValue: latestReading?.previousValue ?? null,
+            submittedAt: latestReading?.submittedAt ?? null,
           },
         },
       },

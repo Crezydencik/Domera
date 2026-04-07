@@ -15,6 +15,7 @@ import {
 } from '@/firebase/services/firestoreService';
 import { getApartmentsByCompany } from '@/modules/apartments/services/apartmentsService';
 import { DEFAULT_WATER_METER_TEMPLATES, FIRESTORE_COLLECTIONS } from '@/shared/constants';
+import { buildMeterHistorySnapshot } from '@/shared/lib/meterReadingHistory';
 import type { Apartment, Building, Meter, MeterReading, MeterType } from '@/shared/types';
 import { where } from 'firebase/firestore';
 
@@ -360,6 +361,8 @@ export const submitMeterReading = async (
 
     const id = generateId();
     const submittedDate = new Date();
+    const readingMonth = typeof data.month === 'number' ? data.month : submittedDate.getMonth() + 1;
+    const readingYear = typeof data.year === 'number' ? data.year : submittedDate.getFullYear();
     const createdReading = {
       id,
       apartmentId: data.apartmentId,
@@ -369,8 +372,8 @@ export const submitMeterReading = async (
       currentValue: data.currentValue,
       consumption: data.consumption,
       buildingId: data.buildingId,
-      month: submittedDate.getMonth() + 1,
-      year: submittedDate.getFullYear(),
+      month: readingMonth,
+      year: readingYear,
       userId: data.userId,
     } as MeterReading;
 
@@ -398,30 +401,32 @@ export const submitMeterReading = async (
       // Update existing named meter group
       const history = Array.isArray(meterGroup.history) ? [...(meterGroup.history as any[])] : [];
       history.push(createdReading);
+      const { history: recalculatedHistory, latestReading } = buildMeterHistorySnapshot(history as MeterReading[]);
       await updateDocument(FIRESTORE_COLLECTIONS.APARTMENTS, data.apartmentId, {
         [`waterReadings.${namedKey}`]: {
           ...meterGroup,
-          history,
-          currentValue: createdReading.currentValue,
-          previousValue: createdReading.previousValue,
-          submittedAt: createdReading.submittedAt,
+          history: recalculatedHistory,
+          currentValue: latestReading?.currentValue ?? null,
+          previousValue: latestReading?.previousValue ?? null,
+          submittedAt: latestReading?.submittedAt ?? null,
         },
       });
+      return recalculatedHistory.find((reading) => reading.id === createdReading.id) ?? createdReading;
     } else {
       // Fallback: create as coldmeterwater if unknown, or just push in unknown key
       const fallbackKey = 'coldmeterwater';
+      const { history: recalculatedHistory, latestReading } = buildMeterHistorySnapshot([createdReading]);
       await updateDocument(FIRESTORE_COLLECTIONS.APARTMENTS, data.apartmentId, {
         [`waterReadings.${fallbackKey}`]: {
           meterId: data.meterId,
-          history: [createdReading],
-          currentValue: createdReading.currentValue,
-          previousValue: createdReading.previousValue,
-          submittedAt: createdReading.submittedAt,
+          history: recalculatedHistory,
+          currentValue: latestReading?.currentValue ?? null,
+          previousValue: latestReading?.previousValue ?? null,
+          submittedAt: latestReading?.submittedAt ?? null,
         },
       });
+      return recalculatedHistory[0] ?? createdReading;
     }
-
-    return createdReading;
   } catch (error) {
     console.error('Error submitting meter reading:', error);
     throw error;
@@ -452,9 +457,10 @@ export const getMeterReadingsByApartmentAndPeriod = async (
       for (const key of ['coldmeterwater', 'hotmeterwater'] as const) {
         const md = wr[key] as Record<string, unknown> | undefined;
         if (md && Array.isArray(md.history)) {
+          const { history: recalculatedHistory } = buildMeterHistorySnapshot(md.history as MeterReading[]);
           const groupSerial = typeof md.serialNumber === 'string' ? md.serialNumber : undefined;
           const groupMeterId = typeof md.meterId === 'string' ? md.meterId : undefined;
-          for (const h of md.history as MeterReading[]) {
+          for (const h of recalculatedHistory) {
             allReadings.push({
               ...h,
               meterId: h.meterId || groupMeterId || '',
@@ -466,9 +472,10 @@ export const getMeterReadingsByApartmentAndPeriod = async (
     } else if (Array.isArray(wr)) {
       for (const item of wr as Record<string, unknown>[]) {
         if (Array.isArray(item.history)) {
+          const { history: recalculatedHistory } = buildMeterHistorySnapshot(item.history as MeterReading[]);
           const groupSerial = typeof item.serialNumber === 'string' ? item.serialNumber : undefined;
           const groupMeterId = typeof item.meterId === 'string' ? item.meterId : undefined;
-          for (const h of item.history as MeterReading[]) {
+          for (const h of recalculatedHistory) {
             allReadings.push({
               ...h,
               meterId: h.meterId || groupMeterId || '',
@@ -510,9 +517,10 @@ export const getMeterReadingsByApartment = async (apartmentId: string): Promise<
         if (item && typeof item === 'object') {
           const itemObj = item as Record<string, unknown>;
           if (Array.isArray(itemObj.history)) {
+            const { history: recalculatedHistory } = buildMeterHistorySnapshot(itemObj.history as MeterReading[]);
             const groupSerial = typeof itemObj.serialNumber === 'string' ? itemObj.serialNumber : undefined;
             const groupMeterId = typeof itemObj.meterId === 'string' ? itemObj.meterId : undefined;
-            for (const h of itemObj.history) {
+            for (const h of recalculatedHistory) {
               const reading = h as MeterReading;
               allReadings.push({
                 ...reading,
@@ -530,9 +538,10 @@ export const getMeterReadingsByApartment = async (apartmentId: string): Promise<
         if (meterData && typeof meterData === 'object') {
           const md = meterData as Record<string, unknown>;
           if (Array.isArray(md.history)) {
+            const { history: recalculatedHistory } = buildMeterHistorySnapshot(md.history as MeterReading[]);
             const groupSerial = typeof md.serialNumber === 'string' ? md.serialNumber : undefined;
             const groupMeterId = typeof md.meterId === 'string' ? md.meterId : undefined;
-            for (const h of md.history) {
+            for (const h of recalculatedHistory) {
               const reading = h as MeterReading;
               allReadings.push({
                 ...reading,
@@ -608,12 +617,8 @@ export const getLastMeterReading = async (
       return null;
     }
 
-    const history = meterGroup.history as MeterReading[];
-    const sorted = [...history].sort(
-      (a, b) => new Date(String(b.submittedAt)).getTime() - new Date(String(a.submittedAt)).getTime()
-    );
-
-    return sorted[0];
+    const { latestReading } = buildMeterHistorySnapshot(meterGroup.history as MeterReading[]);
+    return latestReading;
   } catch (error) {
     console.error('Error getting last meter reading:', error);
     throw error;
@@ -671,9 +676,16 @@ export const updateMeterReading = async (
     const updatedHistory = [...(foundGroup.history as MeterReading[])];
     const oldReading = updatedHistory[foundReadingIndex];
     updatedHistory[foundReadingIndex] = { ...oldReading, ...data, id: oldReading.id } as MeterReading;
+    const { history: recalculatedHistory, latestReading } = buildMeterHistorySnapshot(updatedHistory);
 
     await updateDocument(FIRESTORE_COLLECTIONS.APARTMENTS, apartmentId, {
-      [`waterReadings.${foundKey}`]: { ...foundGroup, history: updatedHistory },
+      [`waterReadings.${foundKey}`]: {
+        ...foundGroup,
+        history: recalculatedHistory,
+        currentValue: latestReading?.currentValue ?? null,
+        previousValue: latestReading?.previousValue ?? null,
+        submittedAt: latestReading?.submittedAt ?? null,
+      },
     });
   } catch (error) {
     console.error('Error updating meter reading:', error);
@@ -748,9 +760,16 @@ export const deleteMeterReading = async (
     }
 
     const updatedHistory = (foundGroup.history as MeterReading[]).filter((h) => h.id !== readingId);
+    const { history: recalculatedHistory, latestReading } = buildMeterHistorySnapshot(updatedHistory);
 
     await updateDocument(FIRESTORE_COLLECTIONS.APARTMENTS, apartmentId, {
-      [`waterReadings.${foundKey}`]: { ...foundGroup, history: updatedHistory },
+      [`waterReadings.${foundKey}`]: {
+        ...foundGroup,
+        history: recalculatedHistory,
+        currentValue: latestReading?.currentValue ?? null,
+        previousValue: latestReading?.previousValue ?? null,
+        submittedAt: latestReading?.submittedAt ?? null,
+      },
     });
   } catch (error) {
     console.error('Error deleting meter reading:', error);

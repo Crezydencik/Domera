@@ -12,6 +12,7 @@ import { ConfirmationDialog } from "@/shared/components/ui/ConfirmationDialog";
 import { MeterDetailsModal } from "./components/MeterDetailsModal";
 import { Modal } from "@/shared/components/ui/Modal";
 import { WaterMeterInput } from "@/shared/components/ui/WaterMeterInput";
+import { getPreviousReadingForPeriod, recalculateMeterReadingHistory } from "@/shared/lib/meterReadingHistory";
 import { toast } from "react-toastify";
 import type { Apartment, Building, Meter, MeterReading, WaterMeterData, WaterReadings } from "@/shared/types";
 import Header from "../../../shared/components/layout/heder";
@@ -46,6 +47,19 @@ const formatThreeDecimals = (value: unknown): string => {
   if (!Number.isFinite(num)) return '—';
   return num.toFixed(3);
 };
+const formatExportDecimal = (value: unknown): string => {
+  const num = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(num)) return '';
+  return num.toFixed(3);
+};
+const formatMonthYearLabel = (year: number, month: number): string => `${String(month).padStart(2, '0')}.${year}`;
+const getPreviousMonthPeriod = (year: number, month: number): { year: number; month: number } => {
+  if (month === 1) {
+    return { year: year - 1, month: 12 };
+  }
+
+  return { year, month: month - 1 };
+};
 const getLatestReadingForMeter = (readings: MeterReading[], meterId: string): MeterReading | null => {
   const filtered = readings.filter((reading) => reading.meterId === meterId);
   if (filtered.length === 0) return null;
@@ -55,18 +69,6 @@ const getLatestReadingForMeter = (readings: MeterReading[], meterId: string): Me
     if (periodDiff !== 0) return periodDiff;
     return toTimestampMs(b.submittedAt as ReadingTimestampLike) - toTimestampMs(a.submittedAt as ReadingTimestampLike);
   })[0] ?? null;
-};
-const isPreviousCalendarMonth = (year: number, month: number): boolean => {
-  const now = new Date();
-  let prevMonth = now.getMonth(); // 0..11, previous calendar month index
-  let prevYear = now.getFullYear();
-
-  if (prevMonth === 0) {
-    prevMonth = 12;
-    prevYear -= 1;
-  }
-  
-  return year === prevYear && month === prevMonth;
 };
 const getMeterDisplayName = (meter?: Meter | null): string => {
   if (!meter) return '';
@@ -92,6 +94,38 @@ const getApartmentMeterSerial = (apartment: Apartment, meter?: Meter | null): st
     || meter.serialNumber
     || '';
   };
+
+const compareApartmentNumbers = (left?: string, right?: string): number => {
+  const leftValue = left?.trim() ?? '';
+  const rightValue = right?.trim() ?? '';
+  const leftNumber = Number(leftValue);
+  const rightNumber = Number(rightValue);
+
+  if (!Number.isNaN(leftNumber) && !Number.isNaN(rightNumber)) {
+    return leftNumber - rightNumber;
+  }
+
+  return leftValue.localeCompare(rightValue, undefined, { numeric: true, sensitivity: 'base' });
+};
+
+const getReadingLogicalMeterKey = (reading: MeterReading, meterMap: Record<string, Meter>): string => {
+  const meter = meterMap[reading.meterId];
+  const meterName = meter?.name?.toLowerCase().trim();
+
+  if (meterName === 'cwm' || meterName === 'hwm') {
+    return `${reading.apartmentId}:${meterName}`;
+  }
+
+  const meterId = reading.meterId.toLowerCase();
+  if (meterId.includes('cwm') || meterId.includes('cold') || meterId.includes('хол')) {
+    return `${reading.apartmentId}:cwm`;
+  }
+  if (meterId.includes('hwm') || meterId.includes('hot') || meterId.includes('гор')) {
+    return `${reading.apartmentId}:hwm`;
+  }
+
+  return `${reading.apartmentId}:${reading.meterId}`;
+};
   
   
   export default function MeterReadingsManagerPage() {
@@ -321,7 +355,7 @@ const getApartmentMeterSerial = (apartment: Apartment, meter?: Meter | null): st
 
   const buildingNameById = useMemo(() => {
     return buildings.reduce<Record<string, string>>((acc, building) => {
-      acc[building.id] = building.name;
+      acc[building.id] = building.address?.trim() || building.name;
       return acc;
     }, {});
   }, [buildings]);
@@ -334,8 +368,21 @@ const getApartmentMeterSerial = (apartment: Apartment, meter?: Meter | null): st
     }, {});
   }, [metersByApartmentId]);
 
+  const normalizedReadings = useMemo(() => {
+    const grouped = readings.reduce<Record<string, MeterReading[]>>((acc, reading) => {
+      const key = getReadingLogicalMeterKey(reading, meterById);
+      if (!acc[key]) {
+        acc[key] = [];
+      }
+      acc[key].push(reading);
+      return acc;
+    }, {});
+
+    return Object.values(grouped).flatMap((group) => recalculateMeterReadingHistory(group));
+  }, [readings, meterById]);
+
   const sortedReadings = useMemo(() => {
-    return [...readings].sort((a, b) => {
+    return [...normalizedReadings].sort((a, b) => {
       const periodDiff = a.year - b.year || a.month - b.month;
       if (periodDiff !== 0) return periodDiff;
       return (
@@ -343,7 +390,7 @@ const getApartmentMeterSerial = (apartment: Apartment, meter?: Meter | null): st
         toTimestampMs(b.submittedAt as ReadingTimestampLike)
       );
     });
-  }, [readings]);
+  }, [normalizedReadings]);
 
   const readingsByApartmentId = useMemo(() => {
     return sortedReadings.reduce<Record<string, MeterReading[]>>((acc, reading) => {
@@ -357,27 +404,39 @@ const getApartmentMeterSerial = (apartment: Apartment, meter?: Meter | null): st
 
   // Экспорт в CSV/XLSX
   const exportRows = useMemo(() => {
-    return sortedReadings.map((reading) => {
-      const apartment = apartmentById[reading.apartmentId];
-      const apartmentNumber = apartment?.number ?? reading.apartmentId;
-      const buildingName = apartment ? buildingNameById[apartment.buildingId] ?? tMeter('notSpecified') : tMeter('notSpecified');
-      const meter = meterById[reading.meterId];
-      const meterName = meter ? getMeterDisplayName(meter) : reading.meterId;
-      const period = `${reading.year}. gads ${String(reading.month).padStart(2, '0')}`;
-      return {
-        apartmentId: reading.apartmentId,
-        meterId: reading.meterId,
-        apartmentNumber,
-        buildingName,
-        meterName,
-        period,
-        submittedAt: formatDateTime(reading.submittedAt as ReadingTimestampLike),
-        previousValue: reading.previousValue,
-        currentValue: reading.currentValue,
-        consumption: reading.consumption,
-        isMissing: Boolean(reading.isMissing),
-      };
-    });
+    return sortedReadings
+      .map((reading) => {
+        const apartment = apartmentById[reading.apartmentId];
+        const apartmentNumber = apartment?.number ?? reading.apartmentId;
+        const buildingName = apartment ? buildingNameById[apartment.buildingId] ?? tMeter('notSpecified') : tMeter('notSpecified');
+        const meter = meterById[reading.meterId];
+        const meterName = meter ? getMeterDisplayName(meter) : reading.meterId;
+        const period = `${reading.year}. gads ${String(reading.month).padStart(2, '0')}`;
+        return {
+          apartmentId: reading.apartmentId,
+          meterId: reading.meterId,
+          apartmentNumber,
+          buildingName,
+          meterName,
+          period,
+          submittedAt: formatDateTime(reading.submittedAt as ReadingTimestampLike),
+          previousValue: formatExportDecimal(reading.previousValue),
+          currentValue: formatExportDecimal(reading.currentValue),
+          consumption: formatExportDecimal(reading.consumption),
+          isMissing: Boolean(reading.isMissing),
+          year: reading.year,
+          month: reading.month,
+        };
+      })
+      .sort((left, right) => {
+        const apartmentDiff = compareApartmentNumbers(left.apartmentNumber, right.apartmentNumber);
+        if (apartmentDiff !== 0) return apartmentDiff;
+
+        const periodDiff = left.year - right.year || left.month - right.month;
+        if (periodDiff !== 0) return periodDiff;
+
+        return left.meterName.localeCompare(right.meterName, undefined, { numeric: true, sensitivity: 'base' });
+      });
   }, [sortedReadings, apartmentById, buildingNameById, meterById, tMeter]);
 
   const handleExportCsv = () => {
@@ -662,10 +721,12 @@ const getApartmentMeterSerial = (apartment: Apartment, meter?: Meter | null): st
                             const [year, month] = exportMonth.split('-').map(Number);
                             // Собираем по одной строке на квартиру: холодная и горячая вода
                             // 1. Группируем показания по квартире
-                            const apartmentsList = apartments.filter(a => {
-                              if (selectedBuildingId && a.buildingId !== selectedBuildingId) return false;
-                              return true;
-                            });
+                            const apartmentsList = apartments
+                              .filter(a => {
+                                if (selectedBuildingId && a.buildingId !== selectedBuildingId) return false;
+                                return true;
+                              })
+                              .sort((left, right) => compareApartmentNumbers(left.number, right.number));
                             const rows = apartmentsList.map(apartment => {
                               // Для квартиры ищем показания за месяц для холодной и горячей воды
                               const readings = (readingsByApartmentId[apartment.id] || []).filter(r => r.year === year && r.month === month);
@@ -683,14 +744,14 @@ const getApartmentMeterSerial = (apartment: Apartment, meter?: Meter | null): st
                                 apartment.number || '',
                                 // Горячая вода
                                 hotMeter?.serialNumber || '',
-                                hot?.previousValue ?? '',
-                                hot?.currentValue ?? '',
-                                hot?.consumption ?? '',
+                                hot ? formatExportDecimal(hot.previousValue) : '',
+                                hot ? formatExportDecimal(hot.currentValue) : '',
+                                hot ? formatExportDecimal(hot.consumption) : '',
                                 // Холодная вода
                                 coldMeter?.serialNumber || '',
-                                cold?.previousValue ?? '',
-                                cold?.currentValue ?? '',
-                                cold?.consumption ?? '',
+                                cold ? formatExportDecimal(cold.previousValue) : '',
+                                cold ? formatExportDecimal(cold.currentValue) : '',
+                                cold ? formatExportDecimal(cold.consumption) : '',
                               ];
                             });
                             // Проверяем есть ли хоть одна строка с показаниями
@@ -700,17 +761,20 @@ const getApartmentMeterSerial = (apartment: Apartment, meter?: Meter | null): st
                               setExportModalOpen(false);
                               return;
                             }
+                            const selectedPeriodLabel = formatMonthYearLabel(year, month);
+                            const previousPeriod = getPreviousMonthPeriod(year, month);
+                            const previousPeriodLabel = formatMonthYearLabel(previousPeriod.year, previousPeriod.month);
                             const headers = [
                               'Ēkas adrese',
                               'Dzīvoklis',
-                              'Karstā skaitītāja numurs',
-                              'Iepriekšējais karstā rādījums',
-                              'Pašreizējais karstā rādījums',
-                              'Karstā patēriņš',
-                              'Aukstā skaitītāja numurs',
-                              'Iepriekšējais aukstā rādījums',
-                              'Pašreizējais aukstā rādījums',
-                              'Aukstā patēriņš',
+                              'Karstā sk. Nr.',
+                              `Iepriekšējais karstā rādījums > ${previousPeriodLabel}`,
+                              `Pašreizējais karstā rādījums > ${selectedPeriodLabel}`,
+                              'KU patēriņš',
+                              'Aukstā sk. Nr. ',
+                              `Iepriekšējais aukstā rādījums > ${previousPeriodLabel}`,
+                              `Pašreizējais aukstā rādījums > ${selectedPeriodLabel}`,
+                              'AU patēriņš',
                             ];
                             if (exportFormat === 'csv') {
                               const csv = [headers, ...rows]
@@ -1095,12 +1159,15 @@ const getApartmentMeterSerial = (apartment: Apartment, meter?: Meter | null): st
                               <div className="flex flex-col gap-1 bg-gray-50 rounded-lg px-2 py-1 min-w-[120px]">
                                 {dedupedMeters.map((meter) => {
                                   const latestReading = getLatestReadingForMeter(apartmentReadings, meter.id);
+                                  const previousPeriod = latestReading
+                                    ? getPreviousMonthPeriod(Number(latestReading.year), Number(latestReading.month))
+                                    : null;
                                   return (
                                     <div key={meter.id} className="flex flex-col text-xs text-gray-700 border-b last:border-b-0 border-gray-200 pb-1 last:pb-0 mb-1 last:mb-0">
                                       {latestReading
                                         ? <>
-                                            <span><span className="text-gray-400">Пред:</span> <span className="font-mono">{formatThreeDecimals(latestReading.previousValue)}</span></span>
-                                            <span><span className="text-gray-400">Тек:</span> <span className="font-mono">{formatThreeDecimals(latestReading.currentValue)}</span></span>
+                                            <span><span className="text-gray-400">Пред ({previousPeriod ? formatMonthYearLabel(previousPeriod.year, previousPeriod.month) : '—'}):</span> <span className="font-mono">{formatThreeDecimals(latestReading.previousValue)}</span></span>
+                                            <span><span className="text-gray-400">Тек ({formatMonthYearLabel(Number(latestReading.year), Number(latestReading.month))}):</span> <span className="font-mono">{formatThreeDecimals(latestReading.currentValue)}</span></span>
                                             <span><span className="text-gray-400">Расход:</span> <span className="font-mono">{formatThreeDecimals(latestReading.consumption)}</span></span>
                                           </>
                                         : <span className="text-gray-400">Нет данных</span>}
@@ -1157,8 +1224,6 @@ const getApartmentMeterSerial = (apartment: Apartment, meter?: Meter | null): st
                                   const [year, month] = key.split('-').map(Number);
                                   const label = `${year}. gads ${String(month).padStart(2, '0')}`;
                                   const readingsInMonth = grouped[key];
-                                  const showConsumption = isPreviousCalendarMonth(year, month);
-
                                   return (
                                     <details key={key} className="group/month overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                                       <summary className="flex cursor-pointer list-none items-center justify-between px-5 py-4 font-bold text-slate-900 transition hover:bg-slate-50">
@@ -1213,9 +1278,7 @@ const getApartmentMeterSerial = (apartment: Apartment, meter?: Meter | null): st
                                                 <td className="px-2 py-2">{formatDateTime(reading.submittedAt)}</td>
                                                 <td className="px-2 py-2 text-right">{formatThreeDecimals(reading.previousValue)}</td>
                                                 <td className="px-2 py-2 text-right font-bold text-slate-900">{formatThreeDecimals(reading.currentValue)}</td>
-                                                <td className="px-2 py-2 text-right">
-                                                  {showConsumption ? formatThreeDecimals(reading.consumption) : '—'}
-                                                </td>
+                                                <td className="px-2 py-2 text-right">{formatThreeDecimals(reading.consumption)}</td>
                                               </tr>
                                             ))}
                                           </tbody>
@@ -1304,10 +1367,17 @@ const getApartmentMeterSerial = (apartment: Apartment, meter?: Meter | null): st
                   {metersByApartmentId[manualApartmentId]
                     .filter(m => m.name?.toLowerCase() === 'cwm' || m.name?.toLowerCase() === 'hwm')
                     .map((meter) => {
+                      const selectedYear = manualMonth ? Number(manualMonth.split('-')[0]) : 0;
+                      const selectedMonth = manualMonth ? Number(manualMonth.split('-')[1]) : 0;
+                      const previousPeriod = selectedYear && selectedMonth
+                        ? getPreviousMonthPeriod(selectedYear, selectedMonth)
+                        : null;
                       // Найти последнее показание для этого счётчика
-                      const prevReading = (readingsByApartmentId[manualApartmentId] || [])
-                        .filter(r => r.meterId === meter.id)
-                        .sort((a, b) => toTimestampMs(b.submittedAt) - toTimestampMs(a.submittedAt))[0];
+                      const meterHistory = (readingsByApartmentId[manualApartmentId] || [])
+                        .filter(r => r.meterId === meter.id);
+                      const prevReading = selectedYear && selectedMonth
+                        ? getPreviousReadingForPeriod(meterHistory, selectedYear, selectedMonth)
+                        : null;
                       return (
                         <WaterMeterInput
                           key={meter.id}
@@ -1316,6 +1386,8 @@ const getApartmentMeterSerial = (apartment: Apartment, meter?: Meter | null): st
                           color={meter.name?.toLowerCase() === 'hwm' ? 'red' : 'blue'}
                           meterNumber={meter.serialNumber}
                           previousValue={prevReading && prevReading.currentValue !== undefined && prevReading.currentValue !== null ? String(prevReading.currentValue) : ''}
+                          previousPeriodLabel={previousPeriod ? formatMonthYearLabel(previousPeriod.year, previousPeriod.month) : undefined}
+                          currentPeriodLabel={selectedYear && selectedMonth ? formatMonthYearLabel(selectedYear, selectedMonth) : undefined}
                           waterType={meter.name?.toLowerCase() === 'hwm' ? 'hot' : 'cold'}
                         />
                       );
@@ -1353,9 +1425,9 @@ const getApartmentMeterSerial = (apartment: Apartment, meter?: Meter | null): st
                           frac = frac.replace(/\D/g, '').slice(0, 3);
                           const currentValue = Number(`${int}.${frac.padEnd(3, '0')}`);
                           if (isNaN(currentValue)) return null;
-                          const prevReading = (readingsByApartmentId[manualApartmentId] || [])
-                            .filter(r => r.meterId === meter.id)
-                            .sort((a, b) => toTimestampMs(b.submittedAt) - toTimestampMs(a.submittedAt))[0];
+                          const meterHistory = (readingsByApartmentId[manualApartmentId] || [])
+                            .filter(r => r.meterId === meter.id);
+                          const prevReading = getPreviousReadingForPeriod(meterHistory, year, month);
                           const previousValue = prevReading && prevReading.currentValue !== undefined && prevReading.currentValue !== null ? Number(prevReading.currentValue) : 0;
                           const consumption = currentValue - previousValue;
                           const meterKey: 'hotmeterwater' | 'coldmeterwater' = meter.name?.toLowerCase() === 'hwm' ? 'hotmeterwater' : 'coldmeterwater';

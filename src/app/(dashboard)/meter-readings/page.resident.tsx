@@ -1347,6 +1347,18 @@ export default function MeterReadingsPage() {
                                       }
                                       return '';
                                     })()}
+                                    previousPeriodLabel={(() => {
+                                      const now = new Date();
+                                      const currentMonth = now.getMonth() + 1;
+                                      const currentYear = now.getFullYear();
+                                      const previousMonth = currentMonth === 1 ? 12 : currentMonth - 1;
+                                      const previousYear = currentMonth === 1 ? currentYear - 1 : currentYear;
+                                      return `${String(previousMonth).padStart(2, '0')}.${previousYear}`;
+                                    })()}
+                                    currentPeriodLabel={(() => {
+                                      const now = new Date();
+                                      return `${String(now.getMonth() + 1).padStart(2, '0')}.${now.getFullYear()}`;
+                                    })()}
                                     waterType={type as 'hot' | 'cold'}
                                   />
                                 </div>
