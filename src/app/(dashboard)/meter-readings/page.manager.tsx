@@ -660,46 +660,61 @@ const getApartmentMeterSerial = (apartment: Apartment, meter?: Meter | null): st
                           onClick={() => {
                             if (!exportMonth) return;
                             const [year, month] = exportMonth.split('-').map(Number);
-                            // Фильтруем показания по выбранному месяцу
-                            const filteredRows = exportRows.filter(row => {
-                              // row.period: "2026. gads 03"
-                              const periodMatch = row.period.match(/(\d{4})\. gads (\d{2})/);
-                              if (!periodMatch) return false;
-                              const y = Number(periodMatch[1]);
-                              const m = Number(periodMatch[2]);
-                              return y === year && m === month;
+                            // Собираем по одной строке на квартиру: холодная и горячая вода
+                            // 1. Группируем показания по квартире
+                            const apartmentsList = apartments.filter(a => {
+                              if (selectedBuildingId && a.buildingId !== selectedBuildingId) return false;
+                              return true;
                             });
-                            if (filteredRows.length === 0) {
+                            const rows = apartmentsList.map(apartment => {
+                              // Для квартиры ищем показания за месяц для холодной и горячей воды
+                              const readings = (readingsByApartmentId[apartment.id] || []).filter(r => r.year === year && r.month === month);
+                              let cold = null, hot = null;
+                              for (const r of readings) {
+                                const meter = meterById[r.meterId];
+                                if (meter?.name?.toLowerCase() === 'cwm') cold = r;
+                                else if (meter?.name?.toLowerCase() === 'hwm') hot = r;
+                              }
+                              const coldMeter = (metersByApartmentId[apartment.id] || []).find(m => m.name?.toLowerCase() === 'cwm');
+                              const hotMeter = (metersByApartmentId[apartment.id] || []).find(m => m.name?.toLowerCase() === 'hwm');
+                              const buildingName = buildingNameById[apartment.buildingId] || '';
+                              return [
+                                buildingName,
+                                apartment.number || '',
+                                // Горячая вода
+                                hotMeter?.serialNumber || '',
+                                hot?.previousValue ?? '',
+                                hot?.currentValue ?? '',
+                                hot?.consumption ?? '',
+                                // Холодная вода
+                                coldMeter?.serialNumber || '',
+                                cold?.previousValue ?? '',
+                                cold?.currentValue ?? '',
+                                cold?.consumption ?? '',
+                              ];
+                            });
+                            // Проверяем есть ли хоть одна строка с показаниями
+                            const hasData = rows.some(row => row.slice(2).some(val => val !== '' && val !== null && val !== undefined));
+                            if (!hasData) {
                               toast.info('Нет данных за выбранный месяц');
                               setExportModalOpen(false);
                               return;
                             }
+                            const headers = [
+                              'Ēkas adrese',
+                              'Dzīvoklis',
+                              'Karstā skaitītāja numurs',
+                              'Iepriekšējais karstā rādījums',
+                              'Pašreizējais karstā rādījums',
+                              'Karstā patēriņš',
+                              'Aukstā skaitītāja numurs',
+                              'Iepriekšējais aukstā rādījums',
+                              'Pašreizējais aukstā rādījums',
+                              'Aukstā patēriņš',
+                            ];
                             if (exportFormat === 'csv') {
-                              // CSV экспорт
-                              const headers = [
-                                'Номер квартиры',
-                                'Email жильца',
-                                'Номера счётчика',
-                                'Тип счётчика',
-                                'Показание за прошлый месяц',
-                                'Показание за текущий месяц',
-                                'Разница',
-                              ];
-                              const rows = filteredRows.map(row => {
-                                const apartment = apartmentById && apartmentById[row.apartmentId];
-                                const meter = meterById && meterById[row.meterId];
-                                return [
-                                  row.apartmentNumber,
-                                  apartment?.ownerEmail || '',
-                                  meter?.serialNumber || '',
-                                  meter?.name || meter?.type || '',
-                                  row.previousValue,
-                                  row.currentValue,
-                                  row.consumption,
-                                ];
-                              });
                               const csv = [headers, ...rows]
-                                .map(line => line.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+                                .map(line => line.map(cell => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(','))
                                 .join('\n');
                               const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
                               const url = URL.createObjectURL(blob);
@@ -709,33 +724,12 @@ const getApartmentMeterSerial = (apartment: Apartment, meter?: Meter | null): st
                               a.click();
                               URL.revokeObjectURL(url);
                             } else {
-                              // XLSX экспорт (корректно для браузера)
                               const worksheet = XLSX.utils.aoa_to_sheet([
-                                [
-                                  'Номер квартиры',
-                                  'Email жильца',
-                                  'Номера счётчика',
-                                  'Показание за прошлый месяц',
-                                  'Показание за текущий месяц',
-                                  'Разница',
-                                ],
-                                ...filteredRows.map(row => {
-                                  const apartment = apartmentById && apartmentById[row.apartmentId];
-                                  const meter = meterById && meterById[row.meterId];
-                                  return [
-                                    row.apartmentNumber,
-                                    apartment?.ownerEmail || '',
-                                    meter?.serialNumber || '',
-                                    meter?.name || meter?.type || '',
-                                    row.previousValue,
-                                    row.currentValue,
-                                    row.consumption,
-                                  ];
-                                }),
+                                headers,
+                                ...rows,
                               ]);
                               const workbook = XLSX.utils.book_new();
                               XLSX.utils.book_append_sheet(workbook, worksheet, 'Экспорт');
-                              // Генерируем бинарный массив для Blob
                               const wbout = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
                               const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
                               const url = URL.createObjectURL(blob);
