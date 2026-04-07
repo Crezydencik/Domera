@@ -102,13 +102,22 @@ const getApartmentMeterSerial = (apartment: Apartment, meter?: Meter | null): st
   // --- Для ручной сдачи показаний менеджером ---
   const [manualModalOpen, setManualModalOpen] = useState(false);
   const [manualApartmentId, setManualApartmentId] = useState<string|null>(null);
+  // Новое состояние для выбора месяца
+  const [manualMonth, setManualMonth] = useState<string>(""); // формат YYYY-MM
   const openManualSubmitModal = (apartmentId: string) => {
     setManualApartmentId(apartmentId);
     setManualModalOpen(true);
+    // По умолчанию предыдущий месяц
+    const now = new Date();
+    let year = now.getFullYear();
+    let month = now.getMonth(); // предыдущий месяц
+    if (month === 0) { month = 12; year -= 1; }
+    setManualMonth(`${year}-${String(month).padStart(2, '0')}`);
   };
   const closeManualSubmitModal = () => {
     setManualModalOpen(false);
     setManualApartmentId(null);
+    setManualMonth("");
   };
   // Состояния для модалки экспорта
   const [exportModalOpen, setExportModalOpen] = useState(false);
@@ -1283,6 +1292,18 @@ const getApartmentMeterSerial = (apartment: Apartment, meter?: Meter | null): st
                   <option key={a.id} value={a.id}>Кв. {a.number} {a.ownerEmail ? `(${a.ownerEmail})` : ''}</option>
                 ))}
               </select>
+              {/* Новый селектор месяца */}
+              <label className="block text-sm font-semibold text-gray-700 mb-1" htmlFor="manual-month-select">
+                Месяц, за который подаются показания:
+              </label>
+              <input
+                id="manual-month-select"
+                type="month"
+                className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-900 shadow-md mb-2"
+                value={manualMonth}
+                onChange={e => setManualMonth(e.target.value)}
+                max={`${new Date().getFullYear()}-${String(new Date().getMonth()).padStart(2, '0')}`}
+              />
               {/* WaterMeterInput для всех счётчиков квартиры (холодная и горячая вода) */}
               {manualApartmentId && metersByApartmentId[manualApartmentId] && (
                 <div className="flex flex-col gap-4 mt-2">
@@ -1320,13 +1341,12 @@ const getApartmentMeterSerial = (apartment: Apartment, meter?: Meter | null): st
                     setManualLoading(true);
                     try {
                       if (!manualApartmentId || !user) throw new Error('Нет выбранной квартиры или пользователя');
+                      if (!manualMonth) throw new Error('Выберите месяц');
+                      const [year, month] = manualMonth.split('-').map(Number);
                       const meters = metersByApartmentId[manualApartmentId]?.filter(m => m.name?.toLowerCase() === 'cwm' || m.name?.toLowerCase() === 'hwm') || [];
                       const apartment = apartmentById[manualApartmentId];
                       if (!apartment) throw new Error('Квартира не найдена');
-                      const now = new Date();
-                      const month = now.getMonth() + 1;
-                      const year = now.getFullYear();
-                      const submittedAt = now;
+                      const submittedAt = new Date();
                       const readingsToSubmit = meters
                         .map((meter) => {
                           const valueStr = manualReadings[meter.id];
