@@ -4,6 +4,8 @@ import { requireRequestAuth, toAuthErrorResponse } from '@/shared/lib/serverAuth
 import { FIRESTORE_COLLECTIONS } from '@/shared/constants';
 import { normalizeEmail } from '@/shared/lib/invitationToken';
 
+type ResidentBuildingPayload = { id: string } & Record<string, unknown>;
+
 const toOptionalString = (value: unknown): string | undefined => {
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
 };
@@ -129,7 +131,7 @@ export async function GET(request: NextRequest) {
           };
         })
       )
-    ).filter((building): building is Record<string, unknown> => Boolean(building));
+    ).filter((building): building is ResidentBuildingPayload => Boolean(building));
 
     return NextResponse.json({
       apartments: toSerializable(apartments),

@@ -4,6 +4,7 @@ import { requireRequestAuth, toAuthErrorResponse } from '@/shared/lib/serverAuth
 import { writeAuditEvent } from '@/shared/lib/auditLog';
 import { buildMeterHistorySnapshot } from '@/shared/lib/meterReadingHistory';
 import { buildRateLimitKey, consumeRateLimit } from '@/shared/lib/rateLimit';
+import type { MeterReading } from '@/shared/types';
 
 const findReadingInApartment = (
   apartment: Record<string, unknown>,
@@ -79,7 +80,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     const history = [...(found.group.history as Record<string, unknown>[])];
     history[found.index] = { ...history[found.index], ...payload.data, id: history[found.index].id };
-    const { history: recalculatedHistory, latestReading } = buildMeterHistorySnapshot(history as never[]);
+    const { history: recalculatedHistory, latestReading } = buildMeterHistorySnapshot(history as unknown as MeterReading[]);
 
     const wr = (apartment.waterReadings ?? {}) as Record<string, unknown>;
     await apartmentRef.set(
@@ -239,7 +240,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     }
 
     const history = (found.group.history as Record<string, unknown>[]).filter((h) => String(h.id ?? '') !== readingId);
-    const { history: recalculatedHistory, latestReading } = buildMeterHistorySnapshot(history as never[]);
+    const { history: recalculatedHistory, latestReading } = buildMeterHistorySnapshot(history as unknown as MeterReading[]);
     const wr = (apartment.waterReadings ?? {}) as Record<string, unknown>;
     await apartmentRef.set(
       {

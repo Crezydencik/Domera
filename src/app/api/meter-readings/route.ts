@@ -5,6 +5,12 @@ import { requireRequestAuth, toAuthErrorResponse } from '@/shared/lib/serverAuth
 import { writeAuditEvent } from '@/shared/lib/auditLog';
 import { buildMeterHistorySnapshot } from '@/shared/lib/meterReadingHistory';
 import { buildRateLimitKey, consumeRateLimit } from '@/shared/lib/rateLimit';
+import type { MeterReading } from '@/shared/types';
+
+type MeterHistoryEntry = Pick<MeterReading, 'id' | 'currentValue' | 'month' | 'year' | 'submittedAt'> & {
+  previousValue?: number | null;
+  consumption?: number | null;
+};
 
 interface SubmitMeterReadingPayload {
   apartmentId: string;
@@ -171,7 +177,9 @@ export async function POST(request: NextRequest) {
     }
 
     history.push(reading);
-    const { history: recalculatedHistory, latestReading } = buildMeterHistorySnapshot(history as never[]);
+    const { history: recalculatedHistory, latestReading } = buildMeterHistorySnapshot(
+      history as unknown as MeterHistoryEntry[]
+    );
     const savedReading = recalculatedHistory.find((item) => String(item.id ?? '') === reading.id) ?? reading;
 
     await apartmentRef.set(
