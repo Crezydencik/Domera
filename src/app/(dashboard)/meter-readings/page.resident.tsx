@@ -174,6 +174,11 @@ const normalizeMeterSerial = (value: unknown): string => {
   return value.trim().toLowerCase().replace(/\s+/g, '');
 };
 
+const normalizeEmail = (value: unknown): string => {
+  if (typeof value !== 'string') return '';
+  return value.trim().toLowerCase();
+};
+
 
 
 const formatNumberDot = (value: number | string | undefined | null, decimals = 2): string => {
@@ -612,7 +617,7 @@ export default function MeterReadingsPage() {
           const merged: Record<string, Apartment> = {};
           for (const a of byResidentId) if (a) merged[a.id] = a;
           for (const a of byOwnerEmail) if (a) merged[a.id] = a;
-          for (const a of byIds) if (a && a.residentId === user.uid) merged[a.id] = a;
+          for (const a of byIds) if (a) merged[a.id] = a;
           let apts = Object.values(merged);
           // Если после объединения квартир ничего не найдено, явно ищем по ownerEmail
           if (apts.length === 0 && user.email) {
@@ -644,12 +649,32 @@ export default function MeterReadingsPage() {
           // readingsData = await getMeterReadingsByCompany(user.companyId);
         }
 
-        // Явно фильтруем квартиры для владельца по ownerEmail
         let visibleApartments = apartmentsData;
-        if (user.email) {
-          visibleApartments = apartmentsData.filter(
-            (a) => a.ownerEmail === user.email || (a.tenants && a.tenants.some(t => t.email === user.email))
+        if (user.role === 'Resident') {
+          const normalizedUserEmail = normalizeEmail(user.email);
+          const residentApartmentIds = new Set(
+            (user.apartmentIds && user.apartmentIds.length > 0)
+              ? user.apartmentIds
+              : user.apartmentId
+                ? [user.apartmentId]
+                : []
           );
+
+          visibleApartments = apartmentsData.filter((apartment) => {
+            if (residentApartmentIds.has(apartment.id)) return true;
+            if (apartment.residentId === user.uid) return true;
+            if (normalizedUserEmail && normalizeEmail(apartment.ownerEmail) === normalizedUserEmail) return true;
+
+            return Array.isArray(apartment.tenants)
+              ? apartment.tenants.some((tenant) =>
+                  tenant.userId === user.uid || normalizeEmail(tenant.email) === normalizedUserEmail
+                )
+              : false;
+          });
+
+          if (visibleApartments.length === 0 && apartmentsData.length > 0) {
+            visibleApartments = apartmentsData;
+          }
         }
 
         // If some apartments reference buildings that weren't returned by getBuildingsByCompany

@@ -19,7 +19,7 @@ export default function AcceptInvitationPage() {
   const searchParams = useSearchParams();
   const token = searchParams.get('token') ?? '';
   const inviteType = searchParams.get('inviteType');
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, refreshUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [email, setEmail] = useState('');
@@ -115,7 +115,7 @@ export default function AcceptInvitationPage() {
       }
     };
     validateAndProceed();
-  }, [token, user?.uid, user?.email, authLoading, router, t]);
+  }, [token, user?.uid, user?.email, authLoading, router, t, inviteType]);
 
   const handleAcceptForExistingAccount = async () => {
     setError('');
@@ -139,6 +139,7 @@ export default function AcceptInvitationPage() {
       if (!response.ok) {
         throw new Error(data?.error || t('invitation.invitationError'));
       }
+      await refreshUser();
       router.push('/dashboard');
       router.refresh();
     } catch (err: unknown) {
@@ -178,6 +179,7 @@ export default function AcceptInvitationPage() {
       if (!response.ok) {
         throw new Error(data?.error || t('invitation.invitationError'));
       }
+      await refreshUser().catch(() => undefined);
       router.push('/dashboard');
       router.refresh();
     } catch (err: unknown) {
