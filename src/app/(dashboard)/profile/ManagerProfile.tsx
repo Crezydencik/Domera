@@ -12,8 +12,9 @@ export default function ManagerProfile({ user }: { user: any }) {
     email: user?.email || '',
     displayName: user?.displayName || '',
     phone: user?.phone || '',
+    registrationNumber: user?.registrationNumber || '',
   });
-  const [editField, setEditField] = useState<null | 'displayName' | 'phone'>(null);
+  const [editField, setEditField] = useState<null | 'displayName' | 'phone' | 'registrationNumber'>(null);
   const [profileSaving, setProfileSaving] = useState(false);
   const [privacyConsent, setPrivacyConsent] = useState(user?.privacyConsent ?? false);
   const [privacySaving, setPrivacySaving] = useState(false);
@@ -30,6 +31,7 @@ export default function ManagerProfile({ user }: { user: any }) {
       await updateUserProfile(user.uid, {
         displayName: formData.displayName,
         phone: formData.phone,
+        registrationNumber: formData.registrationNumber,
       });
       showCustomToast({ type: 'success', title: t('auth.alert.profileUpdated') });
       setEditField(null);
@@ -96,6 +98,35 @@ export default function ManagerProfile({ user }: { user: any }) {
                   </div>
                 ) : (
                   <p className="text-white text-lg">{formData.displayName || 'Не указано'}</p>
+                )}
+              </div>
+              <div>
+                <p className="text-gray-400 text-sm mb-1 flex items-center gap-2">
+                  Регистрационный номер
+                  {editField !== 'registrationNumber' && (
+                    <button type="button" className="ml-1 text-blue-400 hover:text-blue-300" onClick={() => setEditField('registrationNumber')} title="Редактировать">
+                      <FiEdit2 size={16} />
+                    </button>
+                  )}
+                </p>
+                {editField === 'registrationNumber' ? (
+                  <div className="flex gap-2 items-center">
+                    <input
+                      type="text"
+                      name="registrationNumber"
+                      value={formData.registrationNumber}
+                      onChange={handleChange}
+                      className="px-3 py-1 rounded bg-slate-700 border border-slate-600 text-white"
+                      autoFocus
+                      disabled={profileSaving}
+                    />
+                    <button type="button" className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-60" onClick={handleProfileSave} disabled={profileSaving}>
+                      Сохранить
+                    </button>
+                    <button type="button" className="text-gray-400 hover:text-gray-200" onClick={() => setEditField(null)} disabled={profileSaving}>Отмена</button>
+                  </div>
+                ) : (
+                  <p className="text-white text-lg">{formData.registrationNumber || 'Не указано'}</p>
                 )}
               </div>
               <div>

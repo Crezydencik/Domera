@@ -50,6 +50,7 @@
 
     },
     "form": {
+      "registrationNumber": "Registration number",
       "email": "Email",
       "password": "Password",
       "confirmPassword": "Confirm password",
@@ -372,6 +373,7 @@
           "company": "Company"
         },
         "company": {
+          "registrationNumber": "Registration number",
           "companyData": "Company information",
           "name": "Company name",
           "address": "Address",

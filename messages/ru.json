@@ -53,6 +53,7 @@
       "confirmAccess": "Подтвердить доступ"
     },
     "form": {
+      "registrationNumber": "Регистрационный номер",
       "email": "Электронная почта",
       "password": "Пароль",
       "confirmPassword": "Подтвердите пароль",
@@ -360,6 +361,7 @@
         "company": "Компания"
       },
       "company": {
+        "registrationNumber": "Регистрационный номер",
         "companyData": "Информация о компании",
         "name": "Название компании",
         "address": "Адрес",

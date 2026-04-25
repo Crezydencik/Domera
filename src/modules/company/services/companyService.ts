@@ -35,6 +35,9 @@ export const createCompany = async (
       if (extra.address) companyData.address = extra.address;
       if (extra.phone) companyData.phone = extra.phone;
       if (extra.email) companyData.email = extra.email;
+      if ('registrationNumber' in extra && typeof extra.registrationNumber === 'string') {
+        companyData.registrationNumber = extra.registrationNumber;
+      }
     }
 
     const id = await createDocument(FIRESTORE_COLLECTIONS.COMPANIES, companyData);

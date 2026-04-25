@@ -37,7 +37,10 @@ export interface User {
   displayName?: string; // Added displayName property
   phone?: string;
   address?: string;
-  // ...удалено: Notification settings...
+  /**
+   * Регистрационный номер компании (ManagementCompany)
+   */
+  registrationNumber?: string;
   /**
    * Язык рассылки: 'lv' (латышский, по умолчанию) или 'ru' (русский)
    */
@@ -330,6 +333,7 @@ export interface Company {
   address?: string;
   phone?: string;
   email?: string;
+  registrationNumber?: string;
   buildings?: { id: string; name: string }[];
   createdAt: Date;
 }

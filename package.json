@@ -23,6 +23,7 @@
     "@headlessui/react": "^2.2.9",
     "firebase": "^12.9.0",
     "firebase-admin": "^13.6.1",
+    "jszip": "^3.10.1",
     "lucide": "^0.575.0",
     "lucide-react": "^0.576.0",
     "next": "16.1.6",
@@ -38,7 +39,7 @@
   "devDependencies": {
     "@firebase/rules-unit-testing": "^5.0.0",
     "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
+    "@types/node": "^20.19.39",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",

@@ -116,8 +116,8 @@ export default function ProfilePage() {
   const [profileSaving, setProfileSaving] = useState(false);
 
   const [company, setCompany] = useState<Company | null>(null);
-  const [companyForm, setCompanyForm] = useState({ name: '', address: '', phone: '', email: '' });
-  const [editCompanyField, setEditCompanyField] = useState<null | 'name' | 'address' | 'phone' | 'email'>(null);
+  const [companyForm, setCompanyForm] = useState({ name: '', address: '', phone: '', email: '', registrationNumber: '' });
+  const [editCompanyField, setEditCompanyField] = useState<null | 'name' | 'address' | 'phone' | 'email' | 'registrationNumber'>(null);
   const [companySaving, setCompanySaving] = useState(false);
 
   const [notif, setNotif] = useState({
@@ -171,7 +171,26 @@ export default function ProfilePage() {
             address: c.address || '',
             phone: c.phone || '',
             email: c.email || '',
+            registrationNumber: c.registrationNumber || '',
           });
+                        <EditableFieldRow
+                          label={t('company.registrationNumber')}
+                          isEditing={editCompanyField === 'registrationNumber'}
+                          inputValue={companyForm.registrationNumber}
+                          displayValue={company.registrationNumber || '—'}
+                          isSaving={companySaving}
+                          onValueChange={(v) => setCompanyForm((f) => ({ ...f, registrationNumber: v }))}
+                          onSave={async () => {
+                            setCompanySaving(true);
+                            await updateCompany(company.id, { registrationNumber: companyForm.registrationNumber });
+                            setCompany((c) => c ? { ...c, registrationNumber: companyForm.registrationNumber } : c);
+                            setEditCompanyField(null);
+                            setCompanySaving(false);
+                            showCustomToast({ type: 'success', title: t('company.updated') });
+                          }}
+                          onCancel={() => { setEditCompanyField(null); setCompanyForm((f) => ({ ...f, registrationNumber: company.registrationNumber || '' })); }}
+                          onStartEdit={() => setEditCompanyField('registrationNumber')}
+                        />
         }
       });
     }
@@ -407,6 +426,24 @@ export default function ProfilePage() {
                   }}
                   onCancel={() => { setEditCompanyField(null); setCompanyForm((f) => ({ ...f, email: company.email || '' })); }}
                   onStartEdit={() => setEditCompanyField('email')}
+                />
+                <EditableFieldRow
+                  label={t('company.registrationNumber')}
+                  isEditing={editCompanyField === 'registrationNumber'}
+                  inputValue={companyForm.registrationNumber}
+                  displayValue={company.registrationNumber || '—'}
+                  isSaving={companySaving}
+                  onValueChange={(v) => setCompanyForm((f) => ({ ...f, registrationNumber: v }))}
+                  onSave={async () => {
+                    setCompanySaving(true);
+                    await updateCompany(company.id, { registrationNumber: companyForm.registrationNumber });
+                    setCompany((c) => c ? { ...c, registrationNumber: companyForm.registrationNumber } : c);
+                    setEditCompanyField(null);
+                    setCompanySaving(false);
+                    showCustomToast({ type: 'success', title: t('company.updated') });
+                  }}
+                  onCancel={() => { setEditCompanyField(null); setCompanyForm((f) => ({ ...f, registrationNumber: company.registrationNumber || '' })); }}
+                  onStartEdit={() => setEditCompanyField('registrationNumber')}
                 />
               </div>
             </div>

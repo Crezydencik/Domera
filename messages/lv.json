@@ -57,6 +57,7 @@
       "confirmAccess": "Apstiprināt piekļuvi"
     },
     "form": {
+      "registrationNumber": "Reģistrācijas numurs",
       "email": "E-pasts",
       "password": "Parole",
       "confirmPassword": "Apstiprināt paroli",
@@ -361,6 +362,7 @@
         "company": "Uzņēmums"
       },
       "company": {
+        "registrationNumber": "Reģistrācijas numurs",
         "companyData": "Uzņēmuma informācija",
         "name": "Uzņēmuma nosaukums",
         "address": "Adrese",
